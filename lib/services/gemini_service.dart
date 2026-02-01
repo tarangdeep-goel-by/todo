@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:todo/config/env.dart';
 import 'package:todo/data/models/task.dart';
+import 'package:todo/data/models/agent_intent.dart';
 
 /// Response from AI categorization
 class AICategorizationResponse {
@@ -106,20 +107,8 @@ Respond ONLY with valid JSON in this exact format:
         throw Exception('Empty categorization response');
       }
 
-      // Extract JSON from response (handle markdown code blocks)
-      String jsonText = response.text!.trim();
-      if (jsonText.contains('```json')) {
-        jsonText = jsonText
-            .substring(jsonText.indexOf('```json') + 7)
-            .replaceAll('```', '')
-            .trim();
-      } else if (jsonText.contains('```')) {
-        jsonText = jsonText
-            .substring(jsonText.indexOf('```') + 3)
-            .replaceAll('```', '')
-            .trim();
-      }
-
+      // Extract JSON from response
+      final jsonText = _extractJson(response.text!);
       final jsonData = jsonDecode(jsonText) as Map<String, dynamic>;
       return AICategorizationResponse.fromJson(jsonData);
     } catch (e) {
@@ -163,5 +152,99 @@ Respond ONLY with valid JSON in this exact format:
     for (final child in children) {
       _buildTaskBranch(child, taskTree, buffer, depth + 1);
     }
+  }
+
+  /// Detect user intent from transcribed voice command
+  Future<AgentIntent> detectIntent({
+    required String transcription,
+    required Map<String, List<Task>> taskTree,
+  }) async {
+    try {
+      final treeContext = _buildTreeContext(taskTree);
+
+      final prompt = '''
+Current task tree:
+$treeContext
+
+User said: "$transcription"
+
+Detect the user's intent. Available intents:
+- ADD: Create new task (keywords: add, create, new, remember, note)
+- COMPLETE: Mark task(s) as done (keywords: complete, done, finish, mark)
+- DELETE: Remove/archive task(s) (keywords: delete, remove, archive, cancel)
+- EDIT: Modify existing task (keywords: edit, change, update, move, reschedule)
+- QUERY: Search/list tasks (keywords: show, list, what, find, search)
+- UNKNOWN: Unclear intent
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "intent": "ADD|COMPLETE|DELETE|EDIT|QUERY|UNKNOWN",
+  "confidence": 0.95,
+  "parameters": {
+    // For ADD:
+    "title": "task title extracted from speech",
+    "category": "work" or "personal",
+    "suggestedParent": "task-id or null"
+
+    // For COMPLETE/DELETE:
+    "taskQuery": "search terms to find the task",
+    "matchedTasks": ["task-id-1", "task-id-2"]
+
+    // For EDIT:
+    "taskQuery": "search terms to find the task",
+    "changes": {
+      "title": "new title if mentioned",
+      "dueDate": "ISO date if mentioned",
+      "category": "work or personal if mentioned"
+    }
+
+    // For QUERY:
+    "query": "search criteria",
+    "filters": {
+      "category": "work or personal if mentioned",
+      "status": "active or completed if mentioned"
+    }
+  }
+}
+
+Examples:
+- "Add groceries to shopping list" → ADD with title="groceries", try to match "shopping" parent
+- "Complete the backend API task" → COMPLETE with taskQuery="backend API"
+- "Delete meeting notes" → DELETE with taskQuery="meeting notes"
+- "Change doctor appointment to tomorrow" → EDIT with taskQuery="doctor appointment", changes.dueDate=tomorrow
+- "Show my work tasks" → QUERY with filters.category="work"
+''';
+
+      final response = await _model.generateContent([Content.text(prompt)]);
+
+      if (response.text == null || response.text!.isEmpty) {
+        throw Exception('Empty intent detection response');
+      }
+
+      // Extract JSON from response
+      final jsonText = _extractJson(response.text!);
+      final jsonData = jsonDecode(jsonText) as Map<String, dynamic>;
+
+      return AgentIntent.fromJson(jsonData);
+    } catch (e) {
+      throw Exception('Failed to detect intent: $e');
+    }
+  }
+
+  /// Extract JSON from response (handles markdown code blocks)
+  String _extractJson(String text) {
+    String jsonText = text.trim();
+    if (jsonText.contains('```json')) {
+      jsonText = jsonText
+          .substring(jsonText.indexOf('```json') + 7)
+          .replaceAll('```', '')
+          .trim();
+    } else if (jsonText.contains('```')) {
+      jsonText = jsonText
+          .substring(jsonText.indexOf('```') + 3)
+          .replaceAll('```', '')
+          .trim();
+    }
+    return jsonText;
   }
 }

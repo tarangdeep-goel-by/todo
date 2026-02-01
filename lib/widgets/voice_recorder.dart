@@ -186,6 +186,7 @@ class _VoiceRecorderState extends ConsumerState<VoiceRecorder>
         GestureDetector(
           onLongPressStart: (_) => _startRecording(),
           onLongPressEnd: (_) => _stopRecording(),
+          onLongPressCancel: () => _cancelRecording(),
           child: AnimatedContainer(
             duration: AppTheme.mediumAnimation,
             curve: AppTheme.defaultCurve,
@@ -222,7 +223,7 @@ class _VoiceRecorderState extends ConsumerState<VoiceRecorder>
           Column(
             children: [
               Text(
-                'Release to stop',
+                'Release to send',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -236,7 +237,7 @@ class _VoiceRecorderState extends ConsumerState<VoiceRecorder>
           )
         else
           Text(
-            'Press and hold to record',
+            'Long-press to record',
             style: theme.textTheme.bodyLarge,
           ),
       ],
