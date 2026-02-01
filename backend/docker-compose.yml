@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: todo-postgres
+    environment:
+      POSTGRES_USER: todo
+      POSTGRES_PASSWORD: todo123
+      POSTGRES_DB: todo_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: todo-backend
+    environment:
+      # Database URL (auto-configured for docker network)
+      DATABASE_URL: postgresql+asyncpg://todo:todo123@postgres:5432/todo_db
+
+      # Gemini API Key
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+      # Application settings
+      APP_ENV: development
+      DEBUG: "True"
+    ports:
+      - "8001:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
