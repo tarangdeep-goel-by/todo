@@ -48,7 +48,6 @@ class GeminiService {
       }
 
       final audioBytes = await audioFile.readAsBytes();
-      print('Audio file size: ${audioBytes.length} bytes');
 
       // Use audio/mp4 MIME type for m4a files
       final prompt = [
@@ -59,19 +58,14 @@ class GeminiService {
         ])
       ];
 
-      print('Sending transcription request to Gemini...');
       final response = await _model.generateContent(prompt);
-      print('Received response from Gemini');
 
       if (response.text == null || response.text!.isEmpty) {
-        print('Response candidates: ${response.candidates}');
         throw Exception('Empty transcription response');
       }
 
-      print('Transcription: ${response.text}');
       return response.text!.trim();
     } catch (e) {
-      print('Transcription error: $e');
       throw Exception('Failed to transcribe audio: $e');
     }
   }
