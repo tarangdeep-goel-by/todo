@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:todo/screens/home_screen.dart';
-import 'package:todo/screens/add_task_screen.dart';
 import 'package:todo/screens/task_detail_screen.dart';
 
 /// App routing configuration using GoRouter
@@ -11,7 +10,6 @@ class AppRouter {
 
   /// Route paths
   static const String home = '/';
-  static const String addTask = '/add-task';
   static const String taskDetail = '/task/:id';
 
   /// Router instance
@@ -22,11 +20,6 @@ class AppRouter {
         path: home,
         name: 'home',
         builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: addTask,
-        name: 'add-task',
-        builder: (context, state) => const AddTaskScreen(),
       ),
       GoRoute(
         path: taskDetail,

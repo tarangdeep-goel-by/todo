@@ -38,3 +38,31 @@ final recordingStateProvider =
 
 /// Current recording path provider
 final currentRecordingPathProvider = StateProvider<String?>((ref) => null);
+
+/// Home screen recording states
+enum HomeRecordingState {
+  idle,
+  recording,
+  processing,
+  confirming,
+  executing,
+  complete,
+}
+
+/// Home screen recording state notifier
+class HomeRecordingStateNotifier extends StateNotifier<HomeRecordingState> {
+  HomeRecordingStateNotifier() : super(HomeRecordingState.idle);
+
+  void startRecording() => state = HomeRecordingState.recording;
+  void setProcessing() => state = HomeRecordingState.processing;
+  void setConfirming() => state = HomeRecordingState.confirming;
+  void setExecuting() => state = HomeRecordingState.executing;
+  void setComplete() => state = HomeRecordingState.complete;
+  void reset() => state = HomeRecordingState.idle;
+}
+
+/// Home screen recording state provider
+final homeRecordingStateProvider =
+    StateNotifierProvider<HomeRecordingStateNotifier, HomeRecordingState>((ref) {
+  return HomeRecordingStateNotifier();
+});
