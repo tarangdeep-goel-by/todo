@@ -182,9 +182,10 @@ class _VoiceRecorderState extends ConsumerState<VoiceRecorder>
             ),
           ),
 
-        // Record button
+        // Record button (push-to-talk)
         GestureDetector(
-          onTap: isRecording ? _stopRecording : _startRecording,
+          onLongPressStart: (_) => _startRecording(),
+          onLongPressEnd: (_) => _stopRecording(),
           child: AnimatedContainer(
             duration: AppTheme.mediumAnimation,
             curve: AppTheme.defaultCurve,
@@ -207,7 +208,7 @@ class _VoiceRecorderState extends ConsumerState<VoiceRecorder>
               ],
             ),
             child: Icon(
-              isRecording ? Icons.stop : Icons.mic,
+              Icons.mic,
               size: 60,
               color: theme.colorScheme.onPrimary,
             ),
@@ -218,13 +219,24 @@ class _VoiceRecorderState extends ConsumerState<VoiceRecorder>
 
         // Instructions or cancel button
         if (isRecording)
-          TextButton(
-            onPressed: _cancelRecording,
-            child: const Text('Cancel'),
+          Column(
+            children: [
+              Text(
+                'Release to stop',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _cancelRecording,
+                child: const Text('Cancel'),
+              ),
+            ],
           )
         else
           Text(
-            'Tap to record your task',
+            'Press and hold to record',
             style: theme.textTheme.bodyLarge,
           ),
       ],
