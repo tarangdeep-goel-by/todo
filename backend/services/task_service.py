@@ -204,3 +204,27 @@ class TaskService:
         """Count distinct categories for user."""
         categories = await self.get_categories(user_id)
         return len(categories)
+
+    async def get_tasks_advanced(
+        self,
+        filter_params: 'TaskFilterParams'
+    ) -> tuple[List[Task], int]:
+        """
+        Get tasks with advanced filtering, sorting, and pagination.
+
+        Returns:
+            tuple of (tasks, total_count)
+        """
+        from services.query_builder import QueryBuilder
+
+        # Build and execute main query
+        query = QueryBuilder.build_task_query(filter_params)
+        result = await self.db.execute(query)
+        tasks = list(result.scalars().all())
+
+        # Build and execute count query
+        count_query = QueryBuilder.build_count_query(filter_params)
+        count_result = await self.db.execute(count_query)
+        total_count = count_result.scalar_one()
+
+        return tasks, total_count
