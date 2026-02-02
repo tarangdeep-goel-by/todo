@@ -79,6 +79,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
 
         return SizedBox(
           width: double.infinity,
+          height: double.infinity,
           child: GestureDetector(
             onVerticalDragStart: _onVerticalDragStart,
             onVerticalDragUpdate: _onVerticalDragUpdate,

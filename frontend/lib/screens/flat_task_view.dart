@@ -1,19 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/tasks_provider.dart';
+import '../providers/task_filter_provider.dart';
 import '../config/theme.dart';
 import '../widgets/task_item.dart';
 import '../widgets/empty_state.dart';
 
-/// Flat all-tasks view with focus scaling
-class FlatTaskView extends ConsumerWidget {
+/// Flat all-tasks view with pagination and filtering
+class FlatTaskView extends ConsumerStatefulWidget {
   const FlatTaskView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tasksAsync = ref.watch(tasksProvider);
+  ConsumerState<FlatTaskView> createState() => _FlatTaskViewState();
+}
 
-    return tasksAsync.when(
+class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Load more when 200px from bottom
+      final paginatedState = ref.read(paginatedTasksProvider);
+      paginatedState.whenData((data) {
+        if (data.hasMore) {
+          ref.read(paginationStateProvider.notifier).loadMore();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tasksState = ref.watch(paginatedTasksProvider);
+
+    return tasksState.when(
       loading: () => const Center(
         child: CircularProgressIndicator(
           color: AppColors.darkText,
@@ -26,42 +58,38 @@ class FlatTaskView extends ConsumerWidget {
           icon: Icons.error_outline,
         );
       },
-      data: (tasks) {
-        // Filter only active tasks
-        final activeTasks = tasks
-            .where((task) => task.status == 'active')
-            .toList();
+      data: (paginatedData) {
+        final tasks = paginatedData.tasks;
+        final hasMore = paginatedData.hasMore;
 
-        // Sort by due date (closest first), then by created date
-        activeTasks.sort((a, b) {
-          if (a.dueDate != null && b.dueDate != null) {
-            return a.dueDate!.compareTo(b.dueDate!);
-          } else if (a.dueDate != null) {
-            return -1;
-          } else if (b.dueDate != null) {
-            return 1;
-          } else {
-            return b.createdAt.compareTo(a.createdAt);
-          }
-        });
-
-        if (activeTasks.isEmpty) {
+        if (tasks.isEmpty) {
           return const EmptyState(
-            message: 'No active tasks\nTap and hold the button below to add one',
+            message: 'No tasks found\nTap and hold the button below to add one',
             textColor: AppColors.darkText,
             icon: Icons.task_alt,
           );
         }
 
         return ListView.builder(
+          controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 120), // Space for CTA button
-          itemCount: activeTasks.length,
+          itemCount: tasks.length + (hasMore ? 1 : 0), // +1 for loading indicator
           itemBuilder: (context, index) {
+            if (index == tasks.length) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(
+                    color: AppColors.darkText,
+                  ),
+                ),
+              );
+            }
             return TaskItem(
-              task: activeTasks[index],
+              task: tasks[index],
               isDark: true, // Dark mode only
-              allTasks: activeTasks, // Pass all tasks for level 1 lookup
+              allTasks: tasks, // Pass all tasks for level 1 lookup
             );
           },
         );
