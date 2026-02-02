@@ -24,20 +24,28 @@ class DomainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isFocused = focusProgress > 0.7; // Consider focused if > 70%
-
     return AnimatedContainer(
       duration: AppAnimations.cardExpand,
       curve: AppAnimations.easeOutCubic,
       width: double.infinity,
       height: height,
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
       margin: const EdgeInsets.symmetric(
         horizontal: AppSpacing.cardMargin,
         vertical: AppSpacing.xs,
       ),
-      child: isFocused
-          ? _buildFocusedCard(context)
-          : _buildCompressedCard(context),
+      // Use LayoutBuilder to pick content based on actual animated height,
+      // not focusProgress — avoids overflow during height animation
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Need at least ~100px to render focused content comfortably
+          final showFocused = constraints.maxHeight > 100;
+          return showFocused
+              ? _buildFocusedCard(context)
+              : _buildCompressedCard(context);
+        },
+      ),
     );
   }
 
@@ -92,27 +100,27 @@ class DomainCard extends StatelessWidget {
 
               // Task preview (top 3-4 tasks) - constrain to available space
               Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
+                child: SingleChildScrollView(
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: activeTasks.length,
-                  itemBuilder: (context, index) {
-                    final task = activeTasks[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        task.title,
-                        style: AppTypography.taskPreview(
-                          context,
-                          color: domain.textOnPrimary,
-                        ).copyWith(
-                          fontWeight: FontWeight.w600,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: activeTasks.map((task) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          task.title,
+                          style: AppTypography.taskPreview(
+                            context,
+                            color: domain.textOnPrimary,
+                          ).copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  },
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ],

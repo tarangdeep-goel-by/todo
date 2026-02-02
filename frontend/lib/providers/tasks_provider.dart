@@ -12,7 +12,8 @@ final tasksProvider = FutureProvider<List<Task>>((ref) async {
 /// Provider for tasks by category (family provider)
 final tasksByCategoryProvider = FutureProvider.family<List<Task>, String>((ref, category) async {
   final apiService = ref.watch(apiServiceProvider);
-  return await apiService.getTasksByCategory(AppConstants.defaultUserId, category);
+  final response = await apiService.getTasksByCategory(AppConstants.defaultUserId, category);
+  return response.tasks;
 });
 
 /// Provider for filtering tasks by parent ID

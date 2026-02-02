@@ -29,14 +29,66 @@ class ApiService {
   }
 
   /// Get tasks by category
-  Future<List<Task>> getTasksByCategory(String userId, String category) async {
+  Future<TaskListResponse> getTasksByCategory(
+    String userId,
+    String category,
+  ) async {
     try {
       final response = await _dio.get('/tasks', queryParameters: {
         'user_id': userId,
         'category': category,
       });
 
-      return (response.data as List).map((json) => Task.fromJson(json)).toList();
+      return TaskListResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Get tasks with advanced filtering and sorting
+  Future<TaskListResponse> getTasksAdvanced({
+    required String userId,
+    String? category,
+    String? priority,
+    String? status,
+    String? parentId,
+    String? tags,
+    DateTime? createdAtGte,
+    DateTime? createdAtLte,
+    DateTime? dueDateGte,
+    DateTime? dueDateLte,
+    String? sort,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'user_id': userId,
+        'limit': limit,
+        'offset': offset,
+      };
+
+      if (category != null) queryParams['category'] = category;
+      if (priority != null) queryParams['priority'] = priority;
+      if (status != null) queryParams['status'] = status;
+      if (parentId != null) queryParams['parent_id'] = parentId;
+      if (tags != null) queryParams['tags'] = tags;
+      if (createdAtGte != null) {
+        queryParams['created_at_gte'] = createdAtGte.toIso8601String();
+      }
+      if (createdAtLte != null) {
+        queryParams['created_at_lte'] = createdAtLte.toIso8601String();
+      }
+      if (dueDateGte != null) {
+        queryParams['due_date_gte'] = dueDateGte.toIso8601String();
+      }
+      if (dueDateLte != null) {
+        queryParams['due_date_lte'] = dueDateLte.toIso8601String();
+      }
+      if (sort != null) queryParams['sort'] = sort;
+
+      final response = await _dio.get('/tasks', queryParameters: queryParams);
+      return TaskListResponse.fromJson(response.data);
     } on DioException catch (e) {
       throw _handleError(e);
     }

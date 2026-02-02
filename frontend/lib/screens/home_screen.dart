@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/view_mode_provider.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/push_to_talk_button.dart';
+import '../widgets/filter_button.dart';
+import '../widgets/active_filter_chips.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
 
@@ -22,6 +24,8 @@ class HomeScreen extends ConsumerWidget {
             Column(
               children: [
                 const TopBar(),
+                // Active filter chips (only in flat view)
+                if (viewMode == ViewMode.flat) const ActiveFilterChips(),
                 Expanded(
                   child: viewMode == ViewMode.node
                       ? const ParentNodeView()
@@ -29,6 +33,9 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ],
             ),
+
+            // Filter button (only in flat view)
+            if (viewMode == ViewMode.flat) const FilterButton(),
 
             // Push-to-talk CTA button (always visible)
             const Positioned(

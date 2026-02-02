@@ -7,6 +7,7 @@ import '../models/task.dart';
 import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/tasks_provider.dart';
+import '../providers/task_filter_provider.dart';
 import '../services/haptic_service.dart';
 import 'task_detail_sheet.dart';
 
@@ -33,13 +34,34 @@ class TaskItem extends ConsumerWidget {
     // Traverse up the parent chain to find level 1
     Task? current = task;
     Task? level1Task;
+    final Set<String> visited = {}; // Prevent cycles
 
     while (current != null && current.parentId != null) {
-      // Find parent
+      // Detect cycles
+      if (visited.contains(current.id)) {
+        return task.category; // Fallback if cycle detected
+      }
+      visited.add(current.id);
+
+      // Find parent - use sentinel value instead of returning current
       final parent = allTasks.firstWhere(
         (t) => t.id == current!.parentId,
-        orElse: () => current!,
+        orElse: () => Task(
+          id: '',
+          userId: '',
+          title: '',
+          category: '',
+          status: '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          transcription: '',
+        ),
       );
+
+      // Check if parent was found
+      if (parent.id.isEmpty) {
+        break; // Parent not found, exit loop
+      }
 
       // If parent has no parent, it's level 1
       if (parent.parentId == null) {
@@ -66,8 +88,9 @@ class TaskItem extends ConsumerWidget {
         ),
       );
 
-      // Invalidate cache to refresh list
+      // Invalidate cache to refresh both views
       ref.invalidate(tasksProvider);
+      ref.invalidate(paginatedTasksProvider);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,8 +122,9 @@ class TaskItem extends ConsumerWidget {
       final apiService = ref.read(apiServiceProvider);
       await apiService.deleteTask(task.id);
 
-      // Invalidate cache to refresh list
+      // Invalidate cache to refresh both views
       ref.invalidate(tasksProvider);
+      ref.invalidate(paginatedTasksProvider);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
