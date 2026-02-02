@@ -1,26 +1,30 @@
 # TODO App - Project Status
 
-**Last Updated**: 2026-02-01
-**Status**: ✅ Backend + Frontend MVP Complete
+**Last Updated**: 2026-02-02
+**Status**: ✅ VOKL Frontend Implementation Complete
 
 ---
 
 ## Current Sprint
 
-**Sprint**: Backend Integration + Testing Fixes
-**Duration**: 2026-02-01
-**Goal**: Build FastAPI backend with AI agent & fix critical testing issues
+**Sprint**: VOKL Maximalist Frontend Implementation
+**Duration**: 2026-02-01 to 2026-02-02
+**Goal**: Build maximalist voice-first frontend based on VOKL design brief
 
 ### Completed This Sprint
-- ✅ FastAPI backend with AI agent implemented
-- ✅ Date parsing fix (handles "next monday", etc.)
-- ✅ Fuzzy search with RapidFuzz (multi-field matching)
-- ✅ Top-level move handling fix
-- ✅ 5-category limit with validation
-- ✅ Performance testing framework
-- ✅ Complex prompt testing suite (15 scenarios)
-- ✅ Docker setup with PostgreSQL
-- ✅ All backend features committed
+- ✅ Complete Flutter frontend rewrite with VOKL design system
+- ✅ OKLCH color palettes (5 domains × light/dark modes)
+- ✅ Liquid focus scroll with gesture-based control (no scrolling viewport)
+- ✅ Google Fonts integration (Bricolage Grotesque, DM Sans, Space Mono)
+- ✅ Domain cards with focused/compressed states
+- ✅ Push-to-talk voice input with waveform visualization
+- ✅ Flat task view with domain color coding
+- ✅ Backend integration (local network IP: 192.168.0.101:8001)
+- ✅ Test data seeding (38 tasks across 5 domains)
+- ✅ Animation polish (350ms transitions, easeOutCubic)
+- ✅ Typography enhancements (bold task counts, right alignment)
+- ✅ Multi-level filtering and sorting API (Excel-like functionality)
+- ✅ Pagination with metadata (total_count, has_more)
 
 ---
 
@@ -38,27 +42,38 @@
 - [x] Archive parent task (archives entire subtree)
 - [x] Pull-to-refresh on task lists
 
-#### UI/UX
-- [x] Material Design 3 theme (light/dark mode support)
-- [x] Animated task cards (scale on tap)
-- [x] Expand/collapse tree nodes
-- [x] Empty states
-- [x] Loading indicators
-- [x] Error handling with SnackBars
-- [x] Haptic feedback
-- [x] Bottom navigation (Work/Personal tabs)
-- [x] Task detail screen
+#### UI/UX (VOKL Maximalist Design)
+- [x] Liquid focus scroll with gesture-based control (single viewport, no scrolling out)
+- [x] Domain cards with two visual states (focused: 70% viewport, compressed: 7.5% each)
+- [x] Focused cards: Full-bleed primary color, grain texture overlay (light mode)
+- [x] Compressed cards: Surface color with left accent bar (4px)
+- [x] Ultra-sensitive scrolling (5% threshold for focus changes)
+- [x] Smooth 350ms transitions with easeOutCubic
+- [x] Bold typography hierarchy (w700 task counts, w600 task titles)
+- [x] Right-aligned task counts on all cards
+- [x] Push-to-talk button with waveform visualization
+- [x] Flat task view with domain color-coded pills
+- [x] View toggle (Node/Flat) with haptic feedback
+- [x] Theme toggle (light/dark) with complete palette switching
+- [x] Empty states with domain-specific messaging
+- [x] Loading indicators with theme colors
+- [x] Haptic feedback on all interactions
 
-#### Frontend Technical
-- [x] Drift SQLite database (type-safe ORM)
-- [x] Riverpod state management
-- [x] GoRouter navigation
-- [x] Repository pattern for data access
-- [x] Service layer (Audio, Gemini, Permissions)
-- [x] Environment configuration (API keys)
-- [x] Code generation (Drift)
-- [x] Flutter analyze: 0 issues
-- [x] Unit tests passing
+#### Frontend Technical (VOKL Implementation)
+- [x] Flutter 3.38+ with Impeller rendering
+- [x] Riverpod 2.6+ state management (Provider, StateNotifier, FutureProvider)
+- [x] Dio 5.4+ HTTP client with multipart uploads
+- [x] google_fonts 6.2+ for automatic font loading (Bricolage Grotesque, DM Sans, Space Mono)
+- [x] record 6.0+ for native audio recording
+- [x] OKLCH color system (pre-converted to RGB)
+- [x] Custom easing curves (easeOutQuint, easeOutCubic, easeInQuad)
+- [x] Liquid focus scroll controller with gesture detection
+- [x] Custom painters (grain texture, waveform visualization)
+- [x] AnimatedContainer with 350ms transitions
+- [x] Backend API integration (Dio with local network IP)
+- [x] Service layer (API, Audio, Haptic)
+- [x] Flutter analyze: 0 errors, 0 warnings
+- [x] Deprecated API fixes (withOpacity → withValues)
 
 #### Backend Technical (NEW)
 - [x] FastAPI REST API with async PostgreSQL
@@ -71,6 +86,14 @@
 - [x] Docker Compose setup (backend + postgres)
 - [x] Performance testing framework
 - [x] Complex prompt testing suite (15 scenarios)
+- [x] Multi-level filtering and sorting API
+  - Multi-value exact match filters (category, priority, status, parent_id, tags)
+  - Date range filters (created_at, updated_at, due_date, completed_at)
+  - Multi-level sorting with priority mapping (high=3, medium=2, low=1)
+  - Smart default sort: priority desc → due_date asc → created_at desc
+  - Pagination with metadata (total_count, has_more)
+  - Dynamic SQLAlchemy query builder
+  - NULL handling for date fields (NULLS LAST)
 
 #### Documentation
 - [x] README.md (user-facing setup guide)
@@ -84,14 +107,29 @@
 ## Known Issues
 
 ### Fixed During Development
+
+#### Original Flutter App (Pre-VOKL)
 1. ✅ Gemini API audio transcription failed → Fixed by switching to gemini-2.5-flash
 2. ✅ Task completion crash → Fixed Drift update query
 3. ✅ record_linux compatibility → Updated to v6.0
 4. ✅ Audio MIME type incorrect → Changed to audio/mp4
 
+#### VOKL Frontend Implementation
+5. ✅ Deprecated withOpacity() API → Migrated to withValues(alpha:)
+6. ✅ Font loading (manual download) → Switched to google_fonts package
+7. ✅ Backend connection from Android → Changed from localhost to local network IP (192.168.0.101)
+8. ✅ Backend AIPlacement validation error → Added default values to schema
+9. ✅ Audio service file path creation → Removed broken directory check
+10. ✅ Liquid focus scroll misunderstanding → Redesigned from scrolling ListView to fixed Column with gesture control
+11. ✅ Scroll sensitivity too low → Reduced threshold from 15% → 8% → 5%
+12. ✅ Cards not full width → Added width: double.infinity constraints
+13. ✅ Insufficient focused card viewport → Changed from 48%/13% to 70%/7.5%
+14. ✅ Animation not smooth → Increased duration to 350ms with easeOutCubic
+15. ✅ Typography hierarchy weak → Made task counts bold (w700), right-aligned, 13px
+
 ### Minor Issues (Non-blocking)
-- ⚠️ Hero animation warning (duplicate FloatingActionButton tags) - UI works fine
-- ⚠️ First build on Android takes ~5 minutes (subsequent builds are faster)
+- ⚠️ First build on Android takes ~3 minutes (subsequent builds are faster)
+- ⚠️ google_fonts downloads on first launch (requires internet, then cached)
 
 ### Not Implemented (Future Enhancements)
 - Task editing/deletion UI
@@ -110,12 +148,16 @@
 
 ### Code Statistics
 
-#### Frontend
-- **Total Files**: 40+
-- **Lines of Code**: ~3,500
-- **Test Coverage**: Basic widget tests implemented
-- **Build Time**: ~5 min (first), ~30s (subsequent)
+#### Frontend (VOKL)
+- **Total Files**: 25+ (focused on maximalist design)
+- **Lines of Code**: ~2,800 (VOKL-specific implementation)
+- **Key Components**: 9 custom widgets, 3 screens, 5 services
+- **Design System**: 5 domain palettes × 2 modes (10 color schemes)
+- **Animations**: 7 custom animations, 4 easing curves
+- **Build Time**: ~3 min (first), ~20s (subsequent)
 - **App Size**: TBD (not optimized yet)
+- **Backend Connection**: Local network IP (192.168.0.101:8001)
+- **Test Data**: 38 tasks seeded across 5 domains
 
 #### Backend
 - **Total Files**: 45
@@ -140,12 +182,15 @@
 
 ### Performance
 
-#### Frontend
-- **Voice Recording**: ✅ Working smoothly
-- **Transcription Speed**: ~2-3 seconds for typical task
-- **AI Categorization**: ~1-2 seconds
-- **Database Queries**: Fast (local SQLite)
-- **UI Rendering**: Smooth 60fps with Impeller
+#### Frontend (VOKL)
+- **Liquid Focus Animation**: ✅ 60fps smooth transitions (350ms easeOutCubic)
+- **Gesture Sensitivity**: Ultra-responsive (5% viewport threshold)
+- **Waveform Rendering**: 30fps live updates during recording
+- **Voice Recording**: AAC-LC codec, 44.1kHz, 128kbps
+- **Card Transitions**: Focused ↔ Compressed (AnimatedContainer)
+- **Backend API Calls**: Dio with timeout (10s connect, 10s receive)
+- **UI Rendering**: Smooth 60fps with Impeller engine
+- **Font Loading**: google_fonts with auto-caching
 
 #### Backend (Targets)
 - **Agent Response**: <2000ms avg (500-task trees)
@@ -158,15 +203,20 @@
 
 ## Testing Status
 
-### Manual Testing
-- ✅ Voice recording on Android
-- ✅ Audio transcription
-- ✅ AI categorization
-- ✅ Task creation
-- ✅ Task completion
-- ✅ Tree rendering
-- ✅ Navigation
-- ✅ Pull-to-refresh
+### Manual Testing (VOKL Frontend)
+- ✅ Liquid focus scroll with gesture control
+- ✅ Domain card focus/unfocus transitions (350ms smooth)
+- ✅ Ultra-sensitive scrolling (5% threshold)
+- ✅ Full-width cards (both focused and compressed)
+- ✅ Viewport allocation (70% focused, 7.5% × 4 compressed)
+- ✅ Typography (bold task counts, right-aligned)
+- ✅ Theme switching (light/dark with complete palette swap)
+- ✅ View switching (Node/Flat toggle)
+- ✅ Backend integration (local network IP: 192.168.0.101:8001)
+- ✅ Task data loading (38 seeded tasks across 5 domains)
+- ✅ Haptic feedback on all interactions
+- ✅ Empty states with domain-specific messages
+- ⬜ Voice recording flow (pending backend audio processing)
 - ⬜ iOS testing (not tested yet)
 
 ### Automated Testing
@@ -185,9 +235,12 @@
 - ✅ Performance framework: Ready (50-500 task trees)
 
 ### Device Testing
-- ✅ Android: Samsung SM S938B (working)
+- ✅ Android: Samsung SM S938B (VOKL UI tested, liquid focus working)
+- ✅ Backend: Local network connection (192.168.0.101:8001)
+- ✅ Test Data: 38 tasks seeded across 5 domains
 - ⬜ iOS: Not tested
 - ⬜ Tablet: Not tested
+- ⬜ Web: Not tested (Flutter web target available)
 
 ---
 
@@ -257,6 +310,73 @@
 ---
 
 ## Changelog
+
+### 2026-02-02 - VOKL Maximalist Frontend Complete
+- ✅ Complete Flutter frontend rewrite based on VOKL design brief
+- ✅ Implemented liquid focus scroll with gesture-based control (no scrolling viewport)
+- ✅ Created OKLCH color system (5 domains × light/dark = 10 palettes)
+- ✅ Integrated google_fonts (Bricolage Grotesque, DM Sans, Space Mono)
+- ✅ Built domain cards with focused/compressed states (70%/7.5% viewport allocation)
+- ✅ Custom easing curves (easeOutQuint, easeOutCubic, easeInQuad)
+- ✅ Ultra-sensitive scrolling (5% viewport threshold for focus changes)
+- ✅ Smooth 350ms transitions with easeOutCubic
+- ✅ Typography enhancements (bold task counts w700, right-aligned, 13px)
+- ✅ Push-to-talk voice button with waveform visualization
+- ✅ Flat task view with domain color-coded pills
+- ✅ Theme toggle (light/dark) with complete palette switching
+- ✅ View toggle (Node/Flat) with haptic feedback
+- ✅ Backend integration via local network IP (192.168.0.101:8001)
+- ✅ Test data seeding (38 tasks across 5 domains)
+- ✅ Custom painters (grain texture overlay, waveform visualization)
+- ✅ Haptic feedback on all interactions
+- ✅ Empty states with domain-specific messaging
+- ✅ Flutter analyze: 0 errors, 0 warnings
+- ✅ Comprehensive documentation (IMPLEMENTATION_STATUS.md)
+
+**Key Architecture Decisions**:
+- Single viewport design (all 5 cards visible, no scrolling out)
+- Gesture-based focus change (drag to change focus, tap to jump)
+- Font management via google_fonts (automatic download + caching)
+- OKLCH → RGB pre-conversion for Flutter compatibility
+- AnimatedContainer for all card state transitions
+- Custom liquid focus controller with distance-based interpolation
+
+**Testing Status**: Verified on Android device (Samsung SM S938B), 38 tasks loaded successfully, all animations smooth at 60fps
+
+### 2026-02-02 - Multi-Level Filtering & Sorting API
+- ✅ Implemented Excel-like multi-level filtering and sorting for tasks API
+- ✅ Multi-value exact match filters (category, priority, status, parent_id, tags)
+- ✅ Date range filters (created_at, updated_at, due_date, completed_at)
+- ✅ Multi-level sorting with priority mapping (high=3, medium=2, low=1)
+- ✅ Smart default sort: priority desc → due_date asc → created_at desc
+- ✅ Pagination with metadata (total_count, limit, offset, has_more)
+- ✅ Created QueryBuilder service for dynamic SQLAlchemy query construction
+- ✅ Added TaskFilterParams schema with field validation
+- ✅ Added TaskListResponse schema for paginated results
+- ✅ Updated GET /tasks endpoint with comprehensive query parameters
+- ✅ NULL handling for date fields (NULLS LAST in ORDER BY)
+- ✅ Support for parent_id=null to filter top-level tasks
+- ✅ All filters tested and verified working
+
+**Breaking Change**: Response format changed from `List[TaskResponse]` to `TaskListResponse`. Frontend must access `response.tasks` instead of `response` directly.
+
+**API Examples**:
+```bash
+# Top-level tasks only
+GET /api/tasks?user_id=X&parent_id=null
+
+# Multi-value filter
+GET /api/tasks?user_id=X&priority=high,medium
+
+# Date range filter
+GET /api/tasks?user_id=X&created_at_gte=2026-02-02T00:00:00Z
+
+# Multi-level sort
+GET /api/tasks?user_id=X&sort=priority:desc,due_date:asc,created_at:desc
+
+# Pagination
+GET /api/tasks?user_id=X&limit=10&offset=0
+```
 
 ### 2026-02-01 - Backend Implementation + Testing Fixes
 - ✅ Built FastAPI backend with PostgreSQL
