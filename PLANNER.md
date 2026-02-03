@@ -1,6 +1,6 @@
 # TODO - Development Planner
 
-**Last Updated**: 2026-02-02
+**Last Updated**: 2026-02-03
 
 ---
 
@@ -10,7 +10,6 @@
 - View transition animations (fracture/cluster effect between Node/Flat) - P2
 - Accessibility improvements (screen readers, reduced motion) - P2
 - Task editing/deletion UI - P2
-- Search and filter functionality - P3
 - iOS testing and optimization - P3
 
 ---
@@ -22,6 +21,28 @@
 ---
 
 ## Done
+
+### [FEATURE-004] Filtering & Sorting UI ✅
+**Priority**: High
+**Description**: Frontend filtering/sorting UI connected to backend advanced filtering API
+**Branch**: main
+**Status**: Completed 2026-02-03
+**Sub-Tickets**:
+- [x] [SUB-004-A] TaskFilter model (categories, priorities, statuses, date ranges, sort options)
+- [x] [SUB-004-B] task_filter_provider with pagination state management
+- [x] [SUB-004-C] FilterSheet bottom sheet (category/priority/status/date/sort)
+- [x] [SUB-004-D] FilterButton with active count badge
+- [x] [SUB-004-E] ActiveFilterChips with per-chip removal
+- [x] [SUB-004-F] FlatTaskView rewrite with paginated provider + infinite scroll
+- [x] [SUB-004-G] ApiService.getTasksAdvanced() integration
+- [x] [SUB-004-H] HomeScreen conditional filter UI (flat view only)
+- [x] [SUB-004-I] TaskItem dual cache invalidation
+- [x] [SUB-004-J] Bug fix: provider infinite rebuild loop
+- [x] [SUB-004-K] Bug fix: domain card overflow during animation
+
+**New Files**: `task_filter.dart`, `task_filter_provider.dart`, `filter_sheet.dart`, `filter_button.dart`, `active_filter_chips.dart`
+
+---
 
 ### [FEATURE-003] VOKL Maximalist Frontend ✅
 **Priority**: High

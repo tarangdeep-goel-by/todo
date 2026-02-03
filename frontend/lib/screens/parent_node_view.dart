@@ -70,11 +70,12 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
         // Get all domains (dark mode only)
         final domains = DomainColors.getAllDomains(true);
 
-        // Initialize liquid focus controller
-        final viewportHeight = MediaQuery.of(context).size.height;
-        final liquidFocus = LiquidFocusScrollController(
+        return LayoutBuilder(
+          builder: (context, constraints) {
+        // Use actual available height from layout constraints
+        final liquidFocus = LiquidFocusScrollController.fromAvailable(
           totalCards: domains.length,
-          viewportHeight: viewportHeight,
+          availableHeight: constraints.maxHeight,
         );
 
         return SizedBox(
@@ -123,6 +124,8 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
             }),
             ),
           ),
+        );
+          },
         );
       },
     );

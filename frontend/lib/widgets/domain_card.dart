@@ -31,9 +31,8 @@ class DomainCard extends StatelessWidget {
       height: height,
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
-      margin: const EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.cardMargin,
-        vertical: AppSpacing.xs,
       ),
       // Use LayoutBuilder to pick content based on actual animated height,
       // not focusProgress — avoids overflow during height animation
@@ -54,20 +53,16 @@ class DomainCard extends StatelessWidget {
     final taskCount = tasks.where((t) => t.status == 'active').length;
     final activeTasks = tasks.where((t) => t.status == 'active').take(4).toList();
 
-    return Stack(
-      children: [
-        // Background with domain color
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: domain.primary,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusNone),
-          ),
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: domain.primary,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusNone),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
               // Domain name and task count row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -125,10 +120,6 @@ class DomainCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-
-        // Grain texture removed (was light mode only)
-      ],
     );
   }
 

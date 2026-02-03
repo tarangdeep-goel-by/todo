@@ -27,6 +27,19 @@ class LiquidFocusScrollController {
     compressedHeight = heights['compressed']!;
   }
 
+  /// Create from actual available height (no subtractions needed)
+  LiquidFocusScrollController.fromAvailable({
+    required this.totalCards,
+    required double availableHeight,
+  })  : viewportHeight = availableHeight,
+        topBarHeight = 0,
+        ctaZoneHeight = 0 {
+    this.availableHeight = availableHeight;
+    final heights = _calculateHeights(totalCards, availableHeight);
+    focusedHeight = heights['focused']!;
+    compressedHeight = heights['compressed']!;
+  }
+
   /// Calculate focus progress for a card based on scroll position
   /// Returns 0.0 (fully compressed) to 1.0 (fully focused)
   double getFocusProgress(double scrollOffset, int cardIndex) {

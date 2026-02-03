@@ -1,30 +1,29 @@
 # TODO App - Project Status
 
-**Last Updated**: 2026-02-02
-**Status**: ✅ VOKL Frontend Implementation Complete
+**Last Updated**: 2026-02-03
+**Status**: ✅ Filtering & Sorting UI Complete
 
 ---
 
 ## Current Sprint
 
-**Sprint**: VOKL Maximalist Frontend Implementation
-**Duration**: 2026-02-01 to 2026-02-02
-**Goal**: Build maximalist voice-first frontend based on VOKL design brief
+**Sprint**: Filtering & Sorting UI
+**Duration**: 2026-02-02 to 2026-02-03
+**Goal**: Connect frontend filtering UI to backend advanced filtering/sorting API
 
 ### Completed This Sprint
-- ✅ Complete Flutter frontend rewrite with VOKL design system
-- ✅ OKLCH color palettes (5 domains × light/dark modes)
-- ✅ Liquid focus scroll with gesture-based control (no scrolling viewport)
-- ✅ Google Fonts integration (Bricolage Grotesque, DM Sans, Space Mono)
-- ✅ Domain cards with focused/compressed states
-- ✅ Push-to-talk voice input with waveform visualization
-- ✅ Flat task view with domain color coding
-- ✅ Backend integration (local network IP: 192.168.0.101:8001)
-- ✅ Test data seeding (38 tasks across 5 domains)
-- ✅ Animation polish (350ms transitions, easeOutCubic)
-- ✅ Typography enhancements (bold task counts, right alignment)
-- ✅ Multi-level filtering and sorting API (Excel-like functionality)
-- ✅ Pagination with metadata (total_count, has_more)
+- ✅ TaskFilter model (categories, priorities, statuses, date ranges, sort options)
+- ✅ Filter provider with pagination state management
+- ✅ FilterSheet bottom sheet (category/priority/status/date/sort selection)
+- ✅ FilterButton with active filter count badge
+- ✅ ActiveFilterChips horizontal scroll with per-chip removal
+- ✅ FlatTaskView rewrite with paginatedTasksProvider + infinite scroll
+- ✅ API service getTasksAdvanced() with all filter/sort/pagination params
+- ✅ HomeScreen integration (filter UI visible only in flat view)
+- ✅ TaskItem cache invalidation for both tasksProvider and paginatedTasksProvider
+- ✅ Fixed provider infinite rebuild loop (setTasks writing to watched state)
+- ✅ Fixed domain card overflow during animation (LayoutBuilder height check)
+- ✅ Tested on Android device (Samsung SM S938B)
 
 ---
 
@@ -133,7 +132,6 @@
 
 ### Not Implemented (Future Enhancements)
 - Task editing/deletion UI
-- Task search and filtering
 - Due date notifications
 - Recurring tasks
 - Cloud sync
@@ -310,6 +308,25 @@
 ---
 
 ## Changelog
+
+### 2026-02-03 - Filtering & Sorting UI
+- ✅ TaskFilter model with categories, priorities, statuses, date ranges, sort options
+- ✅ task_filter_provider with pagination state (FutureProvider + StateNotifier)
+- ✅ FilterSheet bottom sheet with category/priority/status/date preset/sort selection
+- ✅ FilterButton (top-right) with active filter count badge and glow
+- ✅ ActiveFilterChips horizontal scroll with color-coded per-chip removal
+- ✅ FlatTaskView rewrite: paginatedTasksProvider with infinite scroll (200px trigger)
+- ✅ ApiService.getTasksAdvanced() with all filter/sort/pagination query params
+- ✅ HomeScreen: filter UI conditionally visible in flat view only
+- ✅ TaskItem: invalidates both tasksProvider and paginatedTasksProvider on mutations
+- ✅ Fixed provider infinite rebuild loop (setTasks was writing to watched paginationState)
+- ✅ Fixed domain card RenderFlex overflow (LayoutBuilder picks content by actual height)
+
+**Bugs Fixed**:
+- Provider infinite loop: `paginatedTasksProvider` watched `paginationStateProvider` but also wrote to it via `setTasks()`, causing endless rebuilds. Fix: accumulated tasks stored in separate non-watched provider.
+- Domain card overflow: During AnimatedContainer height transition, focused content rendered in compressed-height container. Fix: `LayoutBuilder` checks actual `constraints.maxHeight > 100` before rendering focused content.
+
+**New Files**: `task_filter.dart`, `task_filter_provider.dart`, `filter_sheet.dart`, `filter_button.dart`, `active_filter_chips.dart`
 
 ### 2026-02-02 - VOKL Maximalist Frontend Complete
 - ✅ Complete Flutter frontend rewrite based on VOKL design brief
