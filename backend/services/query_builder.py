@@ -36,16 +36,16 @@ class QueryBuilder:
 
         # Multi-value filters (OR logic with IN clause)
         if params.category:
-            values = params.parse_multi_value(params.category)
-            query = query.where(Task.category.in_(values))
+            values = [v.lower() for v in params.parse_multi_value(params.category)]
+            query = query.where(func.lower(Task.category).in_(values))
 
         if params.priority:
-            values = params.parse_multi_value(params.priority)
-            query = query.where(Task.priority.in_(values))
+            values = [v.lower() for v in params.parse_multi_value(params.priority)]
+            query = query.where(func.lower(Task.priority).in_(values))
 
         if params.status:
-            values = params.parse_multi_value(params.status)
-            query = query.where(Task.status.in_(values))
+            values = [v.lower() for v in params.parse_multi_value(params.status)]
+            query = query.where(func.lower(Task.status).in_(values))
 
         # Parent ID (support "null" string for top-level tasks)
         if params.parent_id is not None:

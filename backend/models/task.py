@@ -50,7 +50,7 @@ class Task(Base):
     # Constraints
     __table_args__ = (
         # No category constraint - allows custom categories like "fitness", "learning", etc.
-        CheckConstraint("status IN ('active', 'completed', 'archived')", name="check_status"),
+        CheckConstraint("status IN ('active', 'completed')", name="check_status"),
         Index("idx_tasks_user_category", "user_id", "category"),
         Index("idx_tasks_user_status", "user_id", "status"),
         Index("idx_tasks_parent", "parent_id"),

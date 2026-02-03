@@ -45,53 +45,55 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   Widget build(BuildContext context) {
     final tasksState = ref.watch(paginatedTasksProvider);
 
-    return tasksState.when(
-      loading: () => const Center(
+    // Full spinner only on initial load (no previous data)
+    if (tasksState.isLoading && !tasksState.hasValue) {
+      return const Center(
         child: CircularProgressIndicator(
           color: AppColors.darkText,
         ),
-      ),
-      error: (error, stack) {
-        return EmptyState(
-          message: 'Unable to load tasks\n$error',
-          textColor: AppColors.darkText,
-          icon: Icons.error_outline,
-        );
-      },
-      data: (paginatedData) {
-        final tasks = paginatedData.tasks;
-        final hasMore = paginatedData.hasMore;
+      );
+    }
 
-        if (tasks.isEmpty) {
-          return const EmptyState(
-            message: 'No tasks found\nTap and hold the button below to add one',
-            textColor: AppColors.darkText,
-            icon: Icons.task_alt,
+    if (tasksState.hasError && !tasksState.hasValue) {
+      return EmptyState(
+        message: 'Unable to load tasks\n${tasksState.error}',
+        textColor: AppColors.darkText,
+        icon: Icons.error_outline,
+      );
+    }
+
+    final paginatedData = tasksState.valueOrNull;
+    if (paginatedData == null || paginatedData.tasks.isEmpty) {
+      return const EmptyState(
+        message: 'No tasks found\nTap and hold the button below to add one',
+        textColor: AppColors.darkText,
+        icon: Icons.task_alt,
+      );
+    }
+
+    final tasks = paginatedData.tasks;
+    final hasMore = paginatedData.hasMore;
+
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 120),
+      itemCount: tasks.length + (hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == tasks.length) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(
+                color: AppColors.darkText,
+              ),
+            ),
           );
         }
-
-        return ListView.builder(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 120), // Space for CTA button
-          itemCount: tasks.length + (hasMore ? 1 : 0), // +1 for loading indicator
-          itemBuilder: (context, index) {
-            if (index == tasks.length) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: CircularProgressIndicator(
-                    color: AppColors.darkText,
-                  ),
-                ),
-              );
-            }
-            return TaskItem(
-              task: tasks[index],
-              isDark: true, // Dark mode only
-              allTasks: tasks, // Pass all tasks for level 1 lookup
-            );
-          },
+        return TaskItem(
+          task: tasks[index],
+          isDark: true,
+          allTasks: tasks,
         );
       },
     );

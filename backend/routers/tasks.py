@@ -42,7 +42,7 @@ async def get_tasks(
     # Exact match filters
     category: Optional[str] = Query(None, description="Filter by category (comma-separated)"),
     priority: Optional[str] = Query(None, description="Filter by priority (high,medium,low)"),
-    status: Optional[str] = Query(None, description="Filter by status (active,completed,archived)"),
+    status: Optional[str] = Query(None, description="Filter by status (active,completed)"),
     parent_id: Optional[str] = Query(None, description="Filter by parent ID (UUID or 'null')"),
     tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
 
@@ -187,13 +187,24 @@ async def complete_task(
     task_id: str,
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
-    """Mark task as completed."""
+    """Complete task. If it has active children, completes them too."""
     task_service = TaskService(db)
-    task = await task_service.complete_task(task_id)
 
+    task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # Check for active children
+    children = await task_service.get_tasks(task.user_id, parent_id=task_id)
+    active_children = [c for c in children if c.status == "active"]
+
+    if active_children:
+        await task_service.complete_task_with_children(task_id)
+    else:
+        await task_service.complete_task(task_id)
+
+    # Re-fetch to get updated state
+    task = await task_service.get_task(task_id)
     return task_to_response(task)
 
 
@@ -203,7 +214,7 @@ async def delete_task(
     user_id: str = Query(..., description="User ID for verification"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Archive task and all descendants."""
+    """Hard delete task and all descendants from DB."""
     task_service = TaskService(db)
 
     # Verify task exists and belongs to user
@@ -214,11 +225,10 @@ async def delete_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Archive task and descendants
-    count = await task_service.archive_task(task_id)
+    count = await task_service.delete_task_with_children(task_id)
 
     return {
         "success": True,
-        "message": f"Archived task and {count - 1} descendants",
-        "archived_count": count
+        "message": f"Deleted task and {count - 1} sub-tasks",
+        "deleted_count": count
     }

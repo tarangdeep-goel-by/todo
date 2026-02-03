@@ -43,5 +43,4 @@ class AppConstants {
   // Task status
   static const String statusActive = 'active';
   static const String statusCompleted = 'completed';
-  static const String statusArchived = 'archived';
 }

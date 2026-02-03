@@ -6,7 +6,7 @@ class Task {
   final String? description;
   final String? parentId;
   final String category; // work, personal, health, learning, projects
-  final String status; // active, completed, archived
+  final String status; // active, completed
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? dueDate;
@@ -112,5 +112,4 @@ class Task {
 
   bool get isCompleted => status == 'completed';
   bool get isActive => status == 'active';
-  bool get isArchived => status == 'archived';
 }

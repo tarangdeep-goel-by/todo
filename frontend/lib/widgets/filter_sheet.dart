@@ -352,12 +352,6 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         onTap: () => _toggleStatus('completed'),
                         color: const Color(0xFF66BB6A),
                       ),
-                      _buildFilterChip(
-                        label: 'ARCHIVED',
-                        isSelected: _currentFilter.statuses?.contains('archived') ?? false,
-                        onTap: () => _toggleStatus('archived'),
-                        color: AppColors.darkText,
-                      ),
                     ],
                   ),
 

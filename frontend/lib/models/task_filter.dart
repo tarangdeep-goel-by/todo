@@ -25,29 +25,31 @@ class TaskFilter {
     this.sortOptions = const [],
   });
 
+  static const _sentinel = Object();
+
   TaskFilter copyWith({
-    List<String>? categories,
-    List<String>? priorities,
-    List<String>? statuses,
-    String? parentId,
-    List<String>? tags,
-    DateTime? createdAtGte,
-    DateTime? createdAtLte,
-    DateTime? dueDateGte,
-    DateTime? dueDateLte,
-    List<SortOption>? sortOptions,
+    Object? categories = _sentinel,
+    Object? priorities = _sentinel,
+    Object? statuses = _sentinel,
+    Object? parentId = _sentinel,
+    Object? tags = _sentinel,
+    Object? createdAtGte = _sentinel,
+    Object? createdAtLte = _sentinel,
+    Object? dueDateGte = _sentinel,
+    Object? dueDateLte = _sentinel,
+    Object? sortOptions = _sentinel,
   }) {
     return TaskFilter(
-      categories: categories ?? this.categories,
-      priorities: priorities ?? this.priorities,
-      statuses: statuses ?? this.statuses,
-      parentId: parentId ?? this.parentId,
-      tags: tags ?? this.tags,
-      createdAtGte: createdAtGte ?? this.createdAtGte,
-      createdAtLte: createdAtLte ?? this.createdAtLte,
-      dueDateGte: dueDateGte ?? this.dueDateGte,
-      dueDateLte: dueDateLte ?? this.dueDateLte,
-      sortOptions: sortOptions ?? this.sortOptions,
+      categories: identical(categories, _sentinel) ? this.categories : categories as List<String>?,
+      priorities: identical(priorities, _sentinel) ? this.priorities : priorities as List<String>?,
+      statuses: identical(statuses, _sentinel) ? this.statuses : statuses as List<String>?,
+      parentId: identical(parentId, _sentinel) ? this.parentId : parentId as String?,
+      tags: identical(tags, _sentinel) ? this.tags : tags as List<String>?,
+      createdAtGte: identical(createdAtGte, _sentinel) ? this.createdAtGte : createdAtGte as DateTime?,
+      createdAtLte: identical(createdAtLte, _sentinel) ? this.createdAtLte : createdAtLte as DateTime?,
+      dueDateGte: identical(dueDateGte, _sentinel) ? this.dueDateGte : dueDateGte as DateTime?,
+      dueDateLte: identical(dueDateLte, _sentinel) ? this.dueDateLte : dueDateLte as DateTime?,
+      sortOptions: identical(sortOptions, _sentinel) ? this.sortOptions : sortOptions as List<SortOption>,
     );
   }
 
