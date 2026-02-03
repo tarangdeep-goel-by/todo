@@ -105,21 +105,40 @@ class TaskService:
             completed_at=datetime.utcnow()
         )
 
-    async def archive_task(self, task_id: str) -> int:
-        """Archive task and all descendants."""
-        # Get all descendant IDs using recursive query
+    async def complete_task_with_children(self, task_id: str) -> int:
+        """Complete task and all active descendants."""
+        from datetime import datetime
+
         descendants = await self._get_all_descendants(task_id)
         task_ids = [task_id] + [d.id for d in descendants]
 
-        # Update all to archived
+        now = datetime.utcnow()
         await self.db.execute(
             update(Task)
             .where(Task.id.in_(task_ids))
-            .values(status="archived")
+            .where(Task.status == "active")
+            .values(status="completed", completed_at=now)
         )
         await self.db.commit()
 
         return len(task_ids)
+
+    async def delete_task_with_children(self, task_id: str) -> int:
+        """Hard delete task and all descendants from DB."""
+        from sqlalchemy import delete as sql_delete
+
+        descendants = await self._get_all_descendants(task_id)
+        # Delete descendants first (children before parents to respect FK)
+        descendant_ids = [d.id for d in reversed(descendants)]
+        all_ids = descendant_ids + [task_id]
+
+        for tid in all_ids:
+            await self.db.execute(
+                sql_delete(Task).where(Task.id == tid)
+            )
+        await self.db.commit()
+
+        return len(all_ids)
 
     async def _get_all_descendants(self, task_id: str) -> List[Task]:
         """Get all descendants recursively."""

@@ -75,7 +75,7 @@ class TaskItem extends ConsumerWidget {
     return level1Task?.title ?? task.category;
   }
 
-  Future<bool> _completeTask(BuildContext context, WidgetRef ref) async {
+  Future<bool> _completeTask(BuildContext context, WidgetRef ref, {bool refreshAfter = false}) async {
     try {
       HapticService.light();
 
@@ -83,14 +83,12 @@ class TaskItem extends ConsumerWidget {
       await apiService.updateTask(
         task.id,
         UpdateTaskRequest(
-          status: 'archived',
+          status: 'completed',
           completedAt: DateTime.now(),
         ),
       );
 
-      // Invalidate cache to refresh both views
-      ref.invalidate(tasksProvider);
-      ref.invalidate(paginatedTasksProvider);
+      if (refreshAfter) _refreshTasks(ref);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -101,7 +99,7 @@ class TaskItem extends ConsumerWidget {
         );
       }
 
-      return true; // Success - allow dismissal
+      return true;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,7 +109,7 @@ class TaskItem extends ConsumerWidget {
           ),
         );
       }
-      return false; // Failed - don't dismiss
+      return false;
     }
   }
 
@@ -122,10 +120,6 @@ class TaskItem extends ConsumerWidget {
       final apiService = ref.read(apiServiceProvider);
       await apiService.deleteTask(task.id);
 
-      // Invalidate cache to refresh both views
-      ref.invalidate(tasksProvider);
-      ref.invalidate(paginatedTasksProvider);
-
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -135,7 +129,7 @@ class TaskItem extends ConsumerWidget {
         );
       }
 
-      return true; // Dismiss the item
+      return true;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -145,8 +139,13 @@ class TaskItem extends ConsumerWidget {
           ),
         );
       }
-      return false; // Don't dismiss if failed
+      return false;
     }
+  }
+
+  void _refreshTasks(WidgetRef ref) {
+    ref.invalidate(tasksProvider);
+    ref.invalidate(paginatedTasksProvider);
   }
 
   void _showTaskDetail(BuildContext context) {
@@ -166,7 +165,6 @@ class TaskItem extends ConsumerWidget {
 
     return Dismissible(
       key: Key(task.id),
-      // Swipe right to complete
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
           return await _completeTask(context, ref);
@@ -175,6 +173,7 @@ class TaskItem extends ConsumerWidget {
         }
         return false;
       },
+      onDismissed: (_) => _refreshTasks(ref),
       // Complete background (right swipe)
       background: Container(
         margin: const EdgeInsets.symmetric(
@@ -219,7 +218,7 @@ class TaskItem extends ConsumerWidget {
       ),
       child: GestureDetector(
         onTap: () async {
-          await _completeTask(context, ref);
+          await _completeTask(context, ref, refreshAfter: true);
         },
         onLongPress: () => _showTaskDetail(context),
         child: Container(
@@ -253,10 +252,16 @@ class TaskItem extends ConsumerWidget {
                 child: Text(
                   task.title,
                   style: AppTypography.metadataText(
-                    color: domain.primary,
+                    color: task.status == 'completed'
+                        ? domain.primary.withValues(alpha: 0.5)
+                        : domain.primary,
                   ).copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
+                    decoration: task.status == 'completed'
+                        ? TextDecoration.lineThrough
+                        : null,
+                    decorationColor: domain.primary.withValues(alpha: 0.5),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

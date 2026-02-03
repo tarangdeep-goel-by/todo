@@ -181,10 +181,21 @@ class AgentService:
                 }
             )
 
-        # Complete the task
+        # Complete the task (and children if any)
         task = matched_tasks[0]
-        await task_service.complete_task(task.id)
+        children = await task_service.get_tasks(user_id, parent_id=task.id)
+        active_children = [c for c in children if c.status == "active"]
 
+        if active_children:
+            count = await task_service.complete_task_with_children(task.id)
+            return AgentResponse(
+                success=True,
+                message=f"Completed task '{task.title}' and {count - 1} sub-tasks",
+                type="confirmation",
+                data={"task_id": task.id, "title": task.title, "completed_count": count}
+            )
+
+        await task_service.complete_task(task.id)
         return AgentResponse(
             success=True,
             message=f"Completed task '{task.title}'",
@@ -220,15 +231,15 @@ class AgentService:
                 }
             )
 
-        # Archive the task and descendants
+        # Hard delete the task and descendants
         task = matched_tasks[0]
-        count = await task_service.archive_task(task.id)
+        count = await task_service.delete_task_with_children(task.id)
 
         return AgentResponse(
             success=True,
-            message=f"Archived task '{task.title}' and {count - 1} descendants",
+            message=f"Deleted task '{task.title}' and {count - 1} sub-tasks",
             type="confirmation",
-            data={"task_id": task.id, "archived_count": count}
+            data={"task_id": task.id, "deleted_count": count}
         )
 
     async def _handle_edit(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:

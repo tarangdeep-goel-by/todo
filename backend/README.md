@@ -89,7 +89,7 @@ List tasks with filters.
 **Query Parameters**:
 - `user_id` (required)
 - `category` (optional): work/personal
-- `status` (optional): active/completed/archived
+- `status` (optional): active/completed
 - `parent_id` (optional): Filter by parent
 
 **Example**:

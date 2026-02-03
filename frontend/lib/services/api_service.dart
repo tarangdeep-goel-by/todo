@@ -133,9 +133,11 @@ class ApiService {
   }
 
   /// Delete task
-  Future<void> deleteTask(String taskId) async {
+  Future<void> deleteTask(String taskId, {String userId = AppConstants.defaultUserId}) async {
     try {
-      await _dio.delete('/tasks/$taskId');
+      await _dio.delete('/tasks/$taskId', queryParameters: {
+        'user_id': userId,
+      });
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -144,7 +146,10 @@ class ApiService {
   /// Handle Dio errors
   String _handleError(DioException e) {
     if (e.response != null) {
-      return e.response!.data['detail'] ?? 'Server error occurred';
+      final detail = e.response!.data['detail'];
+      if (detail is String) return detail;
+      if (detail is List) return detail.map((d) => d['msg'] ?? d.toString()).join(', ');
+      return 'Server error occurred';
     } else if (e.type == DioExceptionType.connectionTimeout) {
       return 'Connection timeout';
     } else if (e.type == DioExceptionType.receiveTimeout) {

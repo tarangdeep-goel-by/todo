@@ -9,7 +9,6 @@ class TaskStatus(str, Enum):
     """Task status enum."""
     ACTIVE = "active"
     COMPLETED = "completed"
-    ARCHIVED = "archived"
 
 
 class AgentProcessRequest(BaseModel):

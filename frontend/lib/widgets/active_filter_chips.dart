@@ -115,9 +115,7 @@ class ActiveFilterChips extends ConsumerWidget {
             ...filter.statuses!.map((status) {
               final color = status == 'completed'
                   ? const Color(0xFF66BB6A)
-                  : status == 'archived'
-                      ? AppColors.darkText
-                      : DomainColors.workDark.primary;
+                  : DomainColors.workDark.primary;
               return _buildChip(
                 label: status.toUpperCase(),
                 color: color,
