@@ -4,11 +4,12 @@ import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task.dart';
-import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/tasks_provider.dart';
 import '../providers/task_filter_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/task_toggle_service.dart';
+import '../utils/task_status_utils.dart';
 import 'task_detail_sheet.dart';
 
 /// Task item widget for flat view with swipe actions
@@ -75,44 +76,6 @@ class TaskItem extends ConsumerWidget {
     return level1Task?.title ?? task.category;
   }
 
-  Future<bool> _completeTask(BuildContext context, WidgetRef ref, {bool refreshAfter = false}) async {
-    try {
-      HapticService.light();
-
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          status: 'completed',
-          completedAt: DateTime.now(),
-        ),
-      );
-
-      if (refreshAfter) _refreshTasks(ref);
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Completed: ${task.title}'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-
-      return true;
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to complete task: $e'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      return false;
-    }
-  }
-
   Future<bool> _deleteTask(BuildContext context, WidgetRef ref) async {
     try {
       HapticService.medium();
@@ -144,6 +107,7 @@ class TaskItem extends ConsumerWidget {
   }
 
   void _refreshTasks(WidgetRef ref) {
+    ref.read(taskStatusOverrideProvider.notifier).state = {};
     ref.invalidate(tasksProvider);
     ref.invalidate(paginatedTasksProvider);
   }
@@ -162,14 +126,18 @@ class TaskItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final domain = DomainColors.getDomain(task.category, isDark);
     final level1Branch = _getLevel1Branch();
+    final isCompleted = effectiveStatus(ref, task) == 'completed';
 
     return Dismissible(
       key: Key(task.id),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
-          return await _completeTask(context, ref);
+          await toggleTaskStatus(context, ref, task);
+          return false; // Don't dismiss — row stays, override handles UI
         } else if (direction == DismissDirection.endToStart) {
-          return await _deleteTask(context, ref);
+          await _deleteTask(context, ref);
+          _refreshTasks(ref);
+          return false;
         }
         return false;
       },
@@ -218,7 +186,7 @@ class TaskItem extends ConsumerWidget {
       ),
       child: GestureDetector(
         onTap: () async {
-          await _completeTask(context, ref, refreshAfter: true);
+          await toggleTaskStatus(context, ref, task);
         },
         onLongPress: () => _showTaskDetail(context),
         child: Container(
@@ -252,13 +220,13 @@ class TaskItem extends ConsumerWidget {
                 child: Text(
                   task.title,
                   style: AppTypography.metadataText(
-                    color: task.status == 'completed'
+                    color: isCompleted
                         ? domain.primary.withValues(alpha: 0.5)
                         : domain.primary,
                   ).copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    decoration: task.status == 'completed'
+                    decoration: isCompleted
                         ? TextDecoration.lineThrough
                         : null,
                     decorationColor: domain.primary.withValues(alpha: 0.5),

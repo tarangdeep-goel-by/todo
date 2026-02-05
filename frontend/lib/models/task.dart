@@ -14,6 +14,7 @@ class Task {
   final String? audioFileUri;
   final String transcription;
   final Map<String, dynamic>? aiPlacementJson;
+  final String? priority; // high, medium, low
 
   Task({
     required this.id,
@@ -30,6 +31,7 @@ class Task {
     this.audioFileUri,
     required this.transcription,
     this.aiPlacementJson,
+    this.priority,
   });
 
   /// Create Task from JSON
@@ -52,6 +54,7 @@ class Task {
       audioFileUri: json['audio_file_uri'] as String?,
       transcription: json['transcription'] as String,
       aiPlacementJson: json['ai_placement_json'] as Map<String, dynamic>?,
+      priority: json['priority'] as String?,
     );
   }
 
@@ -72,6 +75,7 @@ class Task {
       'audio_file_uri': audioFileUri,
       'transcription': transcription,
       'ai_placement_json': aiPlacementJson,
+      'priority': priority,
     };
   }
 
@@ -91,6 +95,7 @@ class Task {
     String? audioFileUri,
     String? transcription,
     Map<String, dynamic>? aiPlacementJson,
+    String? priority,
   }) {
     return Task(
       id: id ?? this.id,
@@ -107,6 +112,7 @@ class Task {
       audioFileUri: audioFileUri ?? this.audioFileUri,
       transcription: transcription ?? this.transcription,
       aiPlacementJson: aiPlacementJson ?? this.aiPlacementJson,
+      priority: priority ?? this.priority,
     );
   }
 

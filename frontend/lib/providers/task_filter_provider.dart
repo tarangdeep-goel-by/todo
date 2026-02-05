@@ -55,6 +55,23 @@ final paginationStateProvider = StateNotifierProvider<PaginationNotifier, Pagina
 // to append pages without causing rebuild loops
 final _accumulatedTasksProvider = StateProvider<List<Task>>((ref) => []);
 
+/// Optimistic status overrides: taskId -> overridden status
+final taskStatusOverrideProvider = StateProvider<Map<String, String>>((ref) => {});
+
+/// Update a single task's status in the accumulated list (no refetch)
+final updateAccumulatedTaskStatusProvider = Provider<void Function(String, String)>((ref) {
+  return (String taskId, String newStatus) {
+    final current = ref.read(_accumulatedTasksProvider);
+    final updated = current.map((t) => t.id == taskId
+        ? t.copyWith(
+            status: newStatus,
+            completedAt: newStatus == 'completed' ? DateTime.now() : null,
+          )
+        : t).toList();
+    ref.read(_accumulatedTasksProvider.notifier).state = updated;
+  };
+});
+
 // Paginated tasks with filters
 class PaginatedTasksState {
   final List<Task> tasks;

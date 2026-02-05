@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/task.dart';
+import '../providers/task_filter_provider.dart';
+import '../services/task_toggle_service.dart';
+import '../utils/task_status_utils.dart';
 
 /// Domain card widget with focus/compressed states
-class DomainCard extends StatelessWidget {
+class DomainCard extends ConsumerStatefulWidget {
   final DomainPalette domain;
   final List<Task> tasks;
   final bool isDark;
@@ -21,6 +25,15 @@ class DomainCard extends StatelessWidget {
     required this.focusProgress,
     required this.height,
   });
+
+  @override
+  ConsumerState<DomainCard> createState() => _DomainCardState();
+}
+
+class _DomainCardState extends ConsumerState<DomainCard> {
+  DomainPalette get domain => widget.domain;
+  List<Task> get tasks => widget.tasks;
+  double get height => widget.height;
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +61,124 @@ class DomainCard extends StatelessWidget {
     );
   }
 
+  Future<void> _toggleTask(Task task) async {
+    await toggleTaskStatus(context, ref, task);
+  }
+
+  String _formatDueDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final due = DateTime(date.year, date.month, date.day);
+    final diff = due.difference(today).inDays;
+    if (diff < 0) return 'Overdue';
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Tomorrow';
+    if (diff < 7) return '${diff}d';
+    return '${date.day}/${date.month}';
+  }
+
+  Widget _buildTaskRow(Task task) {
+    final overrides = ref.watch(taskStatusOverrideProvider);
+    final isCompleted = task.isEffectivelyCompletedFrom(overrides);
+    final hasMeta = task.priority != null || task.dueDate != null;
+
+    // Build metadata chips
+    final metaParts = <Widget>[];
+    if (task.priority != null) {
+      metaParts.add(Text(
+        task.priority!.substring(0, 1).toUpperCase() + task.priority!.substring(1),
+        style: AppTypography.metadataText(
+          color: domain.primary.withValues(alpha: 0.7),
+        ).copyWith(fontSize: 11, fontWeight: FontWeight.w500),
+      ));
+    }
+    if (task.priority != null && task.dueDate != null) {
+      metaParts.add(Text(
+        '  ·  ',
+        style: AppTypography.metadataText(
+          color: domain.primary.withValues(alpha: 0.4),
+        ).copyWith(fontSize: 11),
+      ));
+    }
+    if (task.dueDate != null) {
+      metaParts.add(Text(
+        _formatDueDate(task.dueDate!),
+        style: AppTypography.metadataText(
+          color: domain.primary.withValues(alpha: 0.7),
+        ).copyWith(fontSize: 11, fontWeight: FontWeight.w500),
+      ));
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _toggleTask(task),
+      child: Opacity(
+        opacity: isCompleted ? 0.5 : 1.0,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: domain.surface,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: 6,
+          ),
+          child: Row(
+            children: [
+              // Left accent bar
+              Container(
+                width: AppSpacing.leftAccentBar,
+                height: hasMeta ? 32 : 20,
+                decoration: BoxDecoration(
+                  color: domain.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      task.title,
+                      style: AppTypography.metadataText(
+                        color: domain.primary,
+                      ).copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        decoration: isCompleted ? TextDecoration.lineThrough : null,
+                        decorationColor: domain.primary.withValues(alpha: 0.5),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (hasMeta) ...[
+                      const SizedBox(height: 2),
+                      Row(children: metaParts),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Focused card: full bleed, domain primary background
   Widget _buildFocusedCard(BuildContext context) {
-    final taskCount = tasks.where((t) => t.status == 'active').length;
-    final activeTasks = tasks.where((t) => t.status == 'active').take(4).toList();
+    final overrides = ref.watch(taskStatusOverrideProvider);
+    final activeTasks = tasks
+        .where((t) => t.effectiveStatusFrom(overrides) == 'active')
+        .toList();
+    final completedTasks = tasks
+        .where((t) => t.effectiveStatusFrom(overrides) == 'completed')
+        .toList();
+    final displayTasks = [...activeTasks, ...completedTasks].take(5).toList();
+    final taskCount = activeTasks.length;
 
     return Container(
       width: double.infinity,
@@ -68,7 +195,6 @@ class DomainCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Domain name (large)
                   Expanded(
                     child: Text(
                       domain.name,
@@ -78,8 +204,6 @@ class DomainCard extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // Task count (right aligned)
                   Text(
                     '$taskCount ${taskCount == 1 ? 'task' : 'tasks'}',
                     style: AppTypography.metadataText(
@@ -93,31 +217,25 @@ class DomainCard extends StatelessWidget {
               ),
               const Spacer(),
 
-              // Task preview (top 3-4 tasks) - constrain to available space
-              Flexible(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: activeTasks.map((task) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          task.title,
-                          style: AppTypography.taskPreview(
-                            context,
-                            color: domain.textOnPrimary,
-                          ).copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
+              // Dark inset task preview — pinned to bottom
+              if (displayTasks.isNotEmpty)
+                Flexible(
+                  child: Container(
+                    width: double.infinity,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: AppColors.darkBg,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    ),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayTasks.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 4),
+                      itemBuilder: (_, i) => _buildTaskRow(displayTasks[i]),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
     );
@@ -125,7 +243,8 @@ class DomainCard extends StatelessWidget {
 
   /// Compressed card: surface background, left accent bar
   Widget _buildCompressedCard(BuildContext context) {
-    final taskCount = tasks.where((t) => t.status == 'active').length;
+    final overrides = ref.watch(taskStatusOverrideProvider);
+    final taskCount = tasks.where((t) => t.effectiveStatusFrom(overrides) == 'active').length;
 
     return Container(
       width: double.infinity,
@@ -171,4 +290,3 @@ class DomainCard extends StatelessWidget {
     );
   }
 }
-
