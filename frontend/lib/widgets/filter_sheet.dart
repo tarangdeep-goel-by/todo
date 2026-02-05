@@ -25,6 +25,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
 
   void _applyFilters() {
     HapticService.medium();
+    ref.read(taskStatusOverrideProvider.notifier).state = {};
     ref.read(taskFilterProvider.notifier).state = _currentFilter;
     ref.read(paginationStateProvider.notifier).reset();
     Navigator.pop(context);
