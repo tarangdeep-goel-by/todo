@@ -12,16 +12,20 @@ class FuzzyMatcher:
         """Calculate weighted fuzzy match score."""
         query_lower = query.lower()
 
-        # Title (60% weight) - token_set_ratio for word order independence
+        # Title - token_set_ratio for word order independence
         title_score = fuzz.token_set_ratio(query_lower, task_title.lower())
+
+        # If no description/tags, title score stands on its own
+        if not task_description and not task_tags:
+            return int(title_score)
+
+        # Weighted: title 60%, description 30%, tags 10%
         weighted = title_score * 0.6
 
-        # Description (30%)
         if task_description:
             desc_score = fuzz.token_set_ratio(query_lower, task_description.lower())
             weighted += desc_score * 0.3
 
-        # Tags (10%)
         if task_tags:
             tags_str = " ".join(task_tags).lower()
             tags_score = fuzz.token_set_ratio(query_lower, tags_str)
@@ -34,11 +38,15 @@ class FuzzyMatcher:
                      limit: int = 5) -> List[Tuple[object, int]]:
         """Rank tasks by fuzzy score."""
         scored = []
+        print(f"[FuzzyMatcher] query='{query}', searching {len(tasks)} tasks, threshold={threshold}")
         for task in tasks:
             score = FuzzyMatcher.score_task_match(
                 query, task.title, task.description or "",
                 task.tags or [], threshold)
+            if score >= threshold - 20:  # Log near-misses too
+                print(f"  -> '{task.title}' score={score} {'✓' if score >= threshold else '✗'}")
             if score >= threshold:
                 scored.append((task, score))
         scored.sort(key=lambda x: x[1], reverse=True)
+        print(f"[FuzzyMatcher] matched {len(scored)} tasks")
         return scored[:limit]

@@ -15,6 +15,7 @@ class Task {
   final String transcription;
   final Map<String, dynamic>? aiPlacementJson;
   final String? priority; // high, medium, low
+  final double? estimatedHours;
 
   Task({
     required this.id,
@@ -32,6 +33,7 @@ class Task {
     required this.transcription,
     this.aiPlacementJson,
     this.priority,
+    this.estimatedHours,
   });
 
   /// Create Task from JSON
@@ -55,6 +57,7 @@ class Task {
       transcription: json['transcription'] as String,
       aiPlacementJson: json['ai_placement_json'] as Map<String, dynamic>?,
       priority: json['priority'] as String?,
+      estimatedHours: (json['estimated_hours'] as num?)?.toDouble(),
     );
   }
 
@@ -76,6 +79,7 @@ class Task {
       'transcription': transcription,
       'ai_placement_json': aiPlacementJson,
       'priority': priority,
+      'estimated_hours': estimatedHours,
     };
   }
 
@@ -96,6 +100,7 @@ class Task {
     String? transcription,
     Map<String, dynamic>? aiPlacementJson,
     String? priority,
+    double? estimatedHours,
   }) {
     return Task(
       id: id ?? this.id,
@@ -113,6 +118,7 @@ class Task {
       transcription: transcription ?? this.transcription,
       aiPlacementJson: aiPlacementJson ?? this.aiPlacementJson,
       priority: priority ?? this.priority,
+      estimatedHours: estimatedHours ?? this.estimatedHours,
     );
   }
 

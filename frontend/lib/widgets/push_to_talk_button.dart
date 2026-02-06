@@ -10,8 +10,9 @@ import '../providers/tasks_provider.dart';
 import '../providers/task_filter_provider.dart';
 import '../services/haptic_service.dart';
 import 'waveform_painter.dart';
+import 'question_bottom_sheet.dart';
 
-/// Push-to-talk CTA button with recording functionality
+/// Push-to-talk CTA button with speech recognition
 class PushToTalkButton extends ConsumerStatefulWidget {
   const PushToTalkButton({super.key});
 
@@ -24,8 +25,9 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   Widget build(BuildContext context) {
     final recordingState = ref.watch(recordingStateProvider);
     final waveformData = ref.watch(waveformDataProvider);
+    final transcription = ref.watch(transcriptionTextProvider);
 
-    final isRecording = recordingState == RecordingState.recording;
+    final isListening = recordingState == RecordingState.listening;
     final isProcessing = recordingState == RecordingState.processing;
 
     // Button colors (dark mode only)
@@ -36,22 +38,23 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
 
     return Center(
       child: GestureDetector(
-        onLongPressStart: (_) => _startRecording(),
-        onLongPressEnd: (_) => _stopRecording(),
+        onLongPressStart: (_) => _startListening(),
+        onLongPressEnd: (_) => _stopListening(),
         child: AnimatedContainer(
           duration: AppAnimations.ctaExpand,
           curve: AppAnimations.easeOutQuint,
-          width: isRecording ? AppSpacing.ctaActiveWidth : AppSpacing.ctaIdleWidth,
-          height: isRecording ? AppSpacing.ctaActiveHeight : AppSpacing.ctaIdleHeight,
+          width: isListening ? AppSpacing.ctaActiveWidth : AppSpacing.ctaIdleWidth,
+          height: isListening ? AppSpacing.ctaActiveHeight : AppSpacing.ctaIdleHeight,
           decoration: BoxDecoration(
-            color: isRecording || isProcessing ? activeBg : idleBg,
+            color: isListening || isProcessing ? activeBg : idleBg,
             borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
           ),
           child: Center(
             child: _buildContent(
-              isRecording,
+              isListening,
               isProcessing,
               waveformData,
+              transcription,
               idleText,
               activeText,
             ),
@@ -62,9 +65,10 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   }
 
   Widget _buildContent(
-    bool isRecording,
+    bool isListening,
     bool isProcessing,
     List<double> waveformData,
+    String transcription,
     Color idleText,
     Color activeText,
   ) {
@@ -91,12 +95,32 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       );
     }
 
-    if (isRecording) {
-      return CustomPaint(
-        size: const Size(200, 40),
-        painter: WaveformPainter(
-          amplitudes: waveformData,
-          color: activeText,
+    if (isListening) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomPaint(
+              size: const Size(200, 24),
+              painter: WaveformPainter(
+                amplitudes: waveformData,
+                color: activeText,
+              ),
+            ),
+            if (transcription.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                transcription,
+                style: TextStyle(
+                  color: activeText,
+                  fontSize: 11,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ],
         ),
       );
     }
@@ -121,44 +145,82 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     );
   }
 
-  Future<void> _startRecording() async {
+  Future<void> _startListening() async {
     try {
       HapticService.medium();
 
-      final audioService = ref.read(audioServiceProvider);
-      final path = await audioService.startRecording();
+      final speechService = ref.read(speechServiceProvider);
 
-      ref.read(recordingStateProvider.notifier).state = RecordingState.recording;
-      ref.read(recordingPathProvider.notifier).state = path;
+      // Wire callbacks before starting
+      speechService.onResult = (text, isFinal) {
+        if (mounted) {
+          ref.read(transcriptionTextProvider.notifier).state = text;
+        }
+      };
 
-      // Poll waveform data while recording
-      _pollWaveformData();
+      speechService.onSoundLevelChange = (level) {
+        if (mounted) {
+          final current = List<double>.from(ref.read(waveformDataProvider));
+          current.add(level);
+          if (current.length > 50) {
+            current.removeAt(0);
+          }
+          ref.read(waveformDataProvider.notifier).state = current;
+        }
+      };
+
+      speechService.onError = (error) {
+        if (mounted) {
+          ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
+          ref.read(waveformDataProvider.notifier).state = [];
+          ref.read(transcriptionTextProvider.notifier).state = '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Speech error: $error')),
+          );
+        }
+      };
+
+      await speechService.initialize();
+      await speechService.startListening();
+
+      ref.read(recordingStateProvider.notifier).state = RecordingState.listening;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start recording: $e')),
+          SnackBar(content: Text('Failed to start listening: $e')),
         );
       }
     }
   }
 
-  Future<void> _stopRecording() async {
+  Future<void> _stopListening() async {
     try {
       HapticService.light();
 
-      final audioService = ref.read(audioServiceProvider);
-      final path = await audioService.stopRecording();
+      final speechService = ref.read(speechServiceProvider);
+      await speechService.stopListening();
 
-      if (path == null) {
-        throw Exception('Recording failed');
+      final transcription = ref.read(transcriptionTextProvider);
+
+      if (transcription.trim().isEmpty) {
+        // Nothing heard — reset and show feedback
+        ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
+        ref.read(waveformDataProvider.notifier).state = [];
+        ref.read(transcriptionTextProvider.notifier).state = '';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nothing heard. Try again.')),
+          );
+        }
+        return;
       }
 
       ref.read(recordingStateProvider.notifier).state = RecordingState.processing;
 
-      // Upload to backend
+      // Send transcription to backend
       final apiService = ref.read(apiServiceProvider);
       final response = await apiService.processVoiceCommand(
-        path,
+        transcription,
         AppConstants.defaultUserId,
       );
 
@@ -166,41 +228,35 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       ref.read(taskStatusOverrideProvider.notifier).state = {};
       ref.invalidate(tasksProvider);
 
-      // Reset state
+      // Reset all state
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
-      ref.read(recordingPathProvider.notifier).state = null;
       ref.read(waveformDataProvider.notifier).state = [];
+      ref.read(transcriptionTextProvider.notifier).state = '';
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.message)),
-        );
+        if (response.type == 'question' && response.data != null) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => QuestionBottomSheet(response: response),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.message)),
+          );
+        }
       }
     } catch (e) {
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
+      ref.read(waveformDataProvider.notifier).state = [];
+      ref.read(transcriptionTextProvider.notifier).state = '';
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process recording: $e')),
+          SnackBar(content: Text('Failed to process: $e')),
         );
       }
     }
-  }
-
-  void _pollWaveformData() {
-    if (ref.read(recordingStateProvider) != RecordingState.recording) {
-      return;
-    }
-
-    final audioService = ref.read(audioServiceProvider);
-    final data = audioService.waveformData;
-
-    ref.read(waveformDataProvider.notifier).state = data;
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) {
-        _pollWaveformData();
-      }
-    });
   }
 }

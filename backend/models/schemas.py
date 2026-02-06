@@ -17,6 +17,14 @@ class AgentProcessRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
 
 
+class AgentResolveRequest(BaseModel):
+    """Request schema for resolving a question response."""
+    user_id: str = Field(..., min_length=1)
+    selected_task_id: Optional[str] = None
+    action: str = Field(..., min_length=1)
+    data: Optional[Dict[str, Any]] = None
+
+
 class CreateTaskRequest(BaseModel):
     """Request schema for creating a task."""
     user_id: str
@@ -166,9 +174,10 @@ class TaskFilterParams(BaseModel):
         return [v.strip() for v in value.split(',')]
 
     def parse_sort(self) -> List[tuple[str, str]]:
-        """Parse sort string into list of (field, direction) tuples."""
+        """Parse sort string into list of (field, direction) tuples.
+        Default: active tasks first, then newest."""
         if not self.sort:
-            return []
+            return [("status", "asc"), ("due_date", "asc"), ("priority", "desc"), ("created_at", "desc")]
 
         result = []
         for sort_item in self.sort.split(','):

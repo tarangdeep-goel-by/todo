@@ -2,24 +2,24 @@ import 'task.dart';
 
 /// Response from /api/agent/process endpoint
 class AgentResponse {
+  final bool success;
   final String message;
-  final Task? task;
-  final String intent;
-  final String status;
+  final String type; // "confirmation", "question", "error"
+  final Map<String, dynamic>? data;
 
   AgentResponse({
+    required this.success,
     required this.message,
-    this.task,
-    required this.intent,
-    required this.status,
+    required this.type,
+    this.data,
   });
 
   factory AgentResponse.fromJson(Map<String, dynamic> json) {
     return AgentResponse(
+      success: json['success'] as bool,
       message: json['message'] as String,
-      task: json['task'] != null ? Task.fromJson(json['task']) : null,
-      intent: json['intent'] as String,
-      status: json['status'] as String,
+      type: json['type'] as String,
+      data: json['data'] as Map<String, dynamic>?,
     );
   }
 }

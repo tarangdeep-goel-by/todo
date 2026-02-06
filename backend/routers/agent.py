@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
-from models.schemas import AgentProcessRequest, AgentResponse
+from models.schemas import AgentProcessRequest, AgentResolveRequest, AgentResponse
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
 from config import get_settings
@@ -42,5 +42,24 @@ async def process_voice_command(
     return await agent_service.process_voice_command(
         transcription=request.transcription,
         user_id=request.user_id,
+        db=db
+    )
+
+
+@router.post("/resolve", response_model=AgentResponse)
+async def resolve_question(
+    request: AgentResolveRequest,
+    db: AsyncSession = Depends(get_db)
+) -> AgentResponse:
+    """Resolve a question response by executing the user's choice."""
+    settings = get_settings()
+    gemini_service = GeminiService(settings.gemini_api_key)
+    agent_service = AgentService(gemini_service)
+
+    return await agent_service.resolve_question(
+        user_id=request.user_id,
+        selected_task_id=request.selected_task_id,
+        action=request.action,
+        data=request.data,
         db=db
     )
