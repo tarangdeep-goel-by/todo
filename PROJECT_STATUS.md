@@ -1,29 +1,36 @@
 # TODO App - Project Status
 
-**Last Updated**: 2026-02-03
-**Status**: ✅ Filtering & Sorting UI Complete
+**Last Updated**: 2026-02-06
+**Status**: ✅ Task Detail Overlay & Undo Complete
 
 ---
 
 ## Current Sprint
 
-**Sprint**: Filtering & Sorting UI
-**Duration**: 2026-02-02 to 2026-02-03
-**Goal**: Connect frontend filtering UI to backend advanced filtering/sorting API
+**Sprint**: Task Detail Overlay & Undo
+**Duration**: 2026-02-05 to 2026-02-06
+**Goal**: Add task detail editing overlay with undo support and improve agent task creation
 
 ### Completed This Sprint
-- ✅ TaskFilter model (categories, priorities, statuses, date ranges, sort options)
-- ✅ Filter provider with pagination state management
-- ✅ FilterSheet bottom sheet (category/priority/status/date/sort selection)
-- ✅ FilterButton with active filter count badge
-- ✅ ActiveFilterChips horizontal scroll with per-chip removal
-- ✅ FlatTaskView rewrite with paginatedTasksProvider + infinite scroll
-- ✅ API service getTasksAdvanced() with all filter/sort/pagination params
-- ✅ HomeScreen integration (filter UI visible only in flat view)
-- ✅ TaskItem cache invalidation for both tasksProvider and paginatedTasksProvider
-- ✅ Fixed provider infinite rebuild loop (setTasks writing to watched state)
-- ✅ Fixed domain card overflow during animation (LayoutBuilder height check)
-- ✅ Tested on Android device (Samsung SM S938B)
+- ✅ TaskDetailOverlay replaces read-only TaskDetailSheet
+  - Breadcrumb navigation (category + ancestor tasks)
+  - Inline editing: title, description, priority, due date
+  - Status toggle via checkbox chip (Complete ☐/☑)
+  - Subtask display with tap-to-navigate
+  - Inline add subtask with text field
+- ✅ UndoSnackbar component with domain colors
+  - Slide-up animation, 4s auto-dismiss
+  - Undo button reverts task status via API
+- ✅ Backend default sort: status:asc → due_date:asc → priority:desc → created_at:desc
+  - Active tasks appear before completed
+  - QueryBuilder handles status CASE (active=0, completed=1)
+- ✅ Removed notes field, use description instead
+  - Migration 004 drops notes column
+  - Agent generates short title (2-6 words) + longer description
+  - Fuzzy search weights: title 60%, description 30%, tags 10%
+- ✅ UpdateTaskRequest now includes priority field
+- ✅ DomainCard long-press opens overlay
+- ✅ Removed level 1 branch pill from TaskItem
 
 ---
 
@@ -131,7 +138,6 @@
 - ⚠️ google_fonts downloads on first launch (requires internet, then cached)
 
 ### Not Implemented (Future Enhancements)
-- Task editing/deletion UI
 - Due date notifications
 - Recurring tasks
 - Cloud sync
@@ -308,6 +314,36 @@
 ---
 
 ## Changelog
+
+### 2026-02-06 - Task Detail Overlay & Undo
+- ✅ TaskDetailOverlay with breadcrumb navigation and inline editing
+  - Category + ancestor chain as bold text breadcrumbs
+  - Tap title/description to edit inline
+  - Priority chip expands to show all options (High/Medium/Low/None)
+  - Due date chip opens date picker
+  - Complete checkbox chip toggles status
+  - Subtasks list with tap-to-navigate and inline add
+- ✅ UndoSnackbar component for task completion
+  - Domain-colored floating bar with slide-up animation
+  - 4-second auto-dismiss with Undo button
+  - Reverts status via API on tap
+- ✅ Backend sort improvements
+  - New default: status:asc, due_date:asc, priority:desc, created_at:desc
+  - Active tasks always appear before completed
+  - QueryBuilder status CASE expression (active=0, completed=1)
+- ✅ Removed notes field from backend
+  - Migration 004 drops notes column
+  - Agent generates short title + description from transcription
+  - Gemini prompt updated for 2-6 word titles
+  - Fuzzy search weights redistributed to description (30%)
+- ✅ Frontend cleanup
+  - Removed TaskDetailSheet (replaced by overlay)
+  - Removed level 1 branch pill from TaskItem
+  - DomainCard long-press opens overlay
+  - UpdateTaskRequest includes priority field
+
+**New Files**: `task_detail_overlay.dart`, `undo_snackbar.dart`, `004_drop_notes_column.py`
+**Deleted Files**: `task_detail_sheet.dart`
 
 ### 2026-02-03 - Filtering & Sorting UI
 - ✅ TaskFilter model with categories, priorities, statuses, date ranges, sort options
