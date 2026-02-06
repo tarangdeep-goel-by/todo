@@ -80,12 +80,10 @@ class ActiveFilterChips extends ConsumerWidget {
                   color: _getCategoryColor(cat),
                   onRemove: () {
                     HapticService.light();
-                    ref.read(taskStatusOverrideProvider.notifier).state = {};
                     final updated = filter.categories!.toList()..remove(cat);
                     ref.read(taskFilterProvider.notifier).state = filter.copyWith(
                       categories: updated.isEmpty ? null : updated,
                     );
-                    ref.read(paginationStateProvider.notifier).reset();
                   },
                 )),
 
@@ -102,12 +100,10 @@ class ActiveFilterChips extends ConsumerWidget {
                 color: color,
                 onRemove: () {
                   HapticService.light();
-                  ref.read(taskStatusOverrideProvider.notifier).state = {};
                   final updated = filter.priorities!.toList()..remove(priority);
                   ref.read(taskFilterProvider.notifier).state = filter.copyWith(
                     priorities: updated.isEmpty ? null : updated,
                   );
-                  ref.read(paginationStateProvider.notifier).reset();
                 },
               );
             }),
@@ -123,12 +119,10 @@ class ActiveFilterChips extends ConsumerWidget {
                 color: color,
                 onRemove: () {
                   HapticService.light();
-                  ref.read(taskStatusOverrideProvider.notifier).state = {};
                   final updated = filter.statuses!.toList()..remove(status);
                   ref.read(taskFilterProvider.notifier).state = filter.copyWith(
                     statuses: updated.isEmpty ? null : updated,
                   );
-                  ref.read(paginationStateProvider.notifier).reset();
                 },
               );
             }),
@@ -140,12 +134,10 @@ class ActiveFilterChips extends ConsumerWidget {
               color: DomainColors.projectsDark.primary,
               onRemove: () {
                 HapticService.light();
-                ref.read(taskStatusOverrideProvider.notifier).state = {};
                 ref.read(taskFilterProvider.notifier).state = filter.copyWith(
                   createdAtGte: null,
                   createdAtLte: null,
                 );
-                ref.read(paginationStateProvider.notifier).reset();
               },
             ),
 
@@ -155,12 +147,10 @@ class ActiveFilterChips extends ConsumerWidget {
               color: const Color(0xFFFF6B6B),
               onRemove: () {
                 HapticService.light();
-                ref.read(taskStatusOverrideProvider.notifier).state = {};
                 ref.read(taskFilterProvider.notifier).state = filter.copyWith(
                   dueDateGte: null,
                   dueDateLte: null,
                 );
-                ref.read(paginationStateProvider.notifier).reset();
               },
             ),
 
@@ -172,12 +162,10 @@ class ActiveFilterChips extends ConsumerWidget {
                   color: DomainColors.learningDark.primary,
                   onRemove: () {
                     HapticService.light();
-                    ref.read(taskStatusOverrideProvider.notifier).state = {};
                     final updated = filter.sortOptions.toList()..remove(sortOption);
                     ref.read(taskFilterProvider.notifier).state = filter.copyWith(
                       sortOptions: updated,
                     );
-                    ref.read(paginationStateProvider.notifier).reset();
                   },
                 )),
 
@@ -187,9 +175,7 @@ class ActiveFilterChips extends ConsumerWidget {
             child: GestureDetector(
               onTap: () {
                 HapticService.medium();
-                ref.read(taskStatusOverrideProvider.notifier).state = {};
                 ref.read(taskFilterProvider.notifier).state = TaskFilter();
-                ref.read(paginationStateProvider.notifier).reset();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

@@ -5,16 +5,17 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/task.dart';
-import '../providers/task_filter_provider.dart';
-import '../services/task_toggle_service.dart';
-import '../utils/task_status_utils.dart';
+import '../models/api_response.dart';
+import '../providers/api_provider.dart';
+import '../providers/task_store_provider.dart';
+import '../services/haptic_service.dart';
+import '../widgets/undo_snackbar.dart';
 import 'task_detail_overlay.dart';
 
 /// Domain card widget with focus/compressed states
 class DomainCard extends ConsumerStatefulWidget {
   final DomainPalette domain;
   final List<Task> tasks;
-  final List<Task> allTasks;
   final bool isDark;
   final double focusProgress; // 0.0 = compressed, 1.0 = focused
   final double height;
@@ -23,7 +24,6 @@ class DomainCard extends ConsumerStatefulWidget {
     super.key,
     required this.domain,
     required this.tasks,
-    required this.allTasks,
     required this.isDark,
     required this.focusProgress,
     required this.height,
@@ -50,11 +50,8 @@ class _DomainCardState extends ConsumerState<DomainCard> {
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.cardMargin,
       ),
-      // Use LayoutBuilder to pick content based on actual animated height,
-      // not focusProgress — avoids overflow during height animation
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Need at least ~100px to render focused content comfortably
           final showFocused = constraints.maxHeight > 100;
           return showFocused
               ? _buildFocusedCard(context)
@@ -65,7 +62,71 @@ class _DomainCardState extends ConsumerState<DomainCard> {
   }
 
   Future<void> _toggleTask(Task task) async {
-    await toggleTaskStatus(context, ref, task);
+    final newStatus = task.isCompleted ? 'active' : 'completed';
+    final store = ref.read(taskStoreProvider.notifier);
+
+    HapticService.light();
+
+    // Optimistic upsert
+    final optimistic = task.copyWith(
+      status: newStatus,
+      completedAt: newStatus == 'completed' ? DateTime.now() : null,
+    );
+    store.upsertTask(optimistic);
+
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      final updated = await apiService.updateTask(
+        task.id,
+        UpdateTaskRequest(
+          status: newStatus,
+          completedAt: newStatus == 'completed' ? DateTime.now() : null,
+        ),
+      );
+      store.upsertTask(updated);
+
+      if (context.mounted) {
+        final message = newStatus == 'completed'
+            ? 'Completed: ${task.title}'
+            : 'Restored: ${task.title}';
+        showUndoSnackbar(
+          context,
+          message: message,
+          domain: domain,
+          onUndo: () => _undoToggle(task),
+        );
+      }
+    } catch (e) {
+      // Rollback
+      store.upsertTask(task);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update task: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _undoToggle(Task original) async {
+    final store = ref.read(taskStoreProvider.notifier);
+    store.upsertTask(original);
+
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      await apiService.updateTask(
+        original.id,
+        UpdateTaskRequest(
+          status: original.status,
+          completedAt: original.isCompleted ? original.completedAt ?? DateTime.now() : null,
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Undo failed: $e')),
+        );
+      }
+    }
   }
 
   String _formatDueDate(DateTime date) {
@@ -81,8 +142,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
   }
 
   Widget _buildTaskRow(Task task) {
-    final overrides = ref.watch(taskStatusOverrideProvider);
-    final isCompleted = task.isEffectivelyCompletedFrom(overrides);
+    final isCompleted = task.isCompleted;
     final hasMeta = task.priority != null || task.dueDate != null;
 
     // Build metadata chips
@@ -115,7 +175,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _toggleTask(task),
-      onLongPress: () => showTaskDetailOverlay(context, task: task, allTasks: widget.allTasks),
+      onLongPress: () => showTaskDetailOverlay(context, taskId: task.id),
       child: Opacity(
         opacity: isCompleted ? 0.5 : 1.0,
         child: Container(
@@ -174,13 +234,8 @@ class _DomainCardState extends ConsumerState<DomainCard> {
 
   /// Focused card: full bleed, domain primary background
   Widget _buildFocusedCard(BuildContext context) {
-    final overrides = ref.watch(taskStatusOverrideProvider);
-    final activeTasks = tasks
-        .where((t) => t.effectiveStatusFrom(overrides) == 'active')
-        .toList();
-    final completedTasks = tasks
-        .where((t) => t.effectiveStatusFrom(overrides) == 'completed')
-        .toList();
+    final activeTasks = tasks.where((t) => t.isActive).toList();
+    final completedTasks = tasks.where((t) => t.isCompleted).toList();
     final displayTasks = [...activeTasks, ...completedTasks].take(5).toList();
     final taskCount = activeTasks.length;
 
@@ -247,8 +302,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
 
   /// Compressed card: surface background, left accent bar
   Widget _buildCompressedCard(BuildContext context) {
-    final overrides = ref.watch(taskStatusOverrideProvider);
-    final taskCount = tasks.where((t) => t.effectiveStatusFrom(overrides) == 'active').length;
+    final taskCount = tasks.where((t) => t.isActive).length;
 
     return Container(
       width: double.infinity,

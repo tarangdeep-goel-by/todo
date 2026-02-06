@@ -8,15 +8,13 @@ import '../config/constants.dart';
 import '../models/task.dart';
 import '../models/api_response.dart';
 import '../providers/api_provider.dart';
-import '../providers/tasks_provider.dart';
-import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 
 /// Show the task detail overlay as a full-screen dialog
 void showTaskDetailOverlay(
   BuildContext context, {
-  required Task task,
-  required List<Task> allTasks,
+  required String taskId,
 }) {
   HapticService.medium();
   showGeneralDialog(
@@ -26,7 +24,7 @@ void showTaskDetailOverlay(
     barrierColor: Colors.black54,
     transitionDuration: AppAnimations.cardExpand,
     pageBuilder: (context, animation, secondaryAnimation) {
-      return TaskDetailOverlay(task: task, allTasks: allTasks);
+      return TaskDetailOverlay(taskId: taskId);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final slide = Tween<Offset>(
@@ -46,13 +44,11 @@ void showTaskDetailOverlay(
 
 /// Full-screen overlay for task detail with inline editing
 class TaskDetailOverlay extends ConsumerStatefulWidget {
-  final Task task;
-  final List<Task> allTasks;
+  final String taskId;
 
   const TaskDetailOverlay({
     super.key,
-    required this.task,
-    required this.allTasks,
+    required this.taskId,
   });
 
   @override
@@ -60,8 +56,7 @@ class TaskDetailOverlay extends ConsumerStatefulWidget {
 }
 
 class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
-  late Task _currentTask;
-  late List<Task> _allTasks;
+  late String _activeTaskId;
 
   // Editing flags
   bool _editingTitle = false;
@@ -92,11 +87,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   @override
   void initState() {
     super.initState();
-    _currentTask = widget.task;
-    _allTasks = List.from(widget.allTasks);
-    _titleController = TextEditingController(text: _currentTask.title);
-    _descriptionController =
-        TextEditingController(text: _currentTask.description ?? '');
+    _activeTaskId = widget.taskId;
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
     _subtaskController = TextEditingController();
   }
 
@@ -111,48 +104,22 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     super.dispose();
   }
 
-  DomainPalette get _domain =>
-      DomainColors.getDomain(_currentTask.category, true);
-
-  // --- Ancestor chain ---
-
-  List<Task> _buildAncestorChain() {
-    final ancestors = <Task>[];
-    final visited = <String>{};
-    String? parentId = _currentTask.parentId;
-
-    while (parentId != null) {
-      if (visited.contains(parentId)) break;
-      visited.add(parentId);
-
-      final parent = _allTasks.where((t) => t.id == parentId).firstOrNull;
-      if (parent == null) break;
-
-      ancestors.insert(0, parent); // root-first
-      parentId = parent.parentId;
-    }
-
-    return ancestors;
-  }
-
   // --- Navigation ---
 
-  void _navigateTo(Task task) {
+  void _navigateTo(String taskId) {
     HapticService.selection();
     setState(() {
-      _currentTask = task;
+      _activeTaskId = taskId;
       _editingTitle = false;
       _editingDescription = false;
       _addingSubtask = false;
       _priorityExpanded = false;
-      _titleController.text = task.title;
-      _descriptionController.text = task.description ?? '';
     });
   }
 
-  // --- Field updates ---
+  // --- Field updates (optimistic through store) ---
 
-  Future<void> _updateField({
+  Future<void> _updateField(Task currentTask, {
     String? title,
     String? description,
     String? status,
@@ -160,10 +127,23 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     DateTime? completedAt,
     DateTime? dueDate,
   }) async {
+    final store = ref.read(taskStoreProvider.notifier);
+
+    // Build optimistic task
+    final optimistic = currentTask.copyWith(
+      title: title ?? currentTask.title,
+      description: description ?? currentTask.description,
+      status: status ?? currentTask.status,
+      priority: priority ?? currentTask.priority,
+      completedAt: completedAt ?? currentTask.completedAt,
+      dueDate: dueDate ?? currentTask.dueDate,
+    );
+    store.upsertTask(optimistic);
+
     try {
       final apiService = ref.read(apiServiceProvider);
       final updated = await apiService.updateTask(
-        _currentTask.id,
+        currentTask.id,
         UpdateTaskRequest(
           title: title,
           description: description,
@@ -173,19 +153,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           dueDate: dueDate,
         ),
       );
-
-      if (mounted) {
-        setState(() {
-          _currentTask = updated;
-          // Update in allTasks list too
-          final idx = _allTasks.indexWhere((t) => t.id == updated.id);
-          if (idx != -1) _allTasks[idx] = updated;
-        });
-        ref.read(taskStatusOverrideProvider.notifier).state = {};
-        ref.invalidate(tasksProvider);
-        ref.invalidate(paginatedTasksProvider);
-      }
+      store.upsertTask(updated);
     } catch (e) {
+      // Rollback
+      store.upsertTask(currentTask);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update: $e')),
@@ -196,48 +167,47 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Title ---
 
-  void _startEditingTitle() {
+  void _startEditingTitle(Task task) {
     setState(() {
       _editingTitle = true;
-      _titleController.text = _currentTask.title;
+      _titleController.text = task.title;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _titleFocus.requestFocus();
     });
   }
 
-  Future<void> _saveTitle() async {
+  Future<void> _saveTitle(Task task) async {
     final newTitle = _titleController.text.trim();
-    if (newTitle.isEmpty || newTitle == _currentTask.title) {
+    if (newTitle.isEmpty || newTitle == task.title) {
       setState(() => _editingTitle = false);
       return;
     }
     setState(() => _savingTitle = true);
-    await _updateField(title: newTitle);
+    await _updateField(task, title: newTitle);
     if (mounted) setState(() { _savingTitle = false; _editingTitle = false; });
   }
 
   // --- Description ---
 
-  void _startEditingDescription() {
+  void _startEditingDescription(Task task) {
     setState(() {
       _editingDescription = true;
-      _descriptionController.text = _currentTask.description ?? '';
+      _descriptionController.text = task.description ?? '';
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _descriptionFocus.requestFocus();
     });
   }
 
-  Future<void> _saveDescription() async {
+  Future<void> _saveDescription(Task task) async {
     final newDesc = _descriptionController.text.trim();
-    // Allow saving empty to clear description
-    if (newDesc == (_currentTask.description ?? '')) {
+    if (newDesc == (task.description ?? '')) {
       setState(() => _editingDescription = false);
       return;
     }
     setState(() => _savingDescription = true);
-    await _updateField(description: newDesc.isEmpty ? '' : newDesc);
+    await _updateField(task, description: newDesc.isEmpty ? '' : newDesc);
     if (mounted) setState(() { _savingDescription = false; _editingDescription = false; });
   }
 
@@ -249,9 +219,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     setState(() => _priorityExpanded = !_priorityExpanded);
   }
 
-  Future<void> _selectPriority(String? value) async {
+  Future<void> _selectPriority(Task task, String? value) async {
     final apiValue = value ?? 'none';
-    if (apiValue == (_currentTask.priority ?? 'none')) {
+    if (apiValue == (task.priority ?? 'none')) {
       setState(() => _priorityExpanded = false);
       return;
     }
@@ -259,25 +229,26 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       _savingPriority = true;
       _priorityExpanded = false;
     });
-    await _updateField(priority: apiValue);
+    await _updateField(task, priority: apiValue);
     if (mounted) setState(() => _savingPriority = false);
   }
 
   // --- Due date ---
 
-  Future<void> _pickDueDate() async {
+  Future<void> _pickDueDate(Task task) async {
     if (_savingDueDate) return;
 
+    final domain = DomainColors.getDomain(task.category, true);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _currentTask.dueDate ?? DateTime.now(),
+      initialDate: task.dueDate ?? DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
             colorScheme: ColorScheme.dark(
-              primary: _domain.primary,
+              primary: domain.primary,
               surface: AppColors.darkBg,
             ),
           ),
@@ -288,18 +259,19 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
     if (picked != null) {
       setState(() => _savingDueDate = true);
-      await _updateField(dueDate: picked);
+      await _updateField(task, dueDate: picked);
       if (mounted) setState(() => _savingDueDate = false);
     }
   }
 
   // --- Status ---
 
-  Future<void> _toggleStatus(String newStatus) async {
-    if (_savingStatus || newStatus == _currentTask.status) return;
+  Future<void> _toggleStatus(Task task, String newStatus) async {
+    if (_savingStatus || newStatus == task.status) return;
     HapticService.light();
     setState(() => _savingStatus = true);
     await _updateField(
+      task,
       status: newStatus,
       completedAt: newStatus == 'completed' ? DateTime.now() : null,
     );
@@ -307,9 +279,6 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   }
 
   // --- Subtask ---
-
-  List<Task> get _subtasks =>
-      _allTasks.where((t) => t.parentId == _currentTask.id).toList();
 
   void _startAddingSubtask() {
     setState(() {
@@ -321,7 +290,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     });
   }
 
-  Future<void> _saveSubtask() async {
+  Future<void> _saveSubtask(Task parentTask) async {
     final title = _subtaskController.text.trim();
     if (title.isEmpty) {
       setState(() => _addingSubtask = false);
@@ -333,19 +302,17 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       final newTask = await apiService.createTask(CreateTaskRequest(
         userId: AppConstants.defaultUserId,
         title: title,
-        category: _currentTask.category,
-        parentId: _currentTask.id,
+        category: parentTask.category,
+        parentId: parentTask.id,
         transcription: title,
       ));
+      ref.read(taskStoreProvider.notifier).upsertTask(newTask);
       if (mounted) {
         setState(() {
-          _allTasks.add(newTask);
           _addingSubtask = false;
           _savingSubtask = false;
           _subtaskController.clear();
         });
-        ref.invalidate(tasksProvider);
-        ref.invalidate(paginatedTasksProvider);
       }
     } catch (e) {
       if (mounted) {
@@ -381,13 +348,51 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     }
   }
 
+  // --- Ancestor chain ---
+
+  List<Task> _buildAncestorChain(Task currentTask, List<Task> allTasks) {
+    final ancestors = <Task>[];
+    final visited = <String>{};
+    String? parentId = currentTask.parentId;
+
+    while (parentId != null) {
+      if (visited.contains(parentId)) break;
+      visited.add(parentId);
+
+      final parent = allTasks.where((t) => t.id == parentId).firstOrNull;
+      if (parent == null) break;
+
+      ancestors.insert(0, parent); // root-first
+      parentId = parent.parentId;
+    }
+
+    return ancestors;
+  }
+
   // --- Build ---
 
   @override
   Widget build(BuildContext context) {
-    final domain = _domain;
-    final ancestors = _buildAncestorChain();
-    final subtasks = _subtasks;
+    final task = ref.watch(taskByIdProvider(_activeTaskId));
+    final subtasks = ref.watch(childTasksProvider(_activeTaskId));
+    final allTasks = ref.watch(allTasksProvider);
+
+    if (task == null) {
+      return Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: SafeArea(
+          child: Center(
+            child: Text(
+              'Task not found',
+              style: AppTypography.metadataText(color: AppColors.darkText),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final domain = DomainColors.getDomain(task.category, true);
+    final ancestors = _buildAncestorChain(task, allTasks);
 
     return Scaffold(
       backgroundColor: AppColors.darkBg,
@@ -410,7 +415,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
               ),
             ),
 
-            // Breadcrumb bar (always show — at minimum the category)
+            // Breadcrumb bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: SingleChildScrollView(
@@ -419,7 +424,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   children: [
                     // Category as first breadcrumb
                     Text(
-                      _currentTask.category,
+                      task.category,
                       style: AppTypography.metadataText(
                         color: domain.primary.withValues(alpha: 0.7),
                       ).copyWith(
@@ -438,7 +443,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => _navigateTo(ancestors[i]),
+                        onTap: () => _navigateTo(ancestors[i].id),
                         child: Text(
                           ancestors[i].title,
                           style: AppTypography.metadataText(
@@ -465,27 +470,27 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Title
-                    _buildTitle(domain),
+                    _buildTitle(domain, task),
 
                     const SizedBox(height: AppSpacing.lg),
 
                     // Priority + Due date + Complete chips
-                    _buildChipRow(domain),
+                    _buildChipRow(domain, task),
 
                     const SizedBox(height: AppSpacing.lg),
 
                     // Description
-                    _buildDescription(domain),
+                    _buildDescription(domain, task),
 
                     const SizedBox(height: AppSpacing.lg),
 
                     // Metadata (read-only)
-                    _buildMetadata(domain),
+                    _buildMetadata(domain, task),
 
                     const SizedBox(height: AppSpacing.lg),
 
                     // Subtasks
-                    _buildSubtasksSection(domain, subtasks),
+                    _buildSubtasksSection(domain, task, subtasks),
 
                     const SizedBox(height: 120),
                   ],
@@ -500,7 +505,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Title widget ---
 
-  Widget _buildTitle(DomainPalette domain) {
+  Widget _buildTitle(DomainPalette domain, Task task) {
     if (_editingTitle) {
       return TextField(
         controller: _titleController,
@@ -514,16 +519,16 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   color: domain.primary.withValues(alpha: 0.3))
               .copyWith(fontSize: 28),
         ),
-        onSubmitted: (_) => _saveTitle(),
-        onTapOutside: (_) => _saveTitle(),
+        onSubmitted: (_) => _saveTitle(task),
+        onTapOutside: (_) => _saveTitle(task),
         enabled: !_savingTitle,
       );
     }
 
     return GestureDetector(
-      onTap: _startEditingTitle,
+      onTap: () => _startEditingTitle(task),
       child: Text(
-        _currentTask.title,
+        task.title,
         style: AppTypography.domainTitle(context, color: domain.primary)
             .copyWith(fontSize: 28),
       ),
@@ -532,8 +537,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Chip row ---
 
-  Widget _buildChipRow(DomainPalette domain) {
-    final isCompleted = _currentTask.status == 'completed';
+  Widget _buildChipRow(DomainPalette domain, Task task) {
+    final isCompleted = task.isCompleted;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,7 +547,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            // Priority chip (tappable to expand)
+            // Priority chip
             GestureDetector(
               onTap: _togglePriorityExpanded,
               child: Container(
@@ -556,7 +561,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      _priorityIcon(_currentTask.priority),
+                      _priorityIcon(task.priority),
                       size: 16,
                       color: domain.primary,
                     ),
@@ -564,7 +569,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                     Text(
                       _savingPriority
                           ? 'Saving...'
-                          : _priorityLabel(_currentTask.priority),
+                          : _priorityLabel(task.priority),
                       style: AppTypography.metadataText(color: domain.primary)
                           .copyWith(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
@@ -575,7 +580,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
             // Due date chip
             GestureDetector(
-              onTap: _pickDueDate,
+              onTap: () => _pickDueDate(task),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -591,8 +596,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                     Text(
                       _savingDueDate
                           ? 'Saving...'
-                          : _currentTask.dueDate != null
-                              ? _formatDate(_currentTask.dueDate!)
+                          : task.dueDate != null
+                              ? _formatDate(task.dueDate!)
                               : 'No due date',
                       style: AppTypography.metadataText(color: domain.primary)
                           .copyWith(fontSize: 13, fontWeight: FontWeight.w600),
@@ -604,7 +609,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
             // Complete checkbox chip
             GestureDetector(
-              onTap: () => _toggleStatus(isCompleted ? 'active' : 'completed'),
+              onTap: () => _toggleStatus(task, isCompleted ? 'active' : 'completed'),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -642,10 +647,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           ],
         ),
 
-        // Priority expansion panel (inline, below chips)
+        // Priority expansion panel
         AnimatedCrossFade(
           firstChild: const SizedBox.shrink(),
-          secondChild: _buildPriorityOptions(domain),
+          secondChild: _buildPriorityOptions(domain, task),
           crossFadeState: _priorityExpanded
               ? CrossFadeState.showSecond
               : CrossFadeState.showFirst,
@@ -656,7 +661,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
-  Widget _buildPriorityOptions(DomainPalette domain) {
+  Widget _buildPriorityOptions(DomainPalette domain, Task task) {
     const options = [
       ('high', 'High', Icons.keyboard_double_arrow_up),
       ('medium', 'Medium', Icons.drag_handle),
@@ -675,7 +680,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final (value, label, icon) in options)
-              _buildPriorityOption(domain, value, label, icon),
+              _buildPriorityOption(domain, task, value, label, icon),
           ],
         ),
       ),
@@ -683,13 +688,13 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   }
 
   Widget _buildPriorityOption(
-      DomainPalette domain, String? value, String label, IconData icon) {
-    final currentPriority = _currentTask.priority ?? 'none';
+      DomainPalette domain, Task task, String? value, String label, IconData icon) {
+    final currentPriority = task.priority ?? 'none';
     final isSelected = (value ?? 'none') == currentPriority;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _selectPriority(value),
+      onTap: () => _selectPriority(task, value),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -716,7 +721,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Description ---
 
-  Widget _buildDescription(DomainPalette domain) {
+  Widget _buildDescription(DomainPalette domain, Task task) {
     if (_editingDescription) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -747,7 +752,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _savingDescription ? null : _saveDescription,
+              onPressed: _savingDescription ? null : () => _saveDescription(task),
               child: Text(
                 _savingDescription ? 'Saving...' : 'Done',
                 style: AppTypography.metadataText(color: domain.primary)
@@ -760,7 +765,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     }
 
     return GestureDetector(
-      onTap: _startEditingDescription,
+      onTap: () => _startEditingDescription(task),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -772,11 +777,11 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           ),
           const SizedBox(height: 4),
           Text(
-            _currentTask.description?.isNotEmpty == true
-                ? _currentTask.description!
+            task.description?.isNotEmpty == true
+                ? task.description!
                 : 'Add a description...',
             style: AppTypography.metadataText(
-              color: _currentTask.description?.isNotEmpty == true
+              color: task.description?.isNotEmpty == true
                   ? domain.primary
                   : domain.primary.withValues(alpha: 0.3),
             ).copyWith(fontSize: 14, fontWeight: FontWeight.w500),
@@ -788,35 +793,35 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Metadata ---
 
-  Widget _buildMetadata(DomainPalette domain) {
+  Widget _buildMetadata(DomainPalette domain, Task task) {
     final dimColor = AppColors.darkText.withValues(alpha: 0.4);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Created ${_formatDateTime(_currentTask.createdAt)}',
+          'Created ${_formatDateTime(task.createdAt)}',
           style: AppTypography.metadataText(color: dimColor)
               .copyWith(fontSize: 11),
         ),
         const SizedBox(height: 2),
         Text(
-          'Updated ${_formatDateTime(_currentTask.updatedAt)}',
+          'Updated ${_formatDateTime(task.updatedAt)}',
           style: AppTypography.metadataText(color: dimColor)
               .copyWith(fontSize: 11),
         ),
-        if (_currentTask.status == 'completed' && _currentTask.completedAt != null) ...[
+        if (task.isCompleted && task.completedAt != null) ...[
           const SizedBox(height: 2),
           Text(
-            'Completed ${_formatDateTime(_currentTask.completedAt!)}',
+            'Completed ${_formatDateTime(task.completedAt!)}',
             style: AppTypography.metadataText(color: dimColor)
                 .copyWith(fontSize: 11),
           ),
         ],
-        if (_currentTask.estimatedHours != null) ...[
+        if (task.estimatedHours != null) ...[
           const SizedBox(height: 2),
           Text(
-            'Estimate ${_currentTask.estimatedHours!.toStringAsFixed(_currentTask.estimatedHours! % 1 == 0 ? 0 : 1)}h',
+            'Estimate ${task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)}h',
             style: AppTypography.metadataText(color: dimColor)
                 .copyWith(fontSize: 11),
           ),
@@ -827,7 +832,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Subtasks ---
 
-  Widget _buildSubtasksSection(DomainPalette domain, List<Task> subtasks) {
+  Widget _buildSubtasksSection(DomainPalette domain, Task task, List<Task> subtasks) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -890,7 +895,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
-                    onSubmitted: (_) => _saveSubtask(),
+                    onSubmitted: (_) => _saveSubtask(task),
                     enabled: !_savingSubtask,
                   ),
                 ),
@@ -905,7 +910,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   )
                 else
                   GestureDetector(
-                    onTap: _saveSubtask,
+                    onTap: () => _saveSubtask(task),
                     child: Icon(Icons.check, size: 20, color: domain.primary),
                   ),
               ],
@@ -916,10 +921,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   }
 
   Widget _buildSubtaskRow(DomainPalette domain, Task sub) {
-    final isCompleted = sub.status == 'completed';
+    final isCompleted = sub.isCompleted;
 
     return GestureDetector(
-      onTap: () => _navigateTo(sub),
+      onTap: () => _navigateTo(sub.id),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Opacity(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/view_mode_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/push_to_talk_button.dart';
 import '../widgets/filter_button.dart';
@@ -9,11 +10,25 @@ import 'parent_node_view.dart';
 import 'flat_task_view.dart';
 
 /// Main home screen with view switching
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch all tasks on mount
+    Future.microtask(() {
+      ref.read(taskStoreProvider.notifier).fetchAll();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final viewMode = ref.watch(viewModeProvider);
 
     return Scaffold(

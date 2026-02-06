@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
-import '../providers/tasks_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
 import '../utils/liquid_focus_scroll.dart';
@@ -51,27 +51,30 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
 
   @override
   Widget build(BuildContext context) {
-    final tasksAsync = ref.watch(tasksProvider);
+    final storeState = ref.watch(taskStoreProvider);
+    final tasks = ref.watch(allTasksProvider);
 
-    return tasksAsync.when(
-      loading: () => const Center(
+    if (storeState.isLoading && tasks.isEmpty) {
+      return const Center(
         child: CircularProgressIndicator(
           color: AppColors.darkText,
         ),
-      ),
-      error: (error, stack) {
-        return const EmptyState(
-          message: 'Unable to load tasks',
-          textColor: AppColors.darkText,
-          icon: Icons.error_outline,
-        );
-      },
-      data: (tasks) {
-        // Get all domains (dark mode only)
-        final domains = DomainColors.getAllDomains(true);
+      );
+    }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
+    if (storeState.error != null && tasks.isEmpty) {
+      return const EmptyState(
+        message: 'Unable to load tasks',
+        textColor: AppColors.darkText,
+        icon: Icons.error_outline,
+      );
+    }
+
+    // Get all domains (dark mode only)
+    final domains = DomainColors.getAllDomains(true);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
         // Use actual available height from layout constraints
         final liquidFocus = LiquidFocusScrollController.fromAvailable(
           totalCards: domains.length,
@@ -87,46 +90,43 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: List.generate(domains.length, (index) {
-              final domain = domains[index];
+                final domain = domains[index];
 
-              // Get tasks for this domain
-              final domainTasks = tasks
-                  .where((task) =>
-                      task.category.toLowerCase() == domain.name.toLowerCase())
-                  .toList();
+                // Get tasks for this domain
+                final domainTasks = tasks
+                    .where((task) =>
+                        task.category.toLowerCase() == domain.name.toLowerCase())
+                    .toList();
 
-              // Calculate focus progress based on distance from focused index
-              final distance = (index - _focusedIndex).abs();
-              final focusProgress = distance == 0 ? 1.0 : (1.0 / (distance + 1));
+                // Calculate focus progress based on distance from focused index
+                final distance = (index - _focusedIndex).abs();
+                final focusProgress = distance == 0 ? 1.0 : (1.0 / (distance + 1));
 
-              // Get card height based on focus
-              final height = index == _focusedIndex
-                  ? liquidFocus.focusedHeight
-                  : liquidFocus.compressedHeight;
+                // Get card height based on focus
+                final height = index == _focusedIndex
+                    ? liquidFocus.focusedHeight
+                    : liquidFocus.compressedHeight;
 
-              return GestureDetector(
-                onTap: () {
-                  if (index != _focusedIndex) {
-                    HapticService.selection();
-                    setState(() {
-                      _focusedIndex = index;
-                    });
-                  }
-                },
-                child: DomainCard(
-                  domain: domain,
-                  tasks: domainTasks,
-                  allTasks: tasks,
-                  isDark: true, // Dark mode only
-                  focusProgress: focusProgress,
-                  height: height,
-                ),
-              );
-            }),
+                return GestureDetector(
+                  onTap: () {
+                    if (index != _focusedIndex) {
+                      HapticService.selection();
+                      setState(() {
+                        _focusedIndex = index;
+                      });
+                    }
+                  },
+                  child: DomainCard(
+                    domain: domain,
+                    tasks: domainTasks,
+                    isDark: true, // Dark mode only
+                    focusProgress: focusProgress,
+                    height: height,
+                  ),
+                );
+              }),
             ),
           ),
-        );
-          },
         );
       },
     );
