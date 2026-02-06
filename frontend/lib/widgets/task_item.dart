@@ -4,29 +4,26 @@ import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task.dart';
+import '../models/api_response.dart';
 import '../providers/api_provider.dart';
-import '../providers/tasks_provider.dart';
-import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
-import '../services/task_toggle_service.dart';
-import '../utils/task_status_utils.dart';
+import '../widgets/undo_snackbar.dart';
 import 'task_detail_overlay.dart';
 
 /// Task item widget for flat view with swipe actions
 class TaskItem extends ConsumerWidget {
   final Task task;
   final bool isDark;
-  final List<Task> allTasks;
 
   const TaskItem({
     super.key,
     required this.task,
     required this.isDark,
-    required this.allTasks,
   });
 
   /// Find the level 1 branch (top-level task under domain)
-  String _getLevel1Branch() {
+  String _getLevel1Branch(List<Task> allTasks) {
     if (task.parentId == null) return task.title;
 
     Task? current = task;
@@ -52,9 +49,82 @@ class TaskItem extends ConsumerWidget {
     return level1Task?.title ?? task.category;
   }
 
+  Future<void> _toggleTask(BuildContext context, WidgetRef ref) async {
+    final newStatus = task.isCompleted ? 'active' : 'completed';
+    final store = ref.read(taskStoreProvider.notifier);
+    final domain = DomainColors.getDomain(task.category, isDark);
+
+    HapticService.light();
+
+    // Optimistic upsert
+    final optimistic = task.copyWith(
+      status: newStatus,
+      completedAt: newStatus == 'completed' ? DateTime.now() : null,
+    );
+    store.upsertTask(optimistic);
+
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      final updated = await apiService.updateTask(
+        task.id,
+        UpdateTaskRequest(
+          status: newStatus,
+          completedAt: newStatus == 'completed' ? DateTime.now() : null,
+        ),
+      );
+      store.upsertTask(updated);
+
+      if (context.mounted) {
+        final message = newStatus == 'completed'
+            ? 'Completed: ${task.title}'
+            : 'Restored: ${task.title}';
+        showUndoSnackbar(
+          context,
+          message: message,
+          domain: domain,
+          onUndo: () => _undoToggle(context, ref),
+        );
+      }
+    } catch (e) {
+      store.upsertTask(task);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update task: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _undoToggle(BuildContext context, WidgetRef ref) async {
+    final store = ref.read(taskStoreProvider.notifier);
+    store.upsertTask(task);
+
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      await apiService.updateTask(
+        task.id,
+        UpdateTaskRequest(
+          status: task.status,
+          completedAt: task.isCompleted ? task.completedAt ?? DateTime.now() : null,
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Undo failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<bool> _deleteTask(BuildContext context, WidgetRef ref) async {
+    final store = ref.read(taskStoreProvider.notifier);
+
     try {
       HapticService.medium();
+
+      // Optimistic remove
+      store.removeTask(task.id);
 
       final apiService = ref.read(apiServiceProvider);
       await apiService.deleteTask(task.id);
@@ -70,6 +140,8 @@ class TaskItem extends ConsumerWidget {
 
       return true;
     } catch (e) {
+      // Rollback
+      store.upsertTask(task);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -82,39 +154,25 @@ class TaskItem extends ConsumerWidget {
     }
   }
 
-  void _refreshTasks(WidgetRef ref) {
-    ref.read(taskStatusOverrideProvider.notifier).state = {};
-    ref.invalidate(tasksProvider);
-    ref.invalidate(paginatedTasksProvider);
-  }
-
-  void _showTaskDetail(BuildContext context) {
-    showTaskDetailOverlay(context, task: task, allTasks: allTasks);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final allTasks = ref.watch(allTasksProvider);
     final domain = DomainColors.getDomain(task.category, isDark);
-    final level1Branch = _getLevel1Branch();
-    final isCompleted = effectiveStatus(ref, task) == 'completed';
+    final level1Branch = _getLevel1Branch(allTasks);
+    final isCompleted = task.isCompleted;
 
     return Dismissible(
       key: Key(task.id),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
-          await toggleTaskStatus(context, ref, task);
-          return false; // Don't dismiss — row stays, override handles UI
+          await _toggleTask(context, ref);
+          return false;
         } else if (direction == DismissDirection.endToStart) {
-          final deleted = await _deleteTask(context, ref);
-          if (deleted) {
-            ref.read(removeAccumulatedTaskProvider)(task.id);
-          }
-          _refreshTasks(ref);
+          await _deleteTask(context, ref);
           return false;
         }
         return false;
       },
-      onDismissed: (_) => _refreshTasks(ref),
       // Complete background (right swipe)
       background: Container(
         margin: const EdgeInsets.symmetric(
@@ -158,10 +216,8 @@ class TaskItem extends ConsumerWidget {
         ),
       ),
       child: GestureDetector(
-        onTap: () async {
-          await toggleTaskStatus(context, ref, task);
-        },
-        onLongPress: () => _showTaskDetail(context),
+        onTap: () => _toggleTask(context, ref),
+        onLongPress: () => showTaskDetailOverlay(context, taskId: task.id),
         child: Container(
           margin: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,

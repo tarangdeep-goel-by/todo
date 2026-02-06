@@ -6,8 +6,7 @@ import '../config/constants.dart';
 import '../config/theme.dart';
 import '../providers/recording_provider.dart';
 import '../providers/api_provider.dart';
-import '../providers/tasks_provider.dart';
-import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'waveform_painter.dart';
 import 'question_bottom_sheet.dart';
@@ -224,9 +223,8 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
         AppConstants.defaultUserId,
       );
 
-      // Refresh tasks — clear overrides so fresh data is authoritative
-      ref.read(taskStatusOverrideProvider.notifier).state = {};
-      ref.invalidate(tasksProvider);
+      // Refresh tasks from backend
+      await ref.read(taskStoreProvider.notifier).fetchAll();
 
       // Reset all state
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;

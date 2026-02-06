@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/task_store_provider.dart';
 import '../providers/task_filter_provider.dart';
 import '../config/theme.dart';
 import '../widgets/task_item.dart';
 import '../widgets/empty_state.dart';
 
-/// Flat all-tasks view with pagination and filtering
+/// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
   const FlatTaskView({super.key});
 
@@ -15,6 +16,7 @@ class FlatTaskView extends ConsumerStatefulWidget {
 
 class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   final ScrollController _scrollController = ScrollController();
+  int _displayCount = 50;
 
   @override
   void initState() {
@@ -25,13 +27,12 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      // Load more when 200px from bottom
-      final paginatedState = ref.read(paginatedTasksProvider);
-      paginatedState.whenData((data) {
-        if (data.hasMore) {
-          ref.read(paginationStateProvider.notifier).loadMore();
-        }
-      });
+      final allFiltered = ref.read(flatViewTasksProvider);
+      if (_displayCount < allFiltered.length) {
+        setState(() {
+          _displayCount = (_displayCount + 50).clamp(0, allFiltered.length);
+        });
+      }
     }
   }
 
@@ -43,10 +44,18 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
   @override
   Widget build(BuildContext context) {
-    final tasksState = ref.watch(paginatedTasksProvider);
+    final storeState = ref.watch(taskStoreProvider);
+    final allFiltered = ref.watch(flatViewTasksProvider);
 
-    // Full spinner only on initial load (no previous data)
-    if (tasksState.isLoading && !tasksState.hasValue) {
+    // Reset display count when filter changes
+    ref.listen(taskFilterProvider, (prev, next) {
+      if (prev != next) {
+        setState(() => _displayCount = 50);
+      }
+    });
+
+    // Full spinner only on initial load
+    if (storeState.isLoading && allFiltered.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
           color: AppColors.darkText,
@@ -54,16 +63,15 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       );
     }
 
-    if (tasksState.hasError && !tasksState.hasValue) {
+    if (storeState.error != null && allFiltered.isEmpty) {
       return EmptyState(
-        message: 'Unable to load tasks\n${tasksState.error}',
+        message: 'Unable to load tasks\n${storeState.error}',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
       );
     }
 
-    final paginatedData = tasksState.valueOrNull;
-    if (paginatedData == null || paginatedData.tasks.isEmpty) {
+    if (allFiltered.isEmpty) {
       return const EmptyState(
         message: 'No tasks found\nTap and hold the button below to add one',
         textColor: AppColors.darkText,
@@ -71,16 +79,16 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       );
     }
 
-    final tasks = paginatedData.tasks;
-    final hasMore = paginatedData.hasMore;
+    final displayTasks = allFiltered.take(_displayCount).toList();
+    final hasMore = _displayCount < allFiltered.length;
 
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 120),
-      itemCount: tasks.length + (hasMore ? 1 : 0),
+      itemCount: displayTasks.length + (hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == tasks.length) {
+        if (index == displayTasks.length) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -91,9 +99,8 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
           );
         }
         return TaskItem(
-          task: tasks[index],
+          task: displayTasks[index],
           isDark: true,
-          allTasks: tasks,
         );
       },
     );

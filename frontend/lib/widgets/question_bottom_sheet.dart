@@ -6,8 +6,7 @@ import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/api_response.dart';
 import '../providers/api_provider.dart';
-import '../providers/tasks_provider.dart';
-import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 
 /// Bottom sheet for resolving question-type agent responses.
@@ -45,8 +44,7 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
       );
 
       // Refresh tasks
-      ref.read(taskStatusOverrideProvider.notifier).state = {};
-      ref.invalidate(tasksProvider);
+      await ref.read(taskStoreProvider.notifier).fetchAll();
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -88,8 +86,7 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
         data: _data,
       );
 
-      ref.read(taskStatusOverrideProvider.notifier).state = {};
-      ref.invalidate(tasksProvider);
+      await ref.read(taskStoreProvider.notifier).fetchAll();
 
       if (!mounted) return;
       Navigator.pop(context);
