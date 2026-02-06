@@ -39,12 +39,27 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
   TaskStoreNotifier(this._ref) : super(const TaskStoreState());
 
   /// Fetch all tasks from backend and replace the store.
+  /// Paginates through all results (backend max limit=100).
   Future<void> fetchAll() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final apiService = _ref.read(apiServiceProvider);
-      final tasks = await apiService.getTasks(AppConstants.defaultUserId);
-      final map = {for (final t in tasks) t.id: t};
+      final allTasks = <Task>[];
+      int offset = 0;
+      const limit = 100;
+
+      while (true) {
+        final response = await apiService.getTasksAdvanced(
+          userId: AppConstants.defaultUserId,
+          limit: limit,
+          offset: offset,
+        );
+        allTasks.addAll(response.tasks);
+        if (!response.hasMore) break;
+        offset += limit;
+      }
+
+      final map = {for (final t in allTasks) t.id: t};
       state = TaskStoreState(tasks: map);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -120,10 +135,13 @@ List<Task> _filterAndSort(List<Task> tasks, TaskFilter filter) {
     result = result.where((t) => t.priority != null && pris.contains(t.priority!.toLowerCase())).toList();
   }
 
-  // Filter by status
+  // Filter by status (overdue is computed: active + past due)
   if (filter.statuses != null && filter.statuses!.isNotEmpty) {
     final stats = filter.statuses!.map((s) => s.toLowerCase()).toSet();
-    result = result.where((t) => stats.contains(t.status.toLowerCase())).toList();
+    result = result.where((t) {
+      final displayStatus = _computeDisplayStatus(t);
+      return stats.contains(displayStatus);
+    }).toList();
   }
 
   // Filter by date ranges
@@ -163,11 +181,19 @@ int _multiSort(Task a, Task b, List<SortOption> sorts) {
   return 0;
 }
 
+/// Compute display status: active tasks past due become 'overdue'.
+String _computeDisplayStatus(Task t) {
+  if (t.status == 'active' && t.dueDate != null && t.dueDate!.isBefore(DateTime.now())) {
+    return 'overdue';
+  }
+  return t.status;
+}
+
 int _compareField(Task a, Task b, String field, bool ascending) {
   int result;
   switch (field) {
     case 'status':
-      result = _statusRank(a.status).compareTo(_statusRank(b.status));
+      result = _statusRank(_computeDisplayStatus(a)).compareTo(_statusRank(_computeDisplayStatus(b)));
     case 'priority':
       result = _priorityRank(a.priority).compareTo(_priorityRank(b.priority));
     case 'due_date':
@@ -184,7 +210,16 @@ int _compareField(Task a, Task b, String field, bool ascending) {
   return ascending ? result : -result;
 }
 
-int _statusRank(String status) => status == 'active' ? 0 : 1;
+int _statusRank(String status) {
+  switch (status) {
+    case 'overdue':
+      return 0;
+    case 'active':
+      return 1;
+    default:
+      return 2; // completed
+  }
+}
 
 int _priorityRank(String? priority) {
   switch (priority) {

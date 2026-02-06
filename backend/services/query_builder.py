@@ -1,5 +1,6 @@
 """Dynamic query builder for task filtering and sorting."""
-from sqlalchemy import select, func, case
+from datetime import datetime, timezone
+from sqlalchemy import select, func, case, and_
 from typing import List
 from models.task import Task
 from models.schemas import TaskFilterParams
@@ -45,7 +46,20 @@ class QueryBuilder:
 
         if params.status:
             values = [v.lower() for v in params.parse_multi_value(params.status)]
-            query = query.where(func.lower(Task.status).in_(values))
+            conditions = []
+            db_statuses = [v for v in values if v != 'overdue']
+            if db_statuses:
+                conditions.append(func.lower(Task.status).in_(db_statuses))
+            if 'overdue' in values:
+                now = datetime.now(timezone.utc)
+                conditions.append(and_(
+                    Task.status == 'active',
+                    Task.due_date.isnot(None),
+                    Task.due_date < now,
+                ))
+            if conditions:
+                from sqlalchemy import or_
+                query = query.where(or_(*conditions))
 
         # Parent ID (support "null" string for top-level tasks)
         if params.parent_id is not None:
@@ -98,12 +112,14 @@ class QueryBuilder:
     def _build_order_clause(field_name: str, direction: str):
         """Build ORDER BY clause for a single field."""
 
-        # Status needs special handling (active before completed)
+        # Status needs special handling (overdue first, then active, then completed)
         if field_name == "status":
+            now = datetime.now(timezone.utc)
             status_case = case(
-                (Task.status == "active", 0),
-                (Task.status == "completed", 1),
-                else_=2
+                (and_(Task.status == "active", Task.due_date.isnot(None), Task.due_date < now), 0),
+                (Task.status == "active", 1),
+                (Task.status == "completed", 2),
+                else_=3
             )
             return status_case.desc() if direction == "desc" else status_case.asc()
 

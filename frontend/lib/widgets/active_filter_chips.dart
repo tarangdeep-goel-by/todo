@@ -111,9 +111,11 @@ class ActiveFilterChips extends ConsumerWidget {
           // Status chips
           if (filter.statuses?.isNotEmpty ?? false)
             ...filter.statuses!.map((status) {
-              final color = status == 'completed'
-                  ? const Color(0xFF66BB6A)
-                  : DomainColors.workDark.primary;
+              final color = status == 'overdue'
+                  ? const Color(0xFFFF6B6B)
+                  : status == 'completed'
+                      ? const Color(0xFF66BB6A)
+                      : DomainColors.workDark.primary;
               return _buildChip(
                 label: status.toUpperCase(),
                 color: color,

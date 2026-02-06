@@ -87,7 +87,9 @@ class TaskListResponse {
   }
 }
 
-/// Request to update a task
+/// Request to update a task.
+/// Use [clearFields] to explicitly send null for fields that should be cleared
+/// on the server (e.g. {'completed_at'} when un-completing a task).
 class UpdateTaskRequest {
   final String? title;
   final String? description;
@@ -96,6 +98,8 @@ class UpdateTaskRequest {
   final String? priority;
   final DateTime? completedAt;
   final DateTime? dueDate;
+  final double? estimatedHours;
+  final Set<String> clearFields;
 
   UpdateTaskRequest({
     this.title,
@@ -105,6 +109,8 @@ class UpdateTaskRequest {
     this.priority,
     this.completedAt,
     this.dueDate,
+    this.estimatedHours,
+    this.clearFields = const {},
   });
 
   Map<String, dynamic> toJson() {
@@ -116,6 +122,10 @@ class UpdateTaskRequest {
     if (priority != null) json['priority'] = priority;
     if (completedAt != null) json['completed_at'] = completedAt!.toIso8601String();
     if (dueDate != null) json['due_date'] = dueDate!.toIso8601String();
+    if (estimatedHours != null) json['estimated_hours'] = estimatedHours;
+    for (final field in clearFields) {
+      if (!json.containsKey(field)) json[field] = null;
+    }
     return json;
   }
 }
