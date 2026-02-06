@@ -5,6 +5,7 @@ import 'package:frontend/providers/task_store_provider.dart';
 import 'package:frontend/providers/task_filter_provider.dart';
 import 'package:frontend/providers/api_provider.dart';
 import 'package:frontend/models/task_filter.dart';
+import 'package:frontend/models/api_response.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
@@ -53,7 +54,13 @@ void main() {
         createTestTask(id: 'a', title: 'Alpha'),
         createTestTask(id: 'b', title: 'Beta'),
       ];
-      when(() => mockApi.getTasks(any())).thenAnswer((_) async => tasks);
+      when(() => mockApi.getTasksAdvanced(
+        userId: any(named: 'userId'),
+        limit: any(named: 'limit'),
+        offset: any(named: 'offset'),
+      )).thenAnswer((_) async => TaskListResponse(
+        tasks: tasks, totalCount: 2, limit: 100, offset: 0, hasMore: false,
+      ));
 
       await container.read(taskStoreProvider.notifier).fetchAll();
 
@@ -72,9 +79,14 @@ void main() {
       );
 
       // Fetch returns different set
-      when(() => mockApi.getTasks(any())).thenAnswer(
-        (_) async => [createTestTask(id: 'new', title: 'New')],
-      );
+      when(() => mockApi.getTasksAdvanced(
+        userId: any(named: 'userId'),
+        limit: any(named: 'limit'),
+        offset: any(named: 'offset'),
+      )).thenAnswer((_) async => TaskListResponse(
+        tasks: [createTestTask(id: 'new', title: 'New')],
+        totalCount: 1, limit: 100, offset: 0, hasMore: false,
+      ));
 
       await container.read(taskStoreProvider.notifier).fetchAll();
 
@@ -88,7 +100,11 @@ void main() {
         createTestTask(id: 'existing'),
       );
 
-      when(() => mockApi.getTasks(any())).thenThrow(Exception('network'));
+      when(() => mockApi.getTasksAdvanced(
+        userId: any(named: 'userId'),
+        limit: any(named: 'limit'),
+        offset: any(named: 'offset'),
+      )).thenThrow(Exception('network'));
 
       await container.read(taskStoreProvider.notifier).fetchAll();
 

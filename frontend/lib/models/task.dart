@@ -1,3 +1,6 @@
+/// Sentinel for nullable field clearing in copyWith
+const _undefined = Object();
+
 /// Task model representing a single task
 class Task {
   final String id;
@@ -83,7 +86,9 @@ class Task {
     };
   }
 
-  /// Create a copy with updated fields
+  /// Create a copy with updated fields.
+  /// For nullable fields (dueDate, completedAt, estimatedHours), pass null
+  /// to explicitly clear the value. Omit the parameter to keep the old value.
   Task copyWith({
     String? id,
     String? userId,
@@ -94,13 +99,13 @@ class Task {
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
-    DateTime? dueDate,
-    DateTime? completedAt,
+    Object? dueDate = _undefined,
+    Object? completedAt = _undefined,
     String? audioFileUri,
     String? transcription,
     Map<String, dynamic>? aiPlacementJson,
     String? priority,
-    double? estimatedHours,
+    Object? estimatedHours = _undefined,
   }) {
     return Task(
       id: id ?? this.id,
@@ -112,16 +117,17 @@ class Task {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      dueDate: dueDate ?? this.dueDate,
-      completedAt: completedAt ?? this.completedAt,
+      dueDate: identical(dueDate, _undefined) ? this.dueDate : dueDate as DateTime?,
+      completedAt: identical(completedAt, _undefined) ? this.completedAt : completedAt as DateTime?,
       audioFileUri: audioFileUri ?? this.audioFileUri,
       transcription: transcription ?? this.transcription,
       aiPlacementJson: aiPlacementJson ?? this.aiPlacementJson,
       priority: priority ?? this.priority,
-      estimatedHours: estimatedHours ?? this.estimatedHours,
+      estimatedHours: identical(estimatedHours, _undefined) ? this.estimatedHours : estimatedHours as double?,
     );
   }
 
   bool get isCompleted => status == 'completed';
-  bool get isActive => status == 'active';
+  bool get isOverdue => status == 'overdue';
+  bool get isActive => status == 'active' || status == 'overdue';
 }

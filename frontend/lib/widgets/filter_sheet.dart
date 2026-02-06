@@ -346,6 +346,12 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         color: DomainColors.workDark.primary,
                       ),
                       _buildFilterChip(
+                        label: 'OVERDUE',
+                        isSelected: _currentFilter.statuses?.contains('overdue') ?? false,
+                        onTap: () => _toggleStatus('overdue'),
+                        color: const Color(0xFFFF6B6B),
+                      ),
+                      _buildFilterChip(
                         label: 'COMPLETED',
                         isSelected: _currentFilter.statuses?.contains('completed') ?? false,
                         onTap: () => _toggleStatus('completed'),

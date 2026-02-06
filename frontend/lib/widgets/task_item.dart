@@ -70,6 +70,7 @@ class TaskItem extends ConsumerWidget {
         UpdateTaskRequest(
           status: newStatus,
           completedAt: newStatus == 'completed' ? DateTime.now() : null,
+          clearFields: newStatus == 'active' ? const {'completed_at'} : const {},
         ),
       );
       store.upsertTask(updated);
@@ -160,6 +161,7 @@ class TaskItem extends ConsumerWidget {
     final domain = DomainColors.getDomain(task.category, isDark);
     final level1Branch = _getLevel1Branch(allTasks);
     final isCompleted = task.isCompleted;
+    final isOverdue = task.isOverdue;
 
     return Dismissible(
       key: Key(task.id),
@@ -250,7 +252,9 @@ class TaskItem extends ConsumerWidget {
                   style: AppTypography.metadataText(
                     color: isCompleted
                         ? domain.primary.withValues(alpha: 0.5)
-                        : domain.primary,
+                        : isOverdue
+                            ? const Color(0xFFFF6B6B)
+                            : domain.primary,
                   ).copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -264,6 +268,28 @@ class TaskItem extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
+              if (isOverdue) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF6B6B).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Overdue',
+                    style: AppTypography.metadataText(
+                      color: const Color(0xFFFF6B6B),
+                    ).copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 8,

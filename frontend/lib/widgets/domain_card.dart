@@ -62,6 +62,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
   }
 
   Future<void> _toggleTask(Task task) async {
+    // Always send 'active' (never 'overdue') — overdue is computed
     final newStatus = task.isCompleted ? 'active' : 'completed';
     final store = ref.read(taskStoreProvider.notifier);
 
@@ -81,6 +82,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
         UpdateTaskRequest(
           status: newStatus,
           completedAt: newStatus == 'completed' ? DateTime.now() : null,
+          clearFields: newStatus == 'active' ? const {'completed_at'} : const {},
         ),
       );
       store.upsertTask(updated);
@@ -234,13 +236,34 @@ class _DomainCardState extends ConsumerState<DomainCard> {
 
   /// Focused card: full bleed, domain primary background
   Widget _buildFocusedCard(BuildContext context) {
-    final activeTasks = tasks.where((t) => t.isActive).toList();
-    final completedTasks = tasks.where((t) => t.isCompleted).toList();
-    final displayTasks = [...activeTasks, ...completedTasks].take(5).toList();
-    final taskCount = activeTasks.length;
+    final taskCount = tasks.where((t) => t.isActive).length;
+
+    // Show overdue tasks (any priority) + high priority due this week, sorted overdue first then by due date
+    final now = DateTime.now();
+    final weekFromNow = now.add(const Duration(days: 7));
+    final displayTasks = tasks
+        .where((t) =>
+            t.isActive &&
+            (t.isOverdue ||
+                (t.priority == 'high' &&
+                    t.dueDate != null &&
+                    !t.dueDate!.isAfter(weekFromNow))))
+        .toList()
+      ..sort((a, b) {
+        // Overdue first
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+        // Then by due date
+        if (a.dueDate != null && b.dueDate != null) return a.dueDate!.compareTo(b.dueDate!);
+        if (a.dueDate != null) return -1;
+        if (b.dueDate != null) return 1;
+        return 0;
+      });
+    final topTasks = displayTasks.take(5).toList();
 
     return Container(
       width: double.infinity,
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: domain.primary,
         borderRadius: BorderRadius.circular(AppSpacing.radiusNone),
@@ -274,24 +297,21 @@ class _DomainCardState extends ConsumerState<DomainCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
 
-              // Dark inset task preview
-              if (displayTasks.isNotEmpty)
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: AppColors.darkBg,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                    ),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: displayTasks.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 4),
-                      itemBuilder: (_, i) => _buildTaskRow(displayTasks[i]),
+              // High-priority tasks due this week
+              if (topTasks.isNotEmpty)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (int i = 0; i < topTasks.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 4),
+                          _buildTaskRow(topTasks[i]),
+                        ],
+                      ],
                     ),
                   ),
                 ),

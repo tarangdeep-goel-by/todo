@@ -11,6 +11,9 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 
+/// Sentinel for "field not provided" in _updateField
+const _noChange = Object();
+
 /// Show the task detail overlay as a full-screen dialog
 void showTaskDetailOverlay(
   BuildContext context, {
@@ -82,6 +85,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   bool _savingPriority = false;
   bool _savingDueDate = false;
   bool _savingStatus = false;
+  bool _savingEstimate = false;
   bool _savingSubtask = false;
 
   @override
@@ -119,13 +123,16 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Field updates (optimistic through store) ---
 
+  /// Update a task field. For completedAt/dueDate/estimatedHours, pass null to
+  /// clear the value, or omit the parameter to keep the old value.
   Future<void> _updateField(Task currentTask, {
     String? title,
     String? description,
     String? status,
     String? priority,
-    DateTime? completedAt,
-    DateTime? dueDate,
+    Object? completedAt = _noChange,
+    Object? dueDate = _noChange,
+    Object? estimatedHours = _noChange,
   }) async {
     final store = ref.read(taskStoreProvider.notifier);
 
@@ -135,13 +142,21 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       description: description ?? currentTask.description,
       status: status ?? currentTask.status,
       priority: priority ?? currentTask.priority,
-      completedAt: completedAt ?? currentTask.completedAt,
-      dueDate: dueDate ?? currentTask.dueDate,
+      completedAt: identical(completedAt, _noChange) ? currentTask.completedAt : completedAt as DateTime?,
+      dueDate: identical(dueDate, _noChange) ? currentTask.dueDate : dueDate as DateTime?,
+      estimatedHours: identical(estimatedHours, _noChange) ? currentTask.estimatedHours : estimatedHours as double?,
     );
     store.upsertTask(optimistic);
 
     try {
       final apiService = ref.read(apiServiceProvider);
+
+      // Build clear fields set for nullable fields being set to null
+      final clearFields = <String>{};
+      if (!identical(completedAt, _noChange) && completedAt == null) clearFields.add('completed_at');
+      if (!identical(dueDate, _noChange) && dueDate == null) clearFields.add('due_date');
+      if (!identical(estimatedHours, _noChange) && estimatedHours == null) clearFields.add('estimated_hours');
+
       final updated = await apiService.updateTask(
         currentTask.id,
         UpdateTaskRequest(
@@ -149,8 +164,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           description: description,
           status: status,
           priority: priority,
-          completedAt: completedAt,
-          dueDate: dueDate,
+          completedAt: (!identical(completedAt, _noChange) && completedAt != null) ? completedAt as DateTime : null,
+          dueDate: (!identical(dueDate, _noChange) && dueDate != null) ? dueDate as DateTime : null,
+          estimatedHours: (!identical(estimatedHours, _noChange) && estimatedHours != null) ? estimatedHours as double : null,
+          clearFields: clearFields,
         ),
       );
       store.upsertTask(updated);
@@ -261,6 +278,94 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       setState(() => _savingDueDate = true);
       await _updateField(task, dueDate: picked);
       if (mounted) setState(() => _savingDueDate = false);
+    }
+  }
+
+  // --- Estimate ---
+
+  Future<void> _pickEstimate(Task task) async {
+    if (_savingEstimate) return;
+
+    final domain = DomainColors.getDomain(task.category, true);
+    final controller = TextEditingController(
+      text: task.estimatedHours != null
+          ? task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)
+          : '',
+    );
+
+    final result = await showDialog<double?>(
+      context: context,
+      builder: (ctx) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: ColorScheme.dark(
+            primary: domain.primary,
+            surface: AppColors.darkBg,
+          ),
+        ),
+        child: AlertDialog(
+          backgroundColor: AppColors.darkBg,
+          title: Text(
+            'Estimate (hours)',
+            style: AppTypography.metadataText(color: domain.primary)
+                .copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            autofocus: true,
+            style: AppTypography.metadataText(color: domain.primary)
+                .copyWith(fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'e.g. 2.5',
+              hintStyle: AppTypography.metadataText(
+                color: domain.primary.withValues(alpha: 0.3),
+              ).copyWith(fontSize: 16),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: domain.primary.withValues(alpha: 0.3)),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: domain.primary),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel',
+                  style: AppTypography.metadataText(color: AppColors.darkText)
+                      .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
+            if (task.estimatedHours != null)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, -1.0),
+                child: Text('Clear',
+                    style: AppTypography.metadataText(color: domain.primary)
+                        .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+            TextButton(
+              onPressed: () {
+                final value = double.tryParse(controller.text);
+                if (value != null && value > 0) Navigator.pop(ctx, value);
+              },
+              child: Text('Save',
+                  style: AppTypography.metadataText(color: domain.primary)
+                      .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    controller.dispose();
+
+    if (result != null) {
+      setState(() => _savingEstimate = true);
+      if (result < 0) {
+        await _updateField(task, estimatedHours: null);
+      } else {
+        await _updateField(task, estimatedHours: result);
+      }
+      if (mounted) setState(() => _savingEstimate = false);
     }
   }
 
@@ -539,6 +644,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   Widget _buildChipRow(DomainPalette domain, Task task) {
     final isCompleted = task.isCompleted;
+    final isOverdue = task.isOverdue;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,7 +713,64 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
               ),
             ),
 
-            // Complete checkbox chip
+            // Estimate chip
+            GestureDetector(
+              onTap: () => _pickEstimate(task),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: domain.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.timer_outlined, size: 16, color: domain.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      _savingEstimate
+                          ? 'Saving...'
+                          : task.estimatedHours != null
+                              ? '${task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)}h'
+                              : 'No estimate',
+                      style: AppTypography.metadataText(color: domain.primary)
+                          .copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Overdue chip (read-only indicator)
+            if (isOverdue)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16,
+                      color: Color(0xFF0D0B09),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Overdue',
+                      style: AppTypography.metadataText(
+                        color: const Color(0xFF0D0B09),
+                      ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Complete checkbox chip (toggle sends 'active', never 'overdue')
             GestureDetector(
               onTap: () => _toggleStatus(task, isCompleted ? 'active' : 'completed'),
               child: Container(
@@ -814,14 +977,6 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           const SizedBox(height: 2),
           Text(
             'Completed ${_formatDateTime(task.completedAt!)}',
-            style: AppTypography.metadataText(color: dimColor)
-                .copyWith(fontSize: 11),
-          ),
-        ],
-        if (task.estimatedHours != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            'Estimate ${task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)}h',
             style: AppTypography.metadataText(color: dimColor)
                 .copyWith(fontSize: 11),
           ),
