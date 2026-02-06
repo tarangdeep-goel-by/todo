@@ -7,12 +7,13 @@ import '../config/constants.dart';
 class ApiService {
   final Dio _dio;
 
-  ApiService({String? baseUrl})
-      : _dio = Dio(BaseOptions(
-          baseUrl: baseUrl ?? AppConstants.apiBaseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ));
+  ApiService({String? baseUrl, Dio? dio})
+      : _dio = dio ??
+            Dio(BaseOptions(
+              baseUrl: baseUrl ?? AppConstants.apiBaseUrl,
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 10),
+            ));
 
   /// Get all tasks for user
   Future<List<Task>> getTasks(String userId) async {
@@ -94,18 +95,33 @@ class ApiService {
     }
   }
 
-  /// Process voice command with audio file
-  Future<AgentResponse> processVoiceCommand(String audioPath, String userId) async {
+  /// Process voice command with transcribed text
+  Future<AgentResponse> processVoiceCommand(String transcription, String userId) async {
     try {
-      final formData = FormData.fromMap({
-        'audio': await MultipartFile.fromFile(
-          audioPath,
-          filename: 'voice.m4a',
-        ),
+      final response = await _dio.post('/agent/process', data: {
+        'transcription': transcription,
         'user_id': userId,
       });
+      return AgentResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
 
-      final response = await _dio.post('/agent/process', data: formData);
+  /// Resolve a question response (user picked an option)
+  Future<AgentResponse> resolveQuestion({
+    required String userId,
+    required String action,
+    String? selectedTaskId,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final response = await _dio.post('/agent/resolve', data: {
+        'user_id': userId,
+        'action': action,
+        if (selectedTaskId != null) 'selected_task_id': selectedTaskId,
+        if (data != null) 'data': data,
+      });
       return AgentResponse.fromJson(response.data);
     } on DioException catch (e) {
       throw _handleError(e);

@@ -72,6 +72,15 @@ final updateAccumulatedTaskStatusProvider = Provider<void Function(String, Strin
   };
 });
 
+/// Remove a task from the accumulated list immediately (optimistic delete)
+final removeAccumulatedTaskProvider = Provider<void Function(String)>((ref) {
+  return (String taskId) {
+    final current = ref.read(_accumulatedTasksProvider);
+    ref.read(_accumulatedTasksProvider.notifier).state =
+        current.where((t) => t.id != taskId).toList();
+  };
+});
+
 // Paginated tasks with filters
 class PaginatedTasksState {
   final List<Task> tasks;

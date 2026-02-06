@@ -25,6 +25,33 @@ class TaskItem extends ConsumerWidget {
     required this.allTasks,
   });
 
+  /// Find the level 1 branch (top-level task under domain)
+  String _getLevel1Branch() {
+    if (task.parentId == null) return task.title;
+
+    Task? current = task;
+    Task? level1Task;
+    final visited = <String>{};
+
+    while (current != null && current.parentId != null) {
+      if (visited.contains(current.id)) return task.category;
+      visited.add(current.id);
+
+      final parent = allTasks.cast<Task?>().firstWhere(
+        (t) => t!.id == current!.parentId,
+        orElse: () => null,
+      );
+      if (parent == null) break;
+      if (parent.parentId == null) {
+        level1Task = parent;
+        break;
+      }
+      current = parent;
+    }
+
+    return level1Task?.title ?? task.category;
+  }
+
   Future<bool> _deleteTask(BuildContext context, WidgetRef ref) async {
     try {
       HapticService.medium();
@@ -68,6 +95,7 @@ class TaskItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final domain = DomainColors.getDomain(task.category, isDark);
+    final level1Branch = _getLevel1Branch();
     final isCompleted = effectiveStatus(ref, task) == 'completed';
 
     return Dismissible(
@@ -77,7 +105,10 @@ class TaskItem extends ConsumerWidget {
           await toggleTaskStatus(context, ref, task);
           return false; // Don't dismiss — row stays, override handles UI
         } else if (direction == DismissDirection.endToStart) {
-          await _deleteTask(context, ref);
+          final deleted = await _deleteTask(context, ref);
+          if (deleted) {
+            ref.read(removeAccumulatedTaskProvider)(task.id);
+          }
           _refreshTasks(ref);
           return false;
         }
@@ -153,22 +184,52 @@ class TaskItem extends ConsumerWidget {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
-          child: Text(
-            task.title,
-            style: AppTypography.metadataText(
-              color: isCompleted
-                  ? domain.primary.withValues(alpha: 0.5)
-                  : domain.primary,
-            ).copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              decoration: isCompleted
-                  ? TextDecoration.lineThrough
-                  : null,
-              decorationColor: domain.primary.withValues(alpha: 0.5),
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  task.title,
+                  style: AppTypography.metadataText(
+                    color: isCompleted
+                        ? domain.primary.withValues(alpha: 0.5)
+                        : domain.primary,
+                  ).copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    decoration: isCompleted
+                        ? TextDecoration.lineThrough
+                        : null,
+                    decorationColor: domain.primary.withValues(alpha: 0.5),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: domain.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  level1Branch,
+                  style: AppTypography.metadataText(
+                    color: domain.primary,
+                  ).copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -26,11 +26,12 @@ class TaskService:
         ai_placement: Optional[Dict] = None,
         priority: Optional[str] = None,
         tags: Optional[list] = None,
-        estimated_hours: Optional[float] = None
+        estimated_hours: Optional[float] = None,
+        task_id: Optional[str] = None
     ) -> Task:
         """Create a new task."""
         task = Task(
-            id=str(uuid.uuid4()),
+            id=task_id or str(uuid.uuid4()),
             user_id=user_id,
             title=title,
             description=description,
@@ -140,16 +141,15 @@ class TaskService:
 
     async def _get_all_descendants(self, task_id: str) -> List[Task]:
         """Get all descendants recursively."""
-        # Simple iterative approach
         all_descendants = []
         to_process = [task_id]
 
         while to_process:
             current_id = to_process.pop(0)
-            children = await self.get_tasks(
-                user_id="",  # Will be filtered later
-                parent_id=current_id
+            result = await self.db.execute(
+                select(Task).where(Task.parent_id == current_id)
             )
+            children = list(result.scalars().all())
 
             for child in children:
                 all_descendants.append(child)

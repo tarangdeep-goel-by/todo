@@ -1,10 +1,19 @@
 """Agent service for processing voice commands."""
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 from .gemini_service import GeminiService
 from .task_service import TaskService
 from models.schemas import AgentResponse
 from utils.date_parser import parse_flexible_date
+
+# Namespace UUID for deterministic root category IDs
+_ROOT_NS = uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+
+def root_category_id(category: str) -> str:
+    """Generate a deterministic UUID for a root category name."""
+    return str(uuid.uuid5(_ROOT_NS, category.lower()))
 
 
 class AgentService:
@@ -31,18 +40,23 @@ class AgentService:
         Returns:
             AgentResponse with success, message, type, and data
         """
+        print(f"\n{'='*60}")
+        print(f"[Agent] INPUT: transcription='{transcription}', user_id='{user_id}'")
+
         # Step 1: Refine transcription
         refined = await self.gemini.refine_transcription(transcription)
 
         # Step 2: Build FULL task tree context (both work and personal)
         task_service = TaskService(db)
         tree_context = await task_service.build_full_tree_context(user_id)
+        print(f"[Agent] tree context: {len(tree_context)} chars")
 
         # Step 3: Detect intent (agent determines category, parent, everything)
         intent_data = await self.gemini.detect_intent(refined, tree_context)
 
         # Step 4: Validate confidence
         if intent_data['confidence'] < 0.6:
+            print(f"[Agent] LOW CONFIDENCE: {intent_data['confidence']} — rejecting")
             return AgentResponse(
                 success=False,
                 message="Not sure what you meant. Please try rephrasing.",
@@ -53,6 +67,7 @@ class AgentService:
         # Step 5: Route to handler
         intent = intent_data['intent']
         params = intent_data.get('parameters', {})
+        print(f"[Agent] ROUTING: intent={intent}")
 
         if intent == "ADD":
             return await self._handle_add(params, user_id, db)
@@ -175,7 +190,7 @@ class AgentService:
                 message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
                 type="question",
                 data={
-                    "matches": [{"id": t.id, "title": t.title} for t in matched_tasks],
+                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
                     "action": "complete",
                     "intent": "COMPLETE"
                 }
@@ -225,7 +240,7 @@ class AgentService:
                 message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
                 type="question",
                 data={
-                    "matches": [{"id": t.id, "title": t.title} for t in matched_tasks],
+                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
                     "action": "delete",
                     "intent": "DELETE"
                 }
@@ -264,9 +279,10 @@ class AgentService:
                 message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
                 type="question",
                 data={
-                    "matches": [{"id": t.id, "title": t.title} for t in matched_tasks],
+                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
                     "action": "edit",
-                    "intent": "EDIT"
+                    "intent": "EDIT",
+                    "changes": params.get('changes', {})
                 }
             )
 
@@ -308,7 +324,7 @@ class AgentService:
                 message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
                 type="question",
                 data={
-                    "matches": [{"id": t.id, "title": t.title} for t in matched_tasks],
+                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
                     "action": "move",
                     "intent": "MOVE",
                     "targetParentQuery": target_parent_query
@@ -336,7 +352,7 @@ class AgentService:
                     message=f"Found {len(parent_tasks)} possible parent tasks. Which one?",
                     type="question",
                     data={
-                        "matches": [{"id": t.id, "title": t.title} for t in parent_tasks],
+                        "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in parent_tasks],
                         "action": "select_parent",
                         "intent": "MOVE",
                         "taskToMove": matched_tasks[0].id
@@ -362,6 +378,157 @@ class AgentService:
                 "reasoning": params.get('reasoning', '')
             }
         )
+
+    async def resolve_question(
+        self,
+        user_id: str,
+        selected_task_id: str | None,
+        action: str,
+        data: Dict | None,
+        db: AsyncSession
+    ) -> AgentResponse:
+        """Resolve a question response by executing the chosen action."""
+        task_service = TaskService(db)
+        data = data or {}
+
+        if action == "complete":
+            task = await task_service.get_task(selected_task_id)
+            if not task:
+                return AgentResponse(success=False, message="Task not found", type="error")
+
+            children = await task_service.get_tasks(user_id, parent_id=task.id)
+            active_children = [c for c in children if c.status == "active"]
+            if active_children:
+                count = await task_service.complete_task_with_children(task.id)
+                return AgentResponse(
+                    success=True,
+                    message=f"Completed '{task.title}' and {count - 1} sub-tasks",
+                    type="confirmation",
+                    data={"task_id": task.id, "title": task.title}
+                )
+            await task_service.complete_task(task.id)
+            return AgentResponse(
+                success=True,
+                message=f"Completed '{task.title}'",
+                type="confirmation",
+                data={"task_id": task.id, "title": task.title}
+            )
+
+        elif action == "delete":
+            task = await task_service.get_task(selected_task_id)
+            if not task:
+                return AgentResponse(success=False, message="Task not found", type="error")
+            count = await task_service.delete_task_with_children(task.id)
+            return AgentResponse(
+                success=True,
+                message=f"Deleted '{task.title}' and {count - 1} sub-tasks",
+                type="confirmation",
+                data={"task_id": task.id, "deleted_count": count}
+            )
+
+        elif action == "edit":
+            task = await task_service.get_task(selected_task_id)
+            if not task:
+                return AgentResponse(success=False, message="Task not found", type="error")
+            changes = data.get('changes', {})
+            if 'dueDate' in changes:
+                changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
+            await task_service.update_task(task.id, **changes)
+            return AgentResponse(
+                success=True,
+                message=f"Updated '{task.title}'",
+                type="confirmation",
+                data={"task_id": task.id, "changes": changes}
+            )
+
+        elif action == "move":
+            task = await task_service.get_task(selected_task_id)
+            if not task:
+                return AgentResponse(success=False, message="Task not found", type="error")
+
+            target_parent_query = data.get('targetParentQuery')
+            if not target_parent_query:
+                return AgentResponse(success=False, message="No target parent specified", type="error")
+
+            parent_tasks = await task_service.search_tasks(user_id, target_parent_query)
+            if not parent_tasks:
+                return AgentResponse(
+                    success=False,
+                    message=f"No parent task found matching '{target_parent_query}'",
+                    type="error"
+                )
+            if len(parent_tasks) > 1:
+                return AgentResponse(
+                    success=False,
+                    message=f"Found {len(parent_tasks)} possible parent tasks. Which one?",
+                    type="question",
+                    data={
+                        "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in parent_tasks],
+                        "action": "select_parent",
+                        "intent": "MOVE",
+                        "taskToMove": task.id
+                    }
+                )
+            await task_service.update_task(task.id, parent_id=parent_tasks[0].id)
+            return AgentResponse(
+                success=True,
+                message=f"Moved '{task.title}' under '{parent_tasks[0].title}'",
+                type="confirmation",
+                data={"task_id": task.id, "new_parent_id": parent_tasks[0].id}
+            )
+
+        elif action == "select_parent":
+            task_to_move_id = data.get('taskToMove')
+            task = await task_service.get_task(task_to_move_id)
+            if not task:
+                return AgentResponse(success=False, message="Task to move not found", type="error")
+            parent = await task_service.get_task(selected_task_id)
+            if not parent:
+                return AgentResponse(success=False, message="Parent task not found", type="error")
+            await task_service.update_task(task.id, parent_id=parent.id)
+            return AgentResponse(
+                success=True,
+                message=f"Moved '{task.title}' under '{parent.title}'",
+                type="confirmation",
+                data={"task_id": task.id, "new_parent_id": parent.id}
+            )
+
+        elif action == "create_category":
+            title = data.get('suggested_title', '')
+            category = data.get('suggested_category', '')
+            if not title or not category:
+                return AgentResponse(success=False, message="Missing title or category", type="error")
+
+            # Create root category if needed, then create the task
+            root_id = root_category_id(category)
+            root_task = await task_service.get_task(root_id)
+            if not root_task:
+                await task_service.create_task(
+                    user_id=user_id,
+                    title=category.title(),
+                    category=category.lower(),
+                    parent_id=None,
+                    transcription=category.title(),
+                    ai_placement={"suggested_parent": None, "confidence": 1.0, "reasoning": "Root category"},
+                    task_id=root_id,
+                )
+
+            task = await task_service.create_task(
+                user_id=user_id,
+                title=title,
+                category=category.lower(),
+                parent_id=root_id,
+                transcription=title,
+                ai_placement={"suggested_parent": root_id, "confidence": 0.9, "reasoning": "User confirmed category creation"},
+            )
+            return AgentResponse(
+                success=True,
+                message=f"Created '{title}' in new '{category.title()}' category",
+                type="confirmation",
+                data={"task_id": task.id, "title": task.title, "category": task.category}
+            )
+
+        return AgentResponse(success=False, message=f"Unknown action: {action}", type="error")
 
     async def _handle_query(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
         """Handle QUERY intent."""

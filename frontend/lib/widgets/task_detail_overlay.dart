@@ -805,10 +805,18 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           style: AppTypography.metadataText(color: dimColor)
               .copyWith(fontSize: 11),
         ),
-        if (_currentTask.completedAt != null) ...[
+        if (_currentTask.status == 'completed' && _currentTask.completedAt != null) ...[
           const SizedBox(height: 2),
           Text(
             'Completed ${_formatDateTime(_currentTask.completedAt!)}',
+            style: AppTypography.metadataText(color: dimColor)
+                .copyWith(fontSize: 11),
+          ),
+        ],
+        if (_currentTask.estimatedHours != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            'Estimate ${_currentTask.estimatedHours!.toStringAsFixed(_currentTask.estimatedHours! % 1 == 0 ? 0 : 1)}h',
             style: AppTypography.metadataText(color: dimColor)
                 .copyWith(fontSize: 11),
           ),

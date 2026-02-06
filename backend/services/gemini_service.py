@@ -11,7 +11,7 @@ class GeminiService:
     def __init__(self, api_key: str):
         """Initialize Gemini service with API key."""
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
     async def refine_transcription(self, raw_text: str) -> str:
         """
@@ -39,9 +39,11 @@ Cleaned text:"""
 
         try:
             response = self.model.generate_content(prompt)
-            return response.text.strip()
+            refined = response.text.strip()
+            print(f"[Gemini] refine: '{raw_text}' -> '{refined}'")
+            return refined
         except Exception as e:
-            print(f"Failed to refine transcription: {e}")
+            print(f"[Gemini] refine FAILED: {e} | fallback to raw: '{raw_text}'")
             return raw_text  # Fallback to original
 
     async def detect_intent(
@@ -179,10 +181,12 @@ NEW CATEGORY EXAMPLES:
 
             # Extract JSON from response (handle markdown code blocks)
             json_text = self._extract_json(response.text)
-            return json.loads(json_text)
+            result = json.loads(json_text)
+            print(f"[Gemini] intent: {result.get('intent')} | confidence: {result.get('confidence')} | params: {result.get('parameters')}")
+            return result
 
         except Exception as e:
-            print(f"Failed to detect intent: {e}")
+            print(f"[Gemini] intent detection FAILED: {e}")
             # Return UNKNOWN intent on failure
             return {
                 "intent": "UNKNOWN",
