@@ -104,7 +104,8 @@ Respond ONLY with valid JSON in this exact format:
   "confidence": 0.95,
   "parameters": {{
     // For ADD:
-    "title": "task title extracted from speech",
+    "title": "short concise task title (2-6 words)",  // Keep titles brief and scannable
+    "description": "longer description with context and details from speech, or null if speech was already brief",
     "category": "work" or "personal" or suggest new category name,
     "suggestedParent": "task-id or null for top-level",
     "reasoning": "Why this category/parent was chosen",
@@ -113,7 +114,6 @@ Respond ONLY with valid JSON in this exact format:
     "priority": "high|medium|low or null",  // Extract if mentioned (urgent, important, etc.)
     "dueDate": "relative date string or ISO datetime or null",  // Extract if mentioned - use strings like "tomorrow", "next monday", "in 3 days", etc. NOT ISO format
     "tags": ["tag1", "tag2"] or null,  // Extract relevant tags
-    "notes": "additional context or null",  // Extra details mentioned
     "estimatedHours": number or null  // Time estimate if mentioned
 
     // For COMPLETE/DELETE:
@@ -150,11 +150,12 @@ Respond ONLY with valid JSON in this exact format:
 }}
 
 Examples:
-- "Add groceries to shopping list" → ADD with title="groceries", category="personal"
-- "Add urgent backend API task due tomorrow that should take 3 hours" → ADD with title="backend API", priority="high", dueDate="tomorrow", estimatedHours=3
+- "Add groceries to shopping list" → ADD with title="Groceries", description=null, category="personal"
+- "Add urgent backend API task due tomorrow that should take 3 hours" → ADD with title="Backend API", description="Urgent task to complete the backend API implementation. Estimated 3 hours.", priority="high", dueDate="tomorrow", estimatedHours=3
+- "I need to call the dentist to reschedule my appointment for next week because the current one conflicts with my meeting" → ADD with title="Reschedule dentist", description="Call the dentist to reschedule. Current appointment conflicts with a meeting. Move to next week.", dueDate="next week"
 - "Add task due next monday" → ADD with dueDate="next monday"
 - "Complete the backend API task" → COMPLETE with taskQuery="backend API"
-- "Delete meeting notes" → DELETE with taskQuery="meeting notes"
+- "Delete the meeting prep task" → DELETE with taskQuery="meeting prep"
 - "Change doctor appointment to tomorrow" → EDIT with taskQuery="doctor appointment", changes.dueDate="tomorrow"
 - "Move groceries task under shopping list" → MOVE with taskQuery="groceries", targetParentQuery="shopping list"
 - "Move grocery shopping to the main level" → MOVE with taskQuery="grocery shopping", targetParentId=null, targetParentQuery=null

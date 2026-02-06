@@ -98,6 +98,15 @@ class QueryBuilder:
     def _build_order_clause(field_name: str, direction: str):
         """Build ORDER BY clause for a single field."""
 
+        # Status needs special handling (active before completed)
+        if field_name == "status":
+            status_case = case(
+                (Task.status == "active", 0),
+                (Task.status == "completed", 1),
+                else_=2
+            )
+            return status_case.desc() if direction == "desc" else status_case.asc()
+
         # Priority needs special handling (high > medium > low)
         if field_name == "priority":
             priority_case = case(

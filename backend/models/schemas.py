@@ -30,7 +30,6 @@ class CreateTaskRequest(BaseModel):
     # New optional fields
     priority: Optional[str] = None  # high/medium/low
     tags: Optional[List[str]] = None
-    notes: Optional[str] = None
     estimated_hours: Optional[float] = None
 
 
@@ -43,7 +42,6 @@ class UpdateTaskRequest(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[str] = None
     tags: Optional[List[str]] = None
-    notes: Optional[str] = None
     estimated_hours: Optional[float] = None
 
 
@@ -73,7 +71,6 @@ class TaskResponse(BaseModel):
     # New optional fields
     priority: Optional[str] = None
     tags: Optional[List[str]] = None
-    notes: Optional[str] = None
     estimated_hours: Optional[float] = None
 
     class Config:
@@ -136,7 +133,7 @@ class TaskFilterParams(BaseModel):
     completed_at_lte: Optional[datetime] = None
 
     # Sorting
-    sort: Optional[str] = "priority:desc,due_date:asc,created_at:desc"
+    sort: Optional[str] = "status:asc,due_date:asc,priority:desc,created_at:desc"
 
     # Pagination
     limit: int = Field(50, ge=1, le=100)

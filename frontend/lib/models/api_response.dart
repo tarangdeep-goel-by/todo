@@ -93,6 +93,7 @@ class UpdateTaskRequest {
   final String? description;
   final String? status;
   final String? category;
+  final String? priority;
   final DateTime? completedAt;
   final DateTime? dueDate;
 
@@ -101,6 +102,7 @@ class UpdateTaskRequest {
     this.description,
     this.status,
     this.category,
+    this.priority,
     this.completedAt,
     this.dueDate,
   });
@@ -111,6 +113,7 @@ class UpdateTaskRequest {
     if (description != null) json['description'] = description;
     if (status != null) json['status'] = status;
     if (category != null) json['category'] = category;
+    if (priority != null) json['priority'] = priority;
     if (completedAt != null) json['completed_at'] = completedAt!.toIso8601String();
     if (dueDate != null) json['due_date'] = dueDate!.toIso8601String();
     return json;
