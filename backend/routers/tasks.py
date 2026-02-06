@@ -29,7 +29,6 @@ def task_to_response(task: Task) -> TaskResponse:
         ai_placement=task.ai_placement_json,
         priority=task.priority,
         tags=task.tags,
-        notes=task.notes,
         estimated_hours=task.estimated_hours
     )
 
@@ -58,7 +57,7 @@ async def get_tasks(
 
     # Sorting
     sort: Optional[str] = Query(
-        "priority:desc,due_date:asc,created_at:desc",
+        "status:asc,due_date:asc,priority:desc,created_at:desc",
         description="Multi-level sort: field:direction,field:direction"
     ),
 
@@ -137,7 +136,6 @@ async def create_task(
         transcription=request.transcription,
         priority=request.priority,
         tags=request.tags,
-        notes=request.notes,
         estimated_hours=request.estimated_hours
     )
 
@@ -169,8 +167,6 @@ async def update_task(
         updates['priority'] = request.priority
     if request.tags is not None:
         updates['tags'] = request.tags
-    if request.notes is not None:
-        updates['notes'] = request.notes
     if request.estimated_hours is not None:
         updates['estimated_hours'] = request.estimated_hours
 

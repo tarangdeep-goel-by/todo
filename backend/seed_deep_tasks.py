@@ -34,7 +34,7 @@ def create_task(title, category, parent_id=None, **kwargs):
     }
     if parent_id:
         data["parent_id"] = parent_id
-    for key in ("priority", "tags", "due_date", "description", "estimated_hours", "notes"):
+    for key in ("priority", "tags", "due_date", "description", "estimated_hours"):
         if key in kwargs and kwargs[key] is not None:
             data[key] = kwargs[key]
 

@@ -10,7 +10,7 @@ import '../providers/task_filter_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/task_toggle_service.dart';
 import '../utils/task_status_utils.dart';
-import 'task_detail_sheet.dart';
+import 'task_detail_overlay.dart';
 
 /// Task item widget for flat view with swipe actions
 class TaskItem extends ConsumerWidget {
@@ -24,57 +24,6 @@ class TaskItem extends ConsumerWidget {
     required this.isDark,
     required this.allTasks,
   });
-
-  /// Find the level 1 branch (top-level task under domain)
-  String _getLevel1Branch() {
-    // If task has no parent, it IS the level 1 branch
-    if (task.parentId == null) {
-      return task.title;
-    }
-
-    // Traverse up the parent chain to find level 1
-    Task? current = task;
-    Task? level1Task;
-    final Set<String> visited = {}; // Prevent cycles
-
-    while (current != null && current.parentId != null) {
-      // Detect cycles
-      if (visited.contains(current.id)) {
-        return task.category; // Fallback if cycle detected
-      }
-      visited.add(current.id);
-
-      // Find parent - use sentinel value instead of returning current
-      final parent = allTasks.firstWhere(
-        (t) => t.id == current!.parentId,
-        orElse: () => Task(
-          id: '',
-          userId: '',
-          title: '',
-          category: '',
-          status: '',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          transcription: '',
-        ),
-      );
-
-      // Check if parent was found
-      if (parent.id.isEmpty) {
-        break; // Parent not found, exit loop
-      }
-
-      // If parent has no parent, it's level 1
-      if (parent.parentId == null) {
-        level1Task = parent;
-        break;
-      }
-
-      current = parent;
-    }
-
-    return level1Task?.title ?? task.category;
-  }
 
   Future<bool> _deleteTask(BuildContext context, WidgetRef ref) async {
     try {
@@ -113,19 +62,12 @@ class TaskItem extends ConsumerWidget {
   }
 
   void _showTaskDetail(BuildContext context) {
-    HapticService.medium();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => TaskDetailSheet(task: task),
-    );
+    showTaskDetailOverlay(context, task: task, allTasks: allTasks);
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final domain = DomainColors.getDomain(task.category, isDark);
-    final level1Branch = _getLevel1Branch();
     final isCompleted = effectiveStatus(ref, task) == 'completed';
 
     return Dismissible(
@@ -211,56 +153,22 @@ class TaskItem extends ConsumerWidget {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Title (left side)
-              Expanded(
-                child: Text(
-                  task.title,
-                  style: AppTypography.metadataText(
-                    color: isCompleted
-                        ? domain.primary.withValues(alpha: 0.5)
-                        : domain.primary,
-                  ).copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    decoration: isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
-                    decorationColor: domain.primary.withValues(alpha: 0.5),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-
-              const SizedBox(width: AppSpacing.sm),
-
-              // Level 1 branch pill (right side)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: domain.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  level1Branch,
-                  style: AppTypography.metadataText(
-                    color: domain.primary,
-                  ).copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          child: Text(
+            task.title,
+            style: AppTypography.metadataText(
+              color: isCompleted
+                  ? domain.primary.withValues(alpha: 0.5)
+                  : domain.primary,
+            ).copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              decoration: isCompleted
+                  ? TextDecoration.lineThrough
+                  : null,
+              decorationColor: domain.primary.withValues(alpha: 0.5),
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),

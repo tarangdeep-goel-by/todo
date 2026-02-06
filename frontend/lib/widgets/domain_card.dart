@@ -8,11 +8,13 @@ import '../models/task.dart';
 import '../providers/task_filter_provider.dart';
 import '../services/task_toggle_service.dart';
 import '../utils/task_status_utils.dart';
+import 'task_detail_overlay.dart';
 
 /// Domain card widget with focus/compressed states
 class DomainCard extends ConsumerStatefulWidget {
   final DomainPalette domain;
   final List<Task> tasks;
+  final List<Task> allTasks;
   final bool isDark;
   final double focusProgress; // 0.0 = compressed, 1.0 = focused
   final double height;
@@ -21,6 +23,7 @@ class DomainCard extends ConsumerStatefulWidget {
     super.key,
     required this.domain,
     required this.tasks,
+    required this.allTasks,
     required this.isDark,
     required this.focusProgress,
     required this.height,
@@ -112,6 +115,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _toggleTask(task),
+      onLongPress: () => showTaskDetailOverlay(context, task: task, allTasks: widget.allTasks),
       child: Opacity(
         opacity: isCompleted ? 0.5 : 1.0,
         child: Container(
@@ -215,11 +219,11 @@ class _DomainCardState extends ConsumerState<DomainCard> {
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: AppSpacing.md),
 
-              // Dark inset task preview — pinned to bottom
+              // Dark inset task preview
               if (displayTasks.isNotEmpty)
-                Flexible(
+                Expanded(
                   child: Container(
                     width: double.infinity,
                     clipBehavior: Clip.hardEdge,

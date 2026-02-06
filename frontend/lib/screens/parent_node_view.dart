@@ -116,6 +116,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
                 child: DomainCard(
                   domain: domain,
                   tasks: domainTasks,
+                  allTasks: tasks,
                   isDark: true, // Dark mode only
                   focusProgress: focusProgress,
                   height: height,

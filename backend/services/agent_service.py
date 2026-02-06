@@ -126,9 +126,9 @@ class AgentService:
                 "confidence": params.get('confidence', 0.9),
                 "reasoning": params.get('reasoning', '')
             },
+            description=params.get('description'),
             priority=params.get('priority'),
             tags=params.get('tags'),
-            notes=params.get('notes'),
             estimated_hours=params.get('estimatedHours'),
             due_date=parsed_due_date
         )

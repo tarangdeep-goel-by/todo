@@ -22,7 +22,6 @@ class Task(Base):
     # Task metadata (all optional)
     priority = Column(String(20), nullable=True)  # high/medium/low
     tags = Column(ARRAY(String), nullable=True)  # ['urgent', 'backend', etc.]
-    notes = Column(Text, nullable=True)  # Additional details
     estimated_hours = Column(Float, nullable=True)  # Time estimate
 
     # Hierarchy - top-level tasks have parent_id=NULL

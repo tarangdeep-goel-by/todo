@@ -26,7 +26,6 @@ class TaskService:
         ai_placement: Optional[Dict] = None,
         priority: Optional[str] = None,
         tags: Optional[list] = None,
-        notes: Optional[str] = None,
         estimated_hours: Optional[float] = None
     ) -> Task:
         """Create a new task."""
@@ -42,7 +41,6 @@ class TaskService:
             ai_placement_json=ai_placement or {"confidence": 0.9, "reasoning": "Manual creation"},
             priority=priority,
             tags=tags,
-            notes=notes,
             estimated_hours=estimated_hours
         )
 
