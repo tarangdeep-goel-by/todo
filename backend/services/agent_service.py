@@ -1,7 +1,7 @@
 """Agent service for processing voice commands."""
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any
+from typing import Dict, Any, List
 from .gemini_service import GeminiService
 from .task_service import TaskService
 from models.schemas import AgentResponse
@@ -143,7 +143,7 @@ class AgentService:
             },
             description=params.get('description'),
             priority=params.get('priority'),
-            tags=params.get('tags'),
+            tags=None,
             estimated_hours=params.get('estimatedHours'),
             due_date=parsed_due_date
         )
@@ -168,13 +168,37 @@ class AgentService:
             }
         )
 
+    async def _resolve_tasks(self, params: Dict, user_id: str, db: AsyncSession) -> List:
+        """Resolve tasks from Gemini's matchedTasks IDs, falling back to fuzzy search."""
+        task_service = TaskService(db)
+
+        # Try Gemini's direct ID matches first
+        matched_ids = params.get('matchedTasks', [])
+        if matched_ids:
+            tasks = []
+            for tid in matched_ids:
+                task = await task_service.get_task(tid)
+                if task and task.status == 'active':
+                    tasks.append(task)
+            if tasks:
+                print(f"[Agent] resolved {len(tasks)} tasks via matchedTasks IDs")
+                return tasks
+
+        # Fallback to fuzzy search
+        query = params.get('taskQuery', '')
+        if query:
+            tasks = await task_service.search_tasks(user_id, query)
+            print(f"[Agent] fuzzy search for '{query}' found {len(tasks)} tasks")
+            return tasks
+
+        return []
+
     async def _handle_complete(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
         """Handle COMPLETE intent."""
         task_service = TaskService(db)
         query = params.get('taskQuery', '')
 
-        # Search for matching tasks
-        matched_tasks = await task_service.search_tasks(user_id, query)
+        matched_tasks = await self._resolve_tasks(params, user_id, db)
 
         if not matched_tasks:
             return AgentResponse(
@@ -223,8 +247,7 @@ class AgentService:
         task_service = TaskService(db)
         query = params.get('taskQuery', '')
 
-        # Search for matching tasks
-        matched_tasks = await task_service.search_tasks(user_id, query)
+        matched_tasks = await self._resolve_tasks(params, user_id, db)
 
         if not matched_tasks:
             return AgentResponse(
@@ -262,8 +285,7 @@ class AgentService:
         task_service = TaskService(db)
         query = params.get('taskQuery', '')
 
-        # Search for matching tasks
-        matched_tasks = await task_service.search_tasks(user_id, query)
+        matched_tasks = await self._resolve_tasks(params, user_id, db)
 
         if not matched_tasks:
             return AgentResponse(
@@ -307,8 +329,7 @@ class AgentService:
         target_parent_query = params.get('targetParentQuery')
         target_parent_id = params.get('targetParentId')
 
-        # Search for task to move
-        matched_tasks = await task_service.search_tasks(user_id, query)
+        matched_tasks = await self._resolve_tasks(params, user_id, db)
 
         if not matched_tasks:
             return AgentResponse(

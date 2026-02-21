@@ -11,7 +11,6 @@ class FakeTask:
     id: str = "t1"
     title: str = "Test Task"
     description: Optional[str] = None
-    tags: Optional[List[str]] = None
     category: str = "work"
 
 
@@ -30,18 +29,18 @@ class TestScoreTaskMatch:
         score = FuzzyMatcher.score_task_match("xylophone", "Backend API")
         assert score < 50
 
-    def test_weighted_title_desc_tags(self):
-        """With description and tags, score is weighted 60/30/10."""
+    def test_weighted_title_desc(self):
+        """With description, score is weighted 70/30."""
         score = FuzzyMatcher.score_task_match(
-            "api", "Backend API", "Build the REST API", ["backend", "api"]
+            "api", "Backend API", "Build the REST API"
         )
         assert score > 70
 
     def test_title_only_no_weight(self):
-        """Without description/tags, raw title score is used."""
+        """Without description, raw title score is used."""
         score_no_extras = FuzzyMatcher.score_task_match("Backend API", "Backend API")
         score_with_desc = FuzzyMatcher.score_task_match(
-            "Backend API", "Backend API", "some desc", ["tag"]
+            "Backend API", "Backend API", "some desc"
         )
         # Title-only should be 100, weighted should be <= 100
         assert score_no_extras == 100

@@ -60,7 +60,7 @@ Cleaned text:"""
 
         Returns:
             {
-                "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|QUERY|UNKNOWN",
+                "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|UNKNOWN",
                 "confidence": 0.0-1.0,
                 "parameters": {...}
             }
@@ -72,11 +72,10 @@ User said: "{transcription}"
 
 Detect the user's intent. Available intents:
 - ADD: Create new task (keywords: add, create, new, remember, note)
-- COMPLETE: Mark task(s) as done (keywords: complete, done, finish, mark)
+- COMPLETE: Mark task(s) as done (keywords: complete, completed, done, finish, finished, mark). IMPORTANT: "completed [task name]" or "finished [task name]" means the user wants to COMPLETE that task
 - DELETE: Remove/archive task(s) (keywords: delete, remove, archive, cancel)
 - EDIT: Modify existing task properties (keywords: edit, change, update, rename, reschedule)
 - MOVE: Move task to different parent (keywords: move, relocate, transfer, put under)
-- QUERY: Search/list tasks (keywords: show, list, what, find, search)
 - UNKNOWN: Unclear intent
 
 For ADD tasks:
@@ -102,7 +101,7 @@ When user creates new category:
 
 Respond ONLY with valid JSON in this exact format:
 {{
-  "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|QUERY|UNKNOWN",
+  "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|UNKNOWN",
   "confidence": 0.95,
   "parameters": {{
     // For ADD:
@@ -115,7 +114,6 @@ Respond ONLY with valid JSON in this exact format:
     "suggestedBranchName": "",  // Only if needsNewBranch=true
     "priority": "high|medium|low or null",  // Extract if mentioned (urgent, important, etc.)
     "dueDate": "relative date string or ISO datetime or null",  // Extract if mentioned - use strings like "tomorrow", "next monday", "in 3 days", etc. NOT ISO format
-    "tags": ["tag1", "tag2"] or null,  // Extract relevant tags
     "estimatedHours": number or null  // Time estimate if mentioned
 
     // For COMPLETE/DELETE:
@@ -157,6 +155,8 @@ Examples:
 - "I need to call the dentist to reschedule my appointment for next week because the current one conflicts with my meeting" → ADD with title="Reschedule dentist", description="Call the dentist to reschedule. Current appointment conflicts with a meeting. Move to next week.", dueDate="next week"
 - "Add task due next monday" → ADD with dueDate="next monday"
 - "Complete the backend API task" → COMPLETE with taskQuery="backend API"
+- "Completed easy runs this week" → COMPLETE with taskQuery="easy runs this week"
+- "Finished the design review" → COMPLETE with taskQuery="design review"
 - "Delete the meeting prep task" → DELETE with taskQuery="meeting prep"
 - "Change doctor appointment to tomorrow" → EDIT with taskQuery="doctor appointment", changes.dueDate="tomorrow"
 - "Move groceries task under shopping list" → MOVE with taskQuery="groceries", targetParentQuery="shopping list"

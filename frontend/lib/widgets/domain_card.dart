@@ -52,10 +52,12 @@ class _DomainCardState extends ConsumerState<DomainCard> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final showFocused = constraints.maxHeight > 100;
-          return showFocused
-              ? _buildFocusedCard(context)
-              : _buildCompressedCard(context);
+          final showFocused = constraints.maxHeight > 120;
+          return ClipRect(
+            child: showFocused
+                ? _buildFocusedCard(context)
+                : _buildCompressedCard(context),
+          );
         },
       ),
     );
@@ -238,22 +240,25 @@ class _DomainCardState extends ConsumerState<DomainCard> {
   Widget _buildFocusedCard(BuildContext context) {
     final taskCount = tasks.where((t) => t.isActive).length;
 
-    // Show overdue tasks (any priority) + high priority due this week, sorted overdue first then by due date
+    // Show overdue tasks, then high priority (due soonest first)
     final now = DateTime.now();
     final weekFromNow = now.add(const Duration(days: 7));
     final displayTasks = tasks
         .where((t) =>
             t.isActive &&
             (t.isOverdue ||
-                (t.priority == 'high' &&
-                    t.dueDate != null &&
-                    !t.dueDate!.isAfter(weekFromNow))))
+                t.priority == 'high' ||
+                (t.dueDate != null && !t.dueDate!.isAfter(weekFromNow))))
         .toList()
       ..sort((a, b) {
         // Overdue first
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
-        // Then by due date
+        // High priority before others
+        final aHigh = a.priority == 'high' ? 0 : 1;
+        final bHigh = b.priority == 'high' ? 0 : 1;
+        if (aHigh != bHigh) return aHigh.compareTo(bHigh);
+        // Then by due date (tasks with dates before those without)
         if (a.dueDate != null && b.dueDate != null) return a.dueDate!.compareTo(b.dueDate!);
         if (a.dueDate != null) return -1;
         if (b.dueDate != null) return 1;
@@ -298,20 +303,24 @@ class _DomainCardState extends ConsumerState<DomainCard> {
                 ],
               ),
 
-              // High-priority tasks due this week
+              const SizedBox(height: AppSpacing.md),
+
+              // Dark inset task preview
               if (topTasks.isNotEmpty)
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.sm),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (int i = 0; i < topTasks.length; i++) ...[
-                          if (i > 0) const SizedBox(height: 4),
-                          _buildTaskRow(topTasks[i]),
-                        ],
-                      ],
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: AppColors.darkBg,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    ),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: topTasks.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 4),
+                      itemBuilder: (_, i) => _buildTaskRow(topTasks[i]),
                     ),
                   ),
                 ),
