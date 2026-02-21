@@ -1,322 +1,103 @@
-# CLAUDE.md - Todo App Technical Guide
+# CLAUDE.md
 
-Developer guide for Claude Code when working on this Flutter todo app.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-Voice-first AI-powered hierarchical todo list app. Users record tasks, AI transcribes and categorizes them into a tree structure.
+Voice-first AI-powered hierarchical todo app. Flutter mobile frontend communicates with a FastAPI backend via REST API. Users speak voice commands, backend AI (Gemini) transcribes, detects intent (ADD/COMPLETE/EDIT/DELETE/MOVE/QUERY), and executes against a PostgreSQL database. Tasks are organized into 5 domains (Work, Personal, Health, Learning, Projects) with unlimited tree depth.
 
-## Tech Stack
+## Quick Start
 
-- **Flutter**: 3.38+ (Impeller rendering, Material 3)
-- **Database**: Drift 2.23+ (type-safe SQLite ORM with compile-time validation)
-- **State**: Riverpod 2.6+ (modern provider-based state management)
-- **AI**: Google Gemini API (2.0 Flash model for transcription + categorization)
-- **Audio**: record package (multiplatform native recording)
-- **Navigation**: GoRouter 14.6+
-
-## Architecture Patterns
-
-### State Management (Riverpod)
-
-**Provider Types Used**:
-- `Provider`: Singletons (database, repositories, services)
-- `StateNotifierProvider`: Mutable state (recording, transcription, categorization)
-- `FutureProvider`: Async data (tasks, queries)
-- `StateProvider`: Simple state (current recording path)
-
-**Key Providers** (lib/providers/):
-- `databaseProvider`: AppDatabase singleton with auto-disposal
-- `taskRepositoryProvider`: Task CRUD operations
-- `audioServiceProvider`: Audio recording service
-- `geminiServiceProvider`: Gemini API client
-- `recordingStateProvider`: Recording state (idle/recording/processing)
-- `tasksByCategoryProvider`: Family provider for category-based queries
-- `childTasksProvider`: Family provider for tree queries
-
-### Database (Drift)
-
-**Schema** (lib/data/database/tables.dart):
-```dart
-@DataClassName('TaskData')
-class Tasks extends Table {
-  TextColumn get id => text()();                    // UUID primary key
-  TextColumn get userId => text()();                // default-user for MVP
-  TextColumn get title => text()();                 // Task title
-  TextColumn get description => text().nullable()();
-  TextColumn get parentId => text().nullable()      // Self-referencing FK
-      .references(Tasks, #id)();
-  TextColumn get category => text()();              // work/personal
-  TextColumn get status => text()                   // active/completed/archived
-      .withDefault(const Constant('active'))();
-  DateTimeColumn get createdAt => dateTime()();
-  DateTimeColumn get updatedAt => dateTime()();
-  DateTimeColumn get dueDate => dateTime().nullable()();
-  DateTimeColumn get completedAt => dateTime().nullable()();
-  TextColumn get audioFileUri => text().nullable()();
-  TextColumn get transcription => text()();
-  TextColumn get aiPlacementJson => text()();       // JSON string
-}
-```
-
-**Key Methods** (lib/data/database/database.dart):
-- `getTasksByCategory(category)`: Filter by work/personal
-- `getTasksByParent(parentId)`: Get immediate children
-- `getAllDescendants(taskId)`: Recursive tree traversal for archival
-- `batchUpdateStatus(ids, status, completedAt)`: Bulk operations
-
-**Repository Pattern** (lib/data/repositories/task_repository.dart):
-- Wraps Drift database with domain models
-- Converts between `TaskData` (DB) and `Task` (domain model)
-- Implements business logic (completion, archival, seeding)
-
-### Data Models
-
-**Task** (lib/data/models/task.dart):
-- Domain model with enums for category/status
-- `copyWith` for immutability
-- Separate from `TaskData` (DB layer)
-
-**AIPlacement** (lib/data/models/ai_placement.dart):
-- Stores AI suggestion metadata
-- JSON serialization for storage
-- Fields: `suggestedParent`, `confidence`, `reasoning`
-
-### Services Layer
-
-**GeminiService** (lib/services/gemini_service.dart):
-- **transcribeAudio**: Converts audio file → text
-  - Uses DataPart for multimodal input
-  - Returns plain text (strips formatting)
-- **categorizeTask**: Analyzes task + context → category/parent
-  - Builds tree context string from existing tasks
-  - Returns JSON with category, suggestedParent, confidence, reasoning
-  - Handles markdown code blocks in response
-
-**AudioService** (lib/services/audio_service.dart):
-- **startRecording**: AAC-LC codec, 128kbps, 44.1kHz
-- **stopRecording**: Returns file path
-- **cancelRecording**: Stops + deletes file
-- Saves to app documents dir: `{docs}/audio_recordings/recording_{timestamp}.m4a`
-
-**PermissionService** (lib/services/permission_service.dart):
-- Wraps permission_handler
-- Requests/checks RECORD_AUDIO permission
-- Handles permanently denied state
-
-### UI Patterns
-
-**Screens** (lib/screens/):
-- `HomeScreen`: Bottom navigation (Work/Personal tabs)
-- `WorkScreen` / `PersonalScreen`: Category views with task trees
-- `AddTaskScreen`: Multi-stage flow (record → transcribe → categorize → review → save)
-- `TaskDetailScreen`: Read-only task view
-
-**Widgets** (lib/widgets/):
-- `TaskCard`: Animated card with expand/collapse, completion checkbox
-  - Uses `AnimationController` for scale animation on tap
-  - Shows strikethrough + opacity change when completed
-  - Indent based on depth (24px per level)
-- `TaskTree`: Recursive widget for tree rendering
-  - Auto-expands by default
-  - Filters archived tasks
-  - Passes callbacks up for tap/complete
-- `TaskTreeList`: Wraps root category + children
-  - Shows empty state if no tasks
-  - RefreshIndicator support
-- `VoiceRecorder`: Recording UI with pulsing animation
-  - Updates duration every 100ms while recording
-  - Haptic feedback on start/stop
-  - Permission check before recording
-- `AISuggestion`: Displays AI categorization with confidence
-  - Color-coded confidence (green/orange/red)
-  - Accept/Reject buttons
-- `EmptyState`: Generic empty state component
-
-**Animations**:
-- Duration constants in `AppTheme` (200-400ms)
-- `Curves.easeInOut` for most transitions
-- `AnimatedContainer`, `AnimatedOpacity`, `AnimatedRotation` for implicit animations
-- `ScaleTransition` with `AnimationController` for explicit control
-- `Hero` transitions between screens
-
-### Add Task Flow
-
-**States** (lib/screens/add_task_screen.dart):
-1. **recording**: Show voice recorder
-2. **transcribing**: Upload audio → Gemini
-3. **categorizing**: Send transcription + tree context → Gemini
-4. **reviewing**: Show AI suggestion, allow accept/reject
-5. **saving**: Create task in DB, invalidate cache, navigate back
-
-**Error Handling**:
-- Transcription error: Show snackbar, pop back
-- Categorization error: Show snackbar, fall back to manual selection
-- Save error: Show snackbar, stay on review state
-
-### Completion Logic
-
-**markTaskDone** (lib/data/repositories/task_repository.dart):
-- Marks task as completed with timestamp
-- Does NOT auto-complete parent (user might add more children later)
-
-**archiveTask**:
-- Gets ALL descendants recursively
-- Batch updates all to archived status
-- Used when marking parent complete (archives entire subtree)
-
-### Tree Building
-
-**Task Tree Context** (for Gemini):
-```
-Work (root-work)
-  ├── Project Alpha (task-123)
-  │   ├── Backend API (task-456)
-  │   └── Frontend UI (task-789)
-  └── Meetings (task-012)
-
-Personal (root-personal)
-  ├── Home (task-345)
-  └── Errands (task-678)
-```
-
-Built by `_buildTreeContext` in GeminiService, sent to AI for context-aware categorization.
-
-### Root Categories
-
-**Seeded on app start** (lib/providers/task_provider.dart):
-- `seedRootCategoriesProvider` ensures Work/Personal exist
-- IDs: `root-work`, `root-personal`
-- Created in `TaskRepository.seedRootCategories()`
-
-### Permissions
-
-**iOS** (ios/Runner/Info.plist):
-```xml
-<key>NSMicrophoneUsageDescription</key>
-<string>This app needs microphone access to record voice tasks</string>
-```
-
-**Android** (android/app/src/main/AndroidManifest.xml):
-```xml
-<uses-permission android:name="android.permission.RECORD_AUDIO"/>
-```
-
-## Development Workflow
-
-### Code Generation
-
-After changing Drift tables:
 ```bash
-dart run build_runner build --delete-conflicting-outputs
+# Backend (Docker-first, always use Docker)
+cd backend && docker-compose up --build    # API: http://localhost:8001, Postgres: :5433
+# Volume-mounted (.:/app) — Python code changes reflect without rebuild
+# Only re-run --build if Dockerfile or requirements.txt changes
+
+# Frontend
+cd frontend && flutter pub get && flutter run
+
+# Seed test data
+cd backend && ./seed_tasks.sh              # 12 basic tasks
+cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
 ```
 
-### Adding a New Provider
+## Commands
 
-1. Create in `lib/providers/`
-2. Use appropriate provider type (Provider/StateNotifierProvider/FutureProvider)
-3. Add `ref.onDispose()` for cleanup if needed
-4. Family providers for parameterized queries
+```bash
+# Backend tests (100+, inside Docker)
+docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
+docker exec todo-backend python -m pytest tests/test_agent_service.py -v                     # Single file
+docker exec todo-backend python -m pytest tests/test_agent_service.py::TestHandleAdd::test_add_task_basic -v  # Single test
 
-### Adding a New Screen
+# Frontend tests (68+)
+cd frontend && flutter test                                              # All
+cd frontend && flutter test test/providers/task_store_provider_test.dart  # Single file
+cd frontend && flutter test --name "filters tasks by category"           # By name
+cd frontend && flutter analyze                                           # Lint (must be 0 issues)
 
-1. Create in `lib/screens/`
-2. Add route to `lib/config/router.dart`
-3. Use ConsumerWidget for Riverpod access
-4. Implement pull-to-refresh with `ref.invalidate()`
-
-### Testing
-
-**Widget Tests**:
-- Wrap in ProviderScope
-- Example: `test/widget_test.dart`
-
-**Integration Tests**:
-- Mock providers for controlled testing
-- Test add task flow end-to-end
-
-## Common Patterns
-
-### Invalidating Cache
-
-After mutations:
-```dart
-ref.invalidate(childTasksProvider);
-ref.invalidate(tasksByCategoryProvider);
+# Database migrations
+docker exec todo-backend alembic upgrade head                            # Apply
+docker exec todo-backend alembic revision --autogenerate -m "description"  # Create new
 ```
 
-### Error Handling
+## Architecture
 
-Show SnackBar:
-```dart
-ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(content: Text(errorMessage)),
-);
+```
+┌─────────────────────┐         ┌──────────────────────────────────┐
+│  Flutter Frontend    │  REST   │  FastAPI Backend                 │
+│  (Riverpod state)    │ ◄─────► │  (async Python)                  │
+│                      │         │                                  │
+│  TaskStoreNotifier   │         │  /api/agent/process  ← voice     │
+│  ├── allTasks        │         │  /api/agent/resolve  ← disambig  │
+│  ├── byCategory      │         │  /api/tasks/*        ← CRUD      │
+│  ├── byId            │         │                                  │
+│  ├── children        │         │  AgentService → GeminiService    │
+│  └── flatFiltered    │         │  TaskService  → QueryBuilder     │
+└─────────────────────┘         └──────────┬───────────────────────┘
+                                           │
+                                    ┌──────┴──────┐
+                                    │ PostgreSQL   │
+                                    │ (port 5433)  │
+                                    └─────────────┘
 ```
 
-### Haptic Feedback
+### Detailed Guides
 
-```dart
-HapticFeedback.lightImpact();   // Light tap
-HapticFeedback.mediumImpact();  // Medium impact
-HapticFeedback.selectionClick(); // Selection change
-```
+- **Backend**: See [`backend/CLAUDE.md`](backend/CLAUDE.md) — voice command pipeline, services, database schema, API endpoints, testing setup
+- **Frontend**: See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) — TaskStoreNotifier, derived providers, view modes, voice flow, testing patterns
 
-### Safe mounted checks
+## Cross-Cutting Concerns
 
-```dart
-if (mounted) {
-  // Use context here
-}
-```
+### Computed "overdue" Status
+"Overdue" is never stored in the database. Both backend (`schemas.py` validator) and frontend (`_computeDisplayStatus()`) compute it identically: `status == 'active' && due_date < now`. Client-side filter/sort logic must mirror backend `QueryBuilder` semantics exactly.
 
-## File Organization
+### Default Sort Order
+Both frontend and backend use: `status:asc → due_date:asc → priority:desc → created_at:desc`
+- Status rank: overdue(0) < active(1) < completed(2)
+- Priority rank: high(3) > medium(2) > low(1) > none(0)
+- Null dates sort last
 
-- **config/**: App-wide configuration (theme, router, env)
-- **data/**: Data layer (DB, models, repos)
-- **providers/**: Riverpod providers
-- **screens/**: Full-page screens
-- **services/**: Business logic (API clients, platform services)
-- **utils/**: Pure functions, constants
-- **widgets/**: Reusable components
+### Optimistic Updates
+Frontend mutations update `TaskStoreNotifier` immediately, then sync to backend async. If backend fails, the store should be reverted.
 
-## Environment Variables
+### 5-Domain Limit
+Categories (Work, Personal, Health, Learning, Projects) are enforced in `agent_service.py`. The frontend defines them in `AppConstants.domainNames`. Adding a 6th is blocked.
 
-**lib/config/env.dart** (gitignored):
-- `geminiApiKey`: Gemini API key
-- `defaultUserId`: "default-user" for MVP
-- `audioFileExtension`: ".m4a"
-- `audioFolderName`: "audio_recordings"
+## Environment
 
-**Template**: lib/config/env.example.dart
+**Backend** (Docker env in `docker-compose.yml`):
+- `DATABASE_URL`: `postgresql+asyncpg://todo:todo123@postgres:5432/todo_db`
+- `GEMINI_API_KEY`: Google Gemini API key
 
-## Database Migrations
+**Frontend** (`frontend/lib/config/constants.dart`):
+- `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)
+- `defaultUserId`: `default-user` (no auth in MVP)
 
-Currently schema version 1. For future migrations:
-1. Increment `schemaVersion` in `AppDatabase`
-2. Implement `onUpgrade` callback
-3. Use Drift migration tools
+## Testing Notes
 
-## Performance Considerations
-
-- **Tree rendering**: Virtualized with ListView
-- **Deep nesting**: Lazy loading with expand/collapse
-- **Audio files**: Stored locally, not in DB (only URI stored)
-- **AI calls**: Show loading states, handle failures gracefully
-- **Provider invalidation**: Selective cache invalidation to minimize rebuilds
-
-## Known Limitations (MVP)
-
-- Single user only (userId hardcoded)
-- No offline queue for AI requests
-- No task editing/deletion UI (only completion)
-- No task reordering
-- No search/filter
-- No notifications
-
-## Future Architecture Changes
-
-- **Multi-user**: Add authentication, sync provider, userId from auth
-- **Cloud sync**: Add Supabase provider, conflict resolution
-- **Offline support**: Queue AI requests, sync when online
-- **Advanced features**: Task editing, reordering, search requires UI + repo methods
+- **Never create a local Python venv** — backend tests must run in Docker (PostgreSQL UUID/JSONB types incompatible with SQLite)
+- Backend container must be running (`docker-compose up`) before running `docker exec` test commands
+- Backend uses real `todo_test` database, not mocks for DB layer
+- Test UUIDs must be valid format (`"00000000-0000-0000-0000-000000000001"`), not arbitrary strings
+- Frontend tests use `mocktail` + `ProviderContainer` with `MockApiService`

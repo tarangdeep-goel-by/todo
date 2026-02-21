@@ -25,7 +25,7 @@ class AppConstants {
   // API base URL
   // For Android device testing, use your machine's local IP
   // For Android emulator, use 10.0.2.2 instead of localhost
-  static const String apiBaseUrl = 'http://192.168.0.104:8001/api';
+  static const String apiBaseUrl = 'https://moore-able-classification-stewart.trycloudflare.com/api';
 
   // Audio recording settings
   static const String audioFolderName = 'audio_recordings';
