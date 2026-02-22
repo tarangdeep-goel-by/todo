@@ -33,6 +33,11 @@ class Task(Base):
 
     # Category and status
     category = Column(String(50), nullable=False)
+    category_id = Column(
+        UUID(as_uuid=False),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True
+    )
     status = Column(String(50), nullable=False, default="active")
 
     # Timestamps
@@ -51,6 +56,7 @@ class Task(Base):
         # No category constraint - allows custom categories like "fitness", "learning", etc.
         CheckConstraint("status IN ('active', 'completed')", name="check_status"),
         Index("idx_tasks_user_category", "user_id", "category"),
+        Index("idx_tasks_user_category_id", "user_id", "category_id"),
         Index("idx_tasks_user_status", "user_id", "status"),
         Index("idx_tasks_parent", "parent_id"),
         Index("idx_tasks_created", "created_at"),

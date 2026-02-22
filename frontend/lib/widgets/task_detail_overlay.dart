@@ -18,6 +18,7 @@ const _noChange = Object();
 void showTaskDetailOverlay(
   BuildContext context, {
   required String taskId,
+  String? domainRoot,
 }) {
   HapticService.medium();
   showGeneralDialog(
@@ -27,7 +28,7 @@ void showTaskDetailOverlay(
     barrierColor: Colors.black54,
     transitionDuration: AppAnimations.cardExpand,
     pageBuilder: (context, animation, secondaryAnimation) {
-      return TaskDetailOverlay(taskId: taskId);
+      return TaskDetailOverlay(taskId: taskId, domainRoot: domainRoot);
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final slide = Tween<Offset>(
@@ -48,10 +49,12 @@ void showTaskDetailOverlay(
 /// Full-screen overlay for task detail with inline editing
 class TaskDetailOverlay extends ConsumerStatefulWidget {
   final String taskId;
+  final String? domainRoot;
 
   const TaskDetailOverlay({
     super.key,
     required this.taskId,
+    this.domainRoot,
   });
 
   @override
@@ -60,6 +63,7 @@ class TaskDetailOverlay extends ConsumerStatefulWidget {
 
 class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   late String _activeTaskId;
+  String? _activeDomainRoot;
 
   // Editing flags
   bool _editingTitle = false;
@@ -92,6 +96,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   void initState() {
     super.initState();
     _activeTaskId = widget.taskId;
+    _activeDomainRoot = widget.domainRoot;
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
     _subtaskController = TextEditingController();
@@ -114,10 +119,18 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     HapticService.selection();
     setState(() {
       _activeTaskId = taskId;
+      _activeDomainRoot = null;
       _editingTitle = false;
       _editingDescription = false;
       _addingSubtask = false;
       _priorityExpanded = false;
+    });
+  }
+
+  void _navigateToDomainRoot(String category) {
+    HapticService.selection();
+    setState(() {
+      _activeDomainRoot = category;
     });
   }
 
@@ -255,7 +268,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   Future<void> _pickDueDate(Task task) async {
     if (_savingDueDate) return;
 
-    final domain = DomainColors.getDomain(task.category, true);
+    final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
     final picked = await showDatePicker(
       context: context,
       initialDate: task.dueDate ?? DateTime.now(),
@@ -286,7 +299,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   Future<void> _pickEstimate(Task task) async {
     if (_savingEstimate) return;
 
-    final domain = DomainColors.getDomain(task.category, true);
+    final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
     final controller = TextEditingController(
       text: task.estimatedHours != null
           ? task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)
@@ -478,6 +491,11 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    // Domain root mode — show L1 tasks for the domain
+    if (_activeDomainRoot != null) {
+      return _buildDomainRootView(context);
+    }
+
     final task = ref.watch(taskByIdProvider(_activeTaskId));
     final subtasks = ref.watch(childTasksProvider(_activeTaskId));
     final allTasks = ref.watch(allTasksProvider);
@@ -496,7 +514,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       );
     }
 
-    final domain = DomainColors.getDomain(task.category, true);
+    final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
     final ancestors = _buildAncestorChain(task, allTasks);
 
     return Scaffold(
@@ -527,14 +545,17 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    // Category as first breadcrumb
-                    Text(
-                      task.category,
-                      style: AppTypography.metadataText(
-                        color: domain.primary.withValues(alpha: 0.7),
-                      ).copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                    // Category as first breadcrumb — tappable to navigate to domain root
+                    GestureDetector(
+                      onTap: () => _navigateToDomainRoot(task.category),
+                      child: Text(
+                        task.category,
+                        style: AppTypography.metadataText(
+                          color: domain.primary.withValues(alpha: 0.7),
+                        ).copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     // Ancestors
@@ -601,6 +622,91 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build domain root view — lists all L1 tasks (parentId == null) for the domain.
+  Widget _buildDomainRootView(BuildContext context) {
+    final category = _activeDomainRoot!;
+    final domain = DomainColors.getDomain(category, true, ref.read(domainPalettesProvider));
+    final allTasks = ref.watch(allTasksProvider);
+    final l1Tasks = allTasks
+        .where((t) => t.parentId == null && t.category.toLowerCase() == category.toLowerCase())
+        .toList()
+      ..sort((a, b) {
+        // Active before completed
+        final aRank = a.isCompleted ? 2 : (a.isOverdue ? 0 : 1);
+        final bRank = b.isCompleted ? 2 : (b.isOverdue ? 0 : 1);
+        if (aRank != bRank) return aRank.compareTo(bRank);
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+    return Scaffold(
+      backgroundColor: AppColors.darkBg,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Close button row
+            Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.sm,
+                  right: AppSpacing.md,
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.close, color: domain.primary, size: 28),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+
+            // Domain title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Text(
+                category[0].toUpperCase() + category.substring(1),
+                style: AppTypography.domainTitle(context, color: domain.primary)
+                    .copyWith(fontSize: 28),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sm),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Text(
+                '${l1Tasks.where((t) => t.isActive).length} top-level tasks',
+                style: AppTypography.metadataText(
+                  color: domain.primary.withValues(alpha: 0.6),
+                ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // L1 task list
+            Expanded(
+              child: l1Tasks.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No tasks in this domain',
+                        style: AppTypography.metadataText(
+                          color: domain.primary.withValues(alpha: 0.3),
+                        ).copyWith(fontSize: 14),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                      itemCount: l1Tasks.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 4),
+                      itemBuilder: (_, i) => _buildSubtaskRow(domain, l1Tasks[i]),
+                    ),
             ),
           ],
         ),

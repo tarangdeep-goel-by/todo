@@ -283,11 +283,18 @@ class _DomainCardState extends ConsumerState<DomainCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      domain.name,
-                      style: AppTypography.domainTitle(
+                    child: GestureDetector(
+                      onTap: () => showTaskDetailOverlay(
                         context,
-                        color: domain.textOnPrimary,
+                        taskId: '',
+                        domainRoot: domain.name.toLowerCase(),
+                      ),
+                      child: Text(
+                        domain.name,
+                        style: AppTypography.domainTitle(
+                          context,
+                          color: domain.textOnPrimary,
+                        ),
                       ),
                     ),
                   ),

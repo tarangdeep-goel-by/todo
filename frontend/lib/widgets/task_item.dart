@@ -52,7 +52,8 @@ class TaskItem extends ConsumerWidget {
   Future<void> _toggleTask(BuildContext context, WidgetRef ref) async {
     final newStatus = task.isCompleted ? 'active' : 'completed';
     final store = ref.read(taskStoreProvider.notifier);
-    final domain = DomainColors.getDomain(task.category, isDark);
+    final paletteMap = ref.read(domainPalettesProvider);
+    final domain = DomainColors.getDomain(task.category, isDark, paletteMap);
 
     HapticService.light();
 
@@ -158,7 +159,8 @@ class TaskItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allTasks = ref.watch(allTasksProvider);
-    final domain = DomainColors.getDomain(task.category, isDark);
+    final paletteMap = ref.watch(domainPalettesProvider);
+    final domain = DomainColors.getDomain(task.category, isDark, paletteMap);
     final level1Branch = _getLevel1Branch(allTasks);
     final isCompleted = task.isCompleted;
     final isOverdue = task.isOverdue;

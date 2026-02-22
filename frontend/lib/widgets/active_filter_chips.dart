@@ -5,25 +5,11 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task_filter.dart';
 import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 
 class ActiveFilterChips extends ConsumerWidget {
   const ActiveFilterChips({super.key});
-
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'work':
-        return DomainColors.workDark.primary;
-      case 'personal':
-        return DomainColors.personalDark.primary;
-      case 'projects':
-        return DomainColors.projectsDark.primary;
-      case 'learning':
-        return DomainColors.learningDark.primary;
-      default:
-        return AppColors.darkText;
-    }
-  }
 
   Widget _buildChip({
     required String label,
@@ -61,10 +47,16 @@ class ActiveFilterChips extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(taskFilterProvider);
+    final paletteMap = ref.watch(domainPalettesProvider);
 
     if (!filter.isActive) {
       return const SizedBox.shrink();
     }
+
+    // Use first domain's color as accent fallback
+    final accentColor = paletteMap.values.isNotEmpty
+        ? paletteMap.values.first.primary
+        : DomainColors.palettes.first.primary;
 
     return Container(
       height: 40,
@@ -73,19 +65,22 @@ class ActiveFilterChips extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         children: [
-          // Category chips
+          // Category chips — use domain palette color
           if (filter.categories?.isNotEmpty ?? false)
-            ...filter.categories!.map((cat) => _buildChip(
-                  label: cat.toUpperCase(),
-                  color: _getCategoryColor(cat),
-                  onRemove: () {
-                    HapticService.light();
-                    final updated = filter.categories!.toList()..remove(cat);
-                    ref.read(taskFilterProvider.notifier).state = filter.copyWith(
-                      categories: updated.isEmpty ? null : updated,
-                    );
-                  },
-                )),
+            ...filter.categories!.map((cat) {
+              final domain = DomainColors.getDomain(cat, true, paletteMap);
+              return _buildChip(
+                label: cat.toUpperCase(),
+                color: domain.primary,
+                onRemove: () {
+                  HapticService.light();
+                  final updated = filter.categories!.toList()..remove(cat);
+                  ref.read(taskFilterProvider.notifier).state = filter.copyWith(
+                    categories: updated.isEmpty ? null : updated,
+                  );
+                },
+              );
+            }),
 
           // Priority chips
           if (filter.priorities?.isNotEmpty ?? false)
@@ -115,7 +110,7 @@ class ActiveFilterChips extends ConsumerWidget {
                   ? const Color(0xFFFF6B6B)
                   : status == 'completed'
                       ? const Color(0xFF66BB6A)
-                      : DomainColors.workDark.primary;
+                      : accentColor;
               return _buildChip(
                 label: status.toUpperCase(),
                 color: color,
@@ -133,7 +128,7 @@ class ActiveFilterChips extends ConsumerWidget {
           if (filter.createdAtGte != null || filter.createdAtLte != null)
             _buildChip(
               label: 'DATE RANGE',
-              color: DomainColors.projectsDark.primary,
+              color: accentColor,
               onRemove: () {
                 HapticService.light();
                 ref.read(taskFilterProvider.notifier).state = filter.copyWith(
@@ -161,7 +156,7 @@ class ActiveFilterChips extends ConsumerWidget {
             ...filter.sortOptions.map((sortOption) => _buildChip(
                   label:
                       'SORT: ${sortOption.field.toUpperCase()} ${sortOption.ascending ? '↑' : '↓'}',
-                  color: DomainColors.learningDark.primary,
+                  color: accentColor,
                   onRemove: () {
                     HapticService.light();
                     final updated = filter.sortOptions.toList()..remove(sortOption);
@@ -182,10 +177,10 @@ class ActiveFilterChips extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: DomainColors.projectsDark.surface,
+                  color: accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   border: Border.all(
-                    color: DomainColors.projectsDark.primary,
+                    color: accentColor,
                     width: 2,
                   ),
                 ),
@@ -193,7 +188,7 @@ class ActiveFilterChips extends ConsumerWidget {
                   child: Text(
                     'Clear All',
                     style: AppTypography.metadataText(
-                      color: DomainColors.projectsDark.primary,
+                      color: accentColor,
                     ).copyWith(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
