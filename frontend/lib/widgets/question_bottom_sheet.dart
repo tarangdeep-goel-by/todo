@@ -168,7 +168,7 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
         final id = match['id'] as String;
         final title = match['title'] as String;
         final category = match['category'] as String? ?? 'work';
-        final domain = DomainColors.getDomain(category, true);
+        final domain = DomainColors.getDomain(category, true, ref.read(domainPalettesProvider));
         final isLoading = _loadingId == id;
 
         return GestureDetector(
@@ -234,7 +234,7 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
 
   Widget _buildCreateCategoryBody() {
     final suggestedCategory = _data['suggested_category'] as String? ?? '';
-    final domain = DomainColors.getDomain(suggestedCategory, true);
+    final domain = DomainColors.getDomain(suggestedCategory, true, ref.read(domainPalettesProvider));
     final isLoading = _loadingId == 'confirm';
 
     return Padding(

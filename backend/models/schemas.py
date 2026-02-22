@@ -38,6 +38,7 @@ class CreateTaskRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = None
     category: str  # Any category: work, personal, fitness, etc.
+    category_id: Optional[str] = None
     parent_id: Optional[str] = None
     due_date: Optional[datetime] = None
     transcription: str
@@ -75,6 +76,7 @@ class TaskResponse(BaseModel):
     description: Optional[str]
     parent_id: Optional[str]
     category: str  # Any category string
+    category_id: Optional[str] = None
     status: TaskStatus
     created_at: datetime
     updated_at: datetime

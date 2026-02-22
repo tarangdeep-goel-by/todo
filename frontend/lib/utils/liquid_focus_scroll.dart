@@ -89,6 +89,10 @@ class LiquidFocusScrollController {
     late double compressedPct;
 
     switch (count) {
+      case 1:
+        focusedPct = 1.0;
+        compressedPct = 0.0;
+        break;
       case 2:
         focusedPct = 0.72;
         compressedPct = 0.28;

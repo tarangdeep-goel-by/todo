@@ -1,9 +1,35 @@
-"""Tests for categories CRUD and API — 11 tests."""
+"""Tests for categories CRUD and API — 12 tests."""
 import pytest
 
 
 class TestCategoryService:
     """Service-level tests for category CRUD."""
+
+    async def test_task_has_category_id_fk(self, task_service):
+        """Created task should have category_id pointing to the category row."""
+        cat = await task_service.create_category("test-user", "work")
+        task = await task_service.create_task(
+            user_id="test-user", title="FK test", category="work",
+            transcription="fk test",
+        )
+        assert task.category_id == cat.id
+
+    async def test_task_resolves_category_id_automatically(self, task_service):
+        """When category_id is not passed, create_task resolves it from category string."""
+        cat = await task_service.create_category("test-user", "personal")
+        task = await task_service.create_task(
+            user_id="test-user", title="Auto resolve", category="personal",
+            transcription="auto resolve",
+        )
+        assert task.category_id == cat.id
+
+    async def test_task_category_id_none_when_no_category_row(self, task_service):
+        """When no matching category exists, category_id is None."""
+        task = await task_service.create_task(
+            user_id="test-user", title="No cat row", category="nonexistent",
+            transcription="no cat",
+        )
+        assert task.category_id is None
 
     async def test_create_category(self, task_service):
         cat = await task_service.create_category("test-user", "work")

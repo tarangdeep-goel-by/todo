@@ -28,9 +28,13 @@ class TaskService:
         priority: Optional[str] = None,
         tags: Optional[list] = None,
         estimated_hours: Optional[float] = None,
-        task_id: Optional[str] = None
+        task_id: Optional[str] = None,
+        category_id: Optional[str] = None,
     ) -> Task:
-        """Create a new task."""
+        """Create a new task. Resolves category_id from category string if not provided."""
+        if not category_id:
+            category_id = await self._resolve_category_id(user_id, category)
+
         task = Task(
             id=task_id or str(uuid.uuid4()),
             user_id=user_id,
@@ -38,6 +42,7 @@ class TaskService:
             description=description,
             parent_id=parent_id,
             category=category,
+            category_id=category_id,
             transcription=transcription,
             due_date=due_date,
             ai_placement_json=ai_placement or {"confidence": 0.9, "reasoning": "Manual creation"},
@@ -50,6 +55,15 @@ class TaskService:
         await self.db.commit()
         await self.db.refresh(task)
         return task
+
+    async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
+        """Look up category ID from category name string."""
+        result = await self.db.execute(
+            select(Category.id)
+            .where(Category.user_id == user_id, Category.name == category.lower().strip())
+        )
+        row = result.scalar_one_or_none()
+        return row
 
     async def get_task(self, task_id: str) -> Optional[Task]:
         """Get task by ID."""

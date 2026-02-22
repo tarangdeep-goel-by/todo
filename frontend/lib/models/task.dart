@@ -9,6 +9,7 @@ class Task {
   final String? description;
   final String? parentId;
   final String category; // work, personal, health, learning, projects
+  final String? categoryId;
   final String status; // active, completed
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -27,6 +28,7 @@ class Task {
     this.description,
     this.parentId,
     required this.category,
+    this.categoryId,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
@@ -48,6 +50,7 @@ class Task {
       description: json['description'] as String?,
       parentId: json['parent_id'] as String?,
       category: json['category'] as String,
+      categoryId: json['category_id'] as String?,
       status: json['status'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -73,6 +76,7 @@ class Task {
       'description': description,
       'parent_id': parentId,
       'category': category,
+      'category_id': categoryId,
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -96,6 +100,7 @@ class Task {
     String? description,
     String? parentId,
     String? category,
+    String? categoryId,
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -114,6 +119,7 @@ class Task {
       description: description ?? this.description,
       parentId: parentId ?? this.parentId,
       category: category ?? this.category,
+      categoryId: categoryId ?? this.categoryId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

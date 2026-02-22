@@ -5,6 +5,7 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task_filter.dart';
 import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 
 class FilterSheet extends ConsumerStatefulWidget {
@@ -116,14 +117,11 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
       if (existingIndex != -1) {
         final existing = current[existingIndex];
         if (existing.ascending) {
-          // Toggle to descending
           current[existingIndex] = SortOption(field, ascending: false);
         } else {
-          // Remove
           current.removeAt(existingIndex);
         }
       } else {
-        // Add ascending
         current.add(SortOption(field, ascending: true));
       }
 
@@ -173,6 +171,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
   Widget _buildSortChip({
     required String label,
     required String field,
+    required Color accentColor,
   }) {
     final existingIndex = _currentFilter.sortOptions.indexWhere((s) => s.field == field);
     final isSelected = existingIndex != -1;
@@ -184,12 +183,12 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? DomainColors.workDark.primary.withValues(alpha: 0.2)
+              ? accentColor.withValues(alpha: 0.2)
               : AppColors.darkBg,
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           border: Border.all(
             color: isSelected
-                ? DomainColors.workDark.primary
+                ? accentColor
                 : AppColors.darkText.withValues(alpha: 0.3),
             width: 2,
           ),
@@ -200,7 +199,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
             Text(
               label,
               style: AppTypography.metadataText(
-                color: isSelected ? DomainColors.workDark.primary : AppColors.darkText,
+                color: isSelected ? accentColor : AppColors.darkText,
               ).copyWith(fontSize: 14, fontWeight: FontWeight.w600),
             ),
             if (isSelected) ...[
@@ -208,7 +207,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               Icon(
                 isAscending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 16,
-                color: DomainColors.workDark.primary,
+                color: accentColor,
               ),
             ],
           ],
@@ -219,6 +218,15 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Read domain palettes from provider for consistent colors
+    final paletteMap = ref.watch(domainPalettesProvider);
+    final domains = paletteMap.values.toList();
+
+    // Use first domain's color as accent, or fallback
+    final accentColor = domains.isNotEmpty
+        ? domains.first.primary
+        : DomainColors.palettes.first.primary;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
@@ -254,7 +262,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   child: Text(
                     'Clear All',
                     style: AppTypography.metadataText(
-                      color: DomainColors.projectsDark.primary,
+                      color: accentColor,
                     ).copyWith(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -269,37 +277,20 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category
+                  // Category — dynamic from actual domains
                   _buildSectionTitle('CATEGORY'),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [
-                      _buildFilterChip(
-                        label: 'WORK',
-                        isSelected: _currentFilter.categories?.contains('work') ?? false,
-                        onTap: () => _toggleCategory('work'),
-                        color: DomainColors.workDark.primary,
-                      ),
-                      _buildFilterChip(
-                        label: 'PERSONAL',
-                        isSelected: _currentFilter.categories?.contains('personal') ?? false,
-                        onTap: () => _toggleCategory('personal'),
-                        color: DomainColors.personalDark.primary,
-                      ),
-                      _buildFilterChip(
-                        label: 'PROJECTS',
-                        isSelected: _currentFilter.categories?.contains('projects') ?? false,
-                        onTap: () => _toggleCategory('projects'),
-                        color: DomainColors.projectsDark.primary,
-                      ),
-                      _buildFilterChip(
-                        label: 'LEARNING',
-                        isSelected: _currentFilter.categories?.contains('learning') ?? false,
-                        onTap: () => _toggleCategory('learning'),
-                        color: DomainColors.learningDark.primary,
-                      ),
-                    ],
+                    children: domains.map((domain) {
+                      final cat = domain.name.toLowerCase();
+                      return _buildFilterChip(
+                        label: domain.name.toUpperCase(),
+                        isSelected: _currentFilter.categories?.contains(cat) ?? false,
+                        onTap: () => _toggleCategory(cat),
+                        color: domain.primary,
+                      );
+                    }).toList(),
                   ),
 
                   const SizedBox(height: 24),
@@ -343,7 +334,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         label: 'ACTIVE',
                         isSelected: _currentFilter.statuses?.contains('active') ?? false,
                         onTap: () => _toggleStatus('active'),
-                        color: DomainColors.workDark.primary,
+                        color: accentColor,
                       ),
                       _buildFilterChip(
                         label: 'OVERDUE',
@@ -372,13 +363,13 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         label: 'TODAY',
                         isSelected: false,
                         onTap: () => _setDatePreset('today'),
-                        color: DomainColors.projectsDark.primary,
+                        color: accentColor,
                       ),
                       _buildFilterChip(
                         label: 'THIS WEEK',
                         isSelected: false,
                         onTap: () => _setDatePreset('week'),
-                        color: DomainColors.projectsDark.primary,
+                        color: accentColor,
                       ),
                       _buildFilterChip(
                         label: 'OVERDUE',
@@ -397,10 +388,10 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildSortChip(label: 'Priority', field: 'priority'),
-                      _buildSortChip(label: 'Due Date', field: 'due_date'),
-                      _buildSortChip(label: 'Created', field: 'created_at'),
-                      _buildSortChip(label: 'Title', field: 'title'),
+                      _buildSortChip(label: 'Priority', field: 'priority', accentColor: accentColor),
+                      _buildSortChip(label: 'Due Date', field: 'due_date', accentColor: accentColor),
+                      _buildSortChip(label: 'Created', field: 'created_at', accentColor: accentColor),
+                      _buildSortChip(label: 'Title', field: 'title', accentColor: accentColor),
                     ],
                   ),
                 ],
@@ -455,11 +446,11 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
-                        color: DomainColors.workDark.primary,
+                        color: accentColor,
                         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                         boxShadow: [
                           BoxShadow(
-                            color: DomainColors.workDark.glow!,
+                            color: accentColor.withValues(alpha: 0.2),
                             blurRadius: 12,
                             spreadRadius: 2,
                           ),
