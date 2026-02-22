@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task.dart';
 import '../models/task_filter.dart';
+import '../models/category.dart';
 import '../config/constants.dart';
+import '../config/theme.dart';
 import 'api_provider.dart';
 import 'task_filter_provider.dart';
 
@@ -61,6 +63,14 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
       final map = {for (final t in allTasks) t.id: t};
       state = TaskStoreState(tasks: map);
+
+      // Fetch categories and update provider
+      try {
+        final categories = await apiService.getCategories(AppConstants.defaultUserId);
+        _ref.read(categoriesProvider.notifier).state = categories;
+      } catch (_) {
+        // Non-fatal — categories may not be available
+      }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -90,6 +100,20 @@ final taskStoreProvider =
 /// All tasks as a list (for node view).
 final allTasksProvider = Provider<List<Task>>((ref) {
   return ref.watch(taskStoreProvider).tasks.values.toList();
+});
+
+/// Backend-sourced categories (persisted independently of tasks).
+final categoriesProvider = StateProvider<List<Category>>((ref) => []);
+
+/// Canonical domain→palette mapping derived from backend categories.
+/// Uses category.position as the palette index for stable colors.
+final domainPalettesProvider = Provider<Map<String, DomainPalette>>((ref) {
+  final cats = ref.watch(categoriesProvider);
+  final map = <String, DomainPalette>{};
+  for (final cat in cats) {
+    map[cat.name] = DomainColors.byIndex(cat.position, cat.displayName);
+  }
+  return map;
 });
 
 /// Tasks filtered by category (for domain cards).

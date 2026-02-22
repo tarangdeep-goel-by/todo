@@ -1,8 +1,9 @@
 """Task service for CRUD operations and tree queries."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from typing import List, Optional, Dict
 from models.task import Task
+from models.category import Category
 from utils.fuzzy_matcher import FuzzyMatcher
 import uuid
 
@@ -212,15 +213,78 @@ class TaskService:
         return [task for task, score in ranked]
 
     async def get_categories(self, user_id: str) -> List[str]:
-        """Get list of distinct categories for user."""
-        tasks = await self.get_tasks(user_id, status="active")
-        categories = list(set(task.category for task in tasks))
-        return sorted(categories)
+        """Get list of category names for user from categories table."""
+        result = await self.db.execute(
+            select(Category.name)
+            .where(Category.user_id == user_id)
+            .order_by(Category.position)
+        )
+        return [row[0] for row in result.all()]
 
     async def count_categories(self, user_id: str) -> int:
-        """Count distinct categories for user."""
-        categories = await self.get_categories(user_id)
-        return len(categories)
+        """Count categories for user from categories table."""
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(Category)
+            .where(Category.user_id == user_id)
+        )
+        return result.scalar_one()
+
+    async def get_categories_from_db(self, user_id: str) -> List[Category]:
+        """Get full Category objects ordered by position."""
+        result = await self.db.execute(
+            select(Category)
+            .where(Category.user_id == user_id)
+            .order_by(Category.position)
+        )
+        return list(result.scalars().all())
+
+    async def create_category(self, user_id: str, name: str) -> Category:
+        """Create a category. Validates max 5, no duplicate, assigns lowest unused position."""
+        name = name.lower().strip()
+
+        # Check duplicate
+        existing = await self.db.execute(
+            select(Category)
+            .where(Category.user_id == user_id, Category.name == name)
+        )
+        if existing.scalar_one_or_none():
+            raise ValueError(f"Category '{name}' already exists")
+
+        # Check max 5
+        count = await self.count_categories(user_id)
+        if count >= 5:
+            raise ValueError("Maximum of 5 categories reached")
+
+        # Find lowest unused position (0-4)
+        result = await self.db.execute(
+            select(Category.position)
+            .where(Category.user_id == user_id)
+            .order_by(Category.position)
+        )
+        used_positions = {row[0] for row in result.all()}
+        position = next(p for p in range(5) if p not in used_positions)
+
+        category = Category(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            name=name,
+            position=position,
+        )
+        self.db.add(category)
+        await self.db.commit()
+        await self.db.refresh(category)
+        return category
+
+    async def delete_category(self, category_id: str, user_id: str) -> bool:
+        """Delete a category by ID. Returns True if deleted."""
+        from sqlalchemy import delete as sql_delete
+        result = await self.db.execute(
+            sql_delete(Category)
+            .where(Category.id == category_id, Category.user_id == user_id)
+        )
+        await self.db.commit()
+        return result.rowcount > 0
 
     async def get_tasks_advanced(
         self,

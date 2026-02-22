@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from config import get_settings
 from database import Base
 from models.task import Task  # Import all models
+from models.category import Category  # noqa: F401
 
 # Alembic Config object
 config = context.config

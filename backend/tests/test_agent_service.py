@@ -1,7 +1,7 @@
 """Tests for AgentService handlers (mock Gemini, real DB) — 14 tests."""
 import pytest
 from unittest.mock import AsyncMock
-from tests.helpers import make_task_tree, ROOT_WORK_ID
+from tests.helpers import make_task_tree
 
 
 def _intent(intent, confidence=0.95, **params):
@@ -32,7 +32,7 @@ class TestHandleAdd:
         tree = await make_task_tree(task_service)
         mock_gemini.detect_intent = AsyncMock(return_value=_intent(
             "ADD", title="Write tests", category="work",
-            suggestedParent=ROOT_WORK_ID, reasoning="testing",
+            suggestedParent=tree["project_alpha"].id, reasoning="testing",
         ))
         result = await agent_service.process_voice_command("write tests", "test-user", db_session)
         assert result.success is True
@@ -42,7 +42,7 @@ class TestHandleAdd:
         tree = await make_task_tree(task_service)
         mock_gemini.detect_intent = AsyncMock(return_value=_intent(
             "ADD", title="Submit report", category="work",
-            suggestedParent=ROOT_WORK_ID, dueDate="tomorrow", reasoning="due soon",
+            suggestedParent=tree["project_alpha"].id, dueDate="tomorrow", reasoning="due soon",
         ))
         result = await agent_service.process_voice_command("submit report tomorrow", "test-user", db_session)
         assert result.success is True
@@ -60,10 +60,7 @@ class TestHandleAdd:
     async def test_add_new_branch_at_limit(self, agent_service, mock_gemini, task_service, db_session):
         """5 categories already exist → reject new branch."""
         for cat in ["work", "personal", "health", "learning", "finance"]:
-            await task_service.create_task(
-                user_id="test-user", title=cat.title(), category=cat,
-                transcription=cat,
-            )
+            await task_service.create_category("test-user", cat)
         mock_gemini.detect_intent = AsyncMock(return_value=_intent(
             "ADD", title="Cook dinner", needsNewBranch=True,
             suggestedBranchName="Cooking", reasoning="food",

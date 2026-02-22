@@ -1,7 +1,6 @@
 """Tests for AgentService.resolve_question() — 18 tests."""
 import pytest
-from tests.helpers import make_task, make_task_tree, ROOT_WORK_ID
-from services.agent_service import root_category_id
+from tests.helpers import make_task, make_task_tree
 
 MISSING_UUID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
@@ -146,11 +145,11 @@ class TestResolveMove:
         tree = await make_task_tree(task_service)
         await task_service.create_task(
             user_id="test-user", title="Meeting Prep A", category="work",
-            parent_id=ROOT_WORK_ID, transcription="meeting prep a",
+            parent_id=None, transcription="meeting prep a",
         )
         await task_service.create_task(
             user_id="test-user", title="Meeting Prep B", category="work",
-            parent_id=ROOT_WORK_ID, transcription="meeting prep b",
+            parent_id=None, transcription="meeting prep b",
         )
         task = tree["groceries"]
         result = await agent_service.resolve_question(
@@ -203,7 +202,7 @@ class TestResolveSelectParent:
 # ──────────── action=create_category ────────────
 
 class TestResolveCreateCategory:
-    async def test_create_new_root_and_child(self, agent_service, task_service, db_session):
+    async def test_create_new_category_and_task(self, agent_service, task_service, db_session):
         result = await agent_service.resolve_question(
             user_id="test-user", selected_task_id=None,
             action="create_category",
@@ -212,11 +211,11 @@ class TestResolveCreateCategory:
         )
         assert result.success is True
         assert "hobbies" in result.message.lower() or "Hobbies" in result.message
-        # Root should have been created with deterministic UUID
-        root = await task_service.get_task(root_category_id("hobbies"))
-        assert root is not None
+        # Category should exist in categories table
+        categories = await task_service.get_categories("test-user")
+        assert "hobbies" in categories
 
-    async def test_create_under_existing_root(self, agent_service, task_service, db_session):
+    async def test_create_under_existing_category(self, agent_service, task_service, db_session):
         tree = await make_task_tree(task_service)
         result = await agent_service.resolve_question(
             user_id="test-user", selected_task_id=None,

@@ -206,3 +206,21 @@ class TaskListResponse(BaseModel):
     limit: int
     offset: int
     has_more: bool
+
+
+class CategoryResponse(BaseModel):
+    """Response schema for category."""
+    id: str
+    user_id: str
+    name: str
+    position: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CreateCategoryRequest(BaseModel):
+    """Request schema for creating a category."""
+    user_id: str = Field(..., min_length=1)
+    name: str = Field(..., min_length=1, max_length=50)

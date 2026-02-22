@@ -17,6 +17,7 @@ from sqlalchemy import text
 
 from database import Base, get_db
 from models.task import Task  # noqa: F401 — registers model on Base
+from models.category import Category  # noqa: F401 — registers model on Base
 from services.task_service import TaskService
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
@@ -60,6 +61,7 @@ async def db_session(db_engine):
     # Clean up any committed data after the test
     async with session_factory() as cleanup:
         await cleanup.execute(text("DELETE FROM tasks"))
+        await cleanup.execute(text("DELETE FROM categories"))
         await cleanup.commit()
 
 

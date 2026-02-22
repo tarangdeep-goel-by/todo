@@ -1,6 +1,6 @@
 """Tests for TaskService (DB integration) — 16 tests."""
 import pytest
-from tests.helpers import make_task, make_task_tree, ROOT_WORK_ID
+from tests.helpers import make_task, make_task_tree
 
 # A valid UUID that won't exist in the DB
 MISSING_UUID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -64,9 +64,9 @@ class TestGetTasks:
 
     async def test_filter_by_parent(self, task_service):
         tree = await make_task_tree(task_service)
-        children = await task_service.get_tasks("test-user", parent_id=ROOT_WORK_ID)
+        children = await task_service.get_tasks("test-user", parent_id=tree["project_alpha"].id)
         child_ids = [c.id for c in children]
-        assert tree["project_alpha"].id in child_ids
+        assert tree["backend_api"].id in child_ids
 
 
 class TestUpdateTask:
