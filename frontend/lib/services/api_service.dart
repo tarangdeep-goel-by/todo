@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../models/task.dart';
 import '../models/api_response.dart';
+import '../models/category.dart';
 import '../config/constants.dart';
 
 /// Service for backend API communication
@@ -152,6 +153,44 @@ class ApiService {
   Future<void> deleteTask(String taskId, {String userId = AppConstants.defaultUserId}) async {
     try {
       await _dio.delete('/tasks/$taskId', queryParameters: {
+        'user_id': userId,
+      });
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Get categories for user
+  Future<List<Category>> getCategories(String userId) async {
+    try {
+      final response = await _dio.get('/categories', queryParameters: {
+        'user_id': userId,
+      });
+      return (response.data as List)
+          .map((json) => Category.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Create a new category
+  Future<Category> createCategory(String userId, String name) async {
+    try {
+      final response = await _dio.post('/categories', data: {
+        'user_id': userId,
+        'name': name,
+      });
+      return Category.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Delete a category
+  Future<void> deleteCategory(String categoryId, {String userId = AppConstants.defaultUserId}) async {
+    try {
+      await _dio.delete('/categories/$categoryId', queryParameters: {
         'user_id': userId,
       });
     } on DioException catch (e) {

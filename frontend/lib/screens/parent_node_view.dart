@@ -1,6 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
+import '../config/spacing.dart';
+import '../config/typography.dart';
+import '../config/constants.dart';
+import '../models/task.dart';
+import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
@@ -17,35 +24,347 @@ class ParentNodeView extends ConsumerStatefulWidget {
 }
 
 class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
-  int _focusedIndex = 0; // Currently focused card (0-4)
-  double _dragStartY = 0.0;
+  int _focusedIndex = 0;
 
-  void _onVerticalDragStart(DragStartDetails details) {
-    _dragStartY = details.globalPosition.dy;
+  // Pointer tracking for vertical drag (using Listener to avoid gesture arena
+  // conflict with Dismissible's horizontal swipe)
+  double _pointerStartY = 0.0;
+  double _pointerStartX = 0.0;
+  bool _isVerticalDrag = false;
+  bool _directionDecided = false;
+
+  // Overscroll state for add-domain gesture
+  double _overscrollDistance = 0.0;
+  bool _overscrollLocked = false;
+  static const double _overscrollThreshold = 80.0;
+
+  /// Get ordered domain palettes from the canonical provider.
+  List<DomainPalette> _getDomains() {
+    final paletteMap = ref.read(domainPalettesProvider);
+    return paletteMap.values.toList();
   }
 
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
-    // Calculate drag distance
-    final dragDistance = details.globalPosition.dy - _dragStartY;
-    final viewportHeight = MediaQuery.of(context).size.height;
+  void _onPointerDown(PointerDownEvent event) {
+    _pointerStartY = event.position.dy;
+    _pointerStartX = event.position.dx;
+    _isVerticalDrag = false;
+    _directionDecided = false;
+  }
 
-    // Threshold to change focus (5% of viewport for high sensitivity)
+  void _onPointerMove(PointerMoveEvent event, int domainCount) {
+    final dx = (event.position.dx - _pointerStartX).abs();
+    final dy = (event.position.dy - _pointerStartY).abs();
+
+    // Decide direction once after enough movement
+    if (!_directionDecided && (dx > 10 || dy > 10)) {
+      _isVerticalDrag = dy > dx;
+      _directionDecided = true;
+    }
+
+    // Only handle vertical drags — let Dismissible handle horizontal
+    if (!_isVerticalDrag) return;
+
+    final dragDistance = event.position.dy - _pointerStartY;
+    final viewportHeight = MediaQuery.of(context).size.height;
     final threshold = viewportHeight * 0.05;
 
     if (dragDistance > threshold && _focusedIndex > 0) {
-      // Drag down - focus previous card (move up in list)
       HapticService.selection();
       setState(() {
         _focusedIndex--;
-        _dragStartY = details.globalPosition.dy; // Reset reference
+        _pointerStartY = event.position.dy;
       });
-    } else if (dragDistance < -threshold && _focusedIndex < 4) {
-      // Drag up - focus next card (move down in list)
+    } else if (dragDistance < -threshold &&
+        _focusedIndex < domainCount - 1) {
       HapticService.selection();
       setState(() {
         _focusedIndex++;
-        _dragStartY = details.globalPosition.dy; // Reset reference
+        _pointerStartY = event.position.dy;
       });
+    } else if (dragDistance < -threshold &&
+        _focusedIndex == domainCount - 1 &&
+        domainCount < 5) {
+      // Overscroll past last card — reveal add-domain zone
+      final overscroll =
+          (-dragDistance - threshold).clamp(0.0, _overscrollThreshold * 1.5);
+      setState(() {
+        _overscrollDistance = overscroll;
+        if (!_overscrollLocked && overscroll >= _overscrollThreshold) {
+          _overscrollLocked = true;
+          HapticService.medium();
+        }
+      });
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent event, int domainCount) {
+    if (_overscrollLocked && domainCount < 5) {
+      _showAddDomainSheet(domainCount);
+    }
+    setState(() {
+      _overscrollDistance = 0.0;
+      _overscrollLocked = false;
+      _isVerticalDrag = false;
+      _directionDecided = false;
+    });
+  }
+
+  Future<void> _showAddDomainSheet(int currentCount) async {
+    final controller = TextEditingController();
+    final existingNames = _getDomains()
+        .map((d) => d.name.toLowerCase())
+        .toSet();
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.darkBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusMd)),
+      ),
+      builder: (ctx) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacing.lg,
+                right: AppSpacing.lg,
+                top: AppSpacing.lg,
+                bottom:
+                    MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.lg,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'New Domain',
+                    style: AppTypography.ctaLabelText(
+                      color: AppColors.darkText,
+                    ).copyWith(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    style: AppTypography.ctaLabelText(
+                            color: AppColors.darkText)
+                        .copyWith(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Domain name',
+                      hintStyle: AppTypography.ctaLabelText(
+                        color:
+                            AppColors.darkText.withValues(alpha: 0.4),
+                      ).copyWith(fontSize: 16),
+                      errorText: errorText,
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: AppColors.darkText
+                              .withValues(alpha: 0.3),
+                        ),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide:
+                            BorderSide(color: AppColors.darkText),
+                      ),
+                    ),
+                    onSubmitted: (value) {
+                      final name = value.trim();
+                      if (name.isEmpty) {
+                        setSheetState(
+                            () => errorText = 'Name cannot be empty');
+                        return;
+                      }
+                      if (existingNames
+                          .contains(name.toLowerCase())) {
+                        setSheetState(() =>
+                            errorText = 'Domain already exists');
+                        return;
+                      }
+                      Navigator.pop(ctx, name);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () {
+                        final name = controller.text.trim();
+                        if (name.isEmpty) {
+                          setSheetState(() =>
+                              errorText = 'Name cannot be empty');
+                          return;
+                        }
+                        if (existingNames
+                            .contains(name.toLowerCase())) {
+                          setSheetState(() =>
+                              errorText = 'Domain already exists');
+                          return;
+                        }
+                        Navigator.pop(ctx, name);
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor:
+                            DomainColors.defaultPalette.primary,
+                        foregroundColor:
+                            DomainColors.defaultPalette.textOnPrimary,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusSm),
+                        ),
+                      ),
+                      child: Text(
+                        'Create',
+                        style: AppTypography.ctaLabelText(
+                          color: DomainColors
+                              .defaultPalette.textOnPrimary,
+                        ).copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && mounted) {
+      _createDomain(result);
+    }
+  }
+
+  Future<void> _createDomain(String name) async {
+    final cat = name.toLowerCase();
+    final apiService = ref.read(apiServiceProvider);
+    try {
+      final category = await apiService.createCategory(
+        AppConstants.defaultUserId, cat,
+      );
+      ref.read(categoriesProvider.notifier).update((s) => [...s, category]);
+      HapticService.light();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create domain: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteDomain(
+      DomainPalette domain, List<Task> domainTasks) async {
+    final taskCount = domainTasks.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.darkBg,
+        title: Text(
+          'Delete ${domain.name}?',
+          style: AppTypography.ctaLabelText(color: AppColors.darkText)
+              .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'This will permanently delete all $taskCount ${taskCount == 1 ? 'task' : 'tasks'} in this domain.',
+          style: AppTypography.metadataText(
+            color: AppColors.darkText.withValues(alpha: 0.8),
+          ).copyWith(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.ctaLabelText(
+                color: AppColors.darkText.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFE84878),
+            ),
+            child: Text(
+              'Delete',
+              style: AppTypography.ctaLabelText(
+                color: const Color(0xFFE84878),
+              ).copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final store = ref.read(taskStoreProvider.notifier);
+    final apiService = ref.read(apiServiceProvider);
+
+    // Find ALL root tasks (parent_id == null) for this domain —
+    // a domain can have multiple root trees (e.g. Health has Fitness,
+    // Nutrition, Mental wellness as separate roots).
+    final rootTasks =
+        domainTasks.where((t) => t.parentId == null).toList();
+
+    // Optimistic: remove all tasks in this category
+    final backup = List<Task>.from(domainTasks);
+    for (final t in domainTasks) {
+      store.removeTask(t.id);
+    }
+
+    // Clamp focused index
+    final newDomains = _getDomains();
+    setState(() {
+      if (_focusedIndex >= newDomains.length) {
+        _focusedIndex = math.max(0, newDomains.length - 1);
+      }
+    });
+
+    try {
+      HapticService.medium();
+      // Delete each root — backend cascades to children
+      for (final root in rootTasks) {
+        await apiService.deleteTask(root.id);
+      }
+
+      // Delete the category record
+      final cats = ref.read(categoriesProvider);
+      final catRecord = cats.where(
+        (c) => c.name.toLowerCase() == domain.name.toLowerCase(),
+      ).firstOrNull;
+      if (catRecord != null) {
+        await apiService.deleteCategory(catRecord.id);
+        ref.read(categoriesProvider.notifier).update(
+          (s) => s.where((c) => c.id != catRecord.id).toList(),
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted: ${domain.name}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Rollback
+      for (final t in backup) {
+        store.upsertTask(t);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete domain: $e')),
+        );
+      }
     }
   }
 
@@ -70,61 +389,184 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
       );
     }
 
-    // Get all domains (dark mode only)
-    final domains = DomainColors.getAllDomains(true);
+    // Derive domains from actual tasks
+    final domains = _getDomains();
+
+    if (domains.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const EmptyState(
+              message: 'No domains yet',
+              textColor: AppColors.darkText,
+              icon: Icons.folder_open,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextButton.icon(
+              onPressed: () => _showAddDomainSheet(0),
+              icon: const Icon(Icons.add, color: AppColors.darkText),
+              label: Text(
+                'Add Domain',
+                style:
+                    AppTypography.ctaLabelText(color: AppColors.darkText),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Clamp focused index if domains changed externally
+    if (_focusedIndex >= domains.length) {
+      _focusedIndex = math.max(0, domains.length - 1);
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Use actual available height from layout constraints
         final liquidFocus = LiquidFocusScrollController.fromAvailable(
           totalCards: domains.length,
           availableHeight: constraints.maxHeight,
         );
 
+        // Overscroll progress (0.0 to 1.0) for the add-domain zone
+        final overscrollProgress =
+            (_overscrollDistance / _overscrollThreshold).clamp(0.0, 1.0);
+        final showAddZone =
+            domains.length < 5 && _overscrollDistance > 0;
+
+        // Build domain cards
+        final cards = List.generate(domains.length, (index) {
+          final domain = domains[index];
+
+          final domainTasks = tasks
+              .where((task) =>
+                  task.category.toLowerCase() ==
+                  domain.name.toLowerCase())
+              .toList();
+
+          final distance = (index - _focusedIndex).abs();
+          final focusProgress =
+              distance == 0 ? 1.0 : (1.0 / (distance + 1));
+
+          final height = index == _focusedIndex
+              ? liquidFocus.focusedHeight
+              : liquidFocus.compressedHeight;
+
+          return SizedBox(
+            height: height,
+            child: GestureDetector(
+              onTap: () {
+                if (index != _focusedIndex) {
+                  HapticService.selection();
+                  setState(() {
+                    _focusedIndex = index;
+                  });
+                }
+              },
+              child: Dismissible(
+                key: Key('domain-${domain.name}'),
+                direction: DismissDirection.endToStart,
+                confirmDismiss: (_) async {
+                  await _deleteDomain(domain, domainTasks);
+                  return false;
+                },
+                background: Container(
+                  color: const Color(0xFFE84878),
+                  alignment: Alignment.centerRight,
+                  padding:
+                      const EdgeInsets.only(right: AppSpacing.lg),
+                  child: const Icon(
+                    Icons.delete_forever,
+                    color: Color(0xFF0D0B09),
+                    size: 32,
+                  ),
+                ),
+                child: DomainCard(
+                  domain: domain,
+                  tasks: domainTasks,
+                  isDark: true,
+                  focusProgress: focusProgress,
+                  height: height,
+                ),
+              ),
+            ),
+          );
+        });
+
         return SizedBox(
           width: double.infinity,
           height: double.infinity,
-          child: GestureDetector(
-            onVerticalDragStart: _onVerticalDragStart,
-            onVerticalDragUpdate: _onVerticalDragUpdate,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: List.generate(domains.length, (index) {
-                final domain = domains[index];
-
-                // Get tasks for this domain
-                final domainTasks = tasks
-                    .where((task) =>
-                        task.category.toLowerCase() == domain.name.toLowerCase())
-                    .toList();
-
-                // Calculate focus progress based on distance from focused index
-                final distance = (index - _focusedIndex).abs();
-                final focusProgress = distance == 0 ? 1.0 : (1.0 / (distance + 1));
-
-                // Get card height based on focus
-                final height = index == _focusedIndex
-                    ? liquidFocus.focusedHeight
-                    : liquidFocus.compressedHeight;
-
-                return GestureDetector(
-                  onTap: () {
-                    if (index != _focusedIndex) {
-                      HapticService.selection();
-                      setState(() {
-                        _focusedIndex = index;
-                      });
-                    }
-                  },
-                  child: DomainCard(
-                    domain: domain,
-                    tasks: domainTasks,
-                    isDark: true, // Dark mode only
-                    focusProgress: focusProgress,
-                    height: height,
+          // Listener doesn't participate in the gesture arena, so
+          // Dismissible's horizontal swipe is never blocked.
+          child: Listener(
+            onPointerDown: _onPointerDown,
+            onPointerMove: (e) =>
+                _onPointerMove(e, domains.length),
+            onPointerUp: (e) =>
+                _onPointerUp(e, domains.length),
+            child: ClipRect(
+              child: Stack(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: cards,
                   ),
-                );
-              }),
+                  // Add-domain zone — overlays at bottom, only during overscroll
+                  if (showAddZone)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: -56 + (56 * overscrollProgress),
+                      child: Opacity(
+                        opacity: overscrollProgress,
+                        child: Container(
+                          height: 56,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.cardMargin,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _overscrollLocked
+                                ? DomainColors.defaultPalette.primary
+                                    .withValues(alpha: 0.3)
+                                : DomainColors.defaultPalette.surface,
+                            border: Border.all(
+                              color: DomainColors
+                                  .defaultPalette.primary
+                                  .withValues(alpha: 0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_circle_outline,
+                                color: DomainColors
+                                    .defaultPalette.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                _overscrollLocked
+                                    ? 'Release to add'
+                                    : 'New Domain',
+                                style: AppTypography.ctaLabelText(
+                                  color: DomainColors
+                                      .defaultPalette.primary,
+                                ).copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );

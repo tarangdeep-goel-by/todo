@@ -1,19 +1,10 @@
 """Agent service for processing voice commands."""
-import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List
 from .gemini_service import GeminiService
 from .task_service import TaskService
 from models.schemas import AgentResponse
 from utils.date_parser import parse_flexible_date
-
-# Namespace UUID for deterministic root category IDs
-_ROOT_NS = uuid.UUID("12345678-1234-5678-1234-567812345678")
-
-
-def root_category_id(category: str) -> str:
-    """Generate a deterministic UUID for a root category name."""
-    return str(uuid.uuid5(_ROOT_NS, category.lower()))
 
 
 class AgentService:
@@ -520,27 +511,23 @@ class AgentService:
             if not title or not category:
                 return AgentResponse(success=False, message="Missing title or category", type="error")
 
-            # Create root category if needed, then create the task
-            root_id = root_category_id(category)
-            root_task = await task_service.get_task(root_id)
-            if not root_task:
-                await task_service.create_task(
-                    user_id=user_id,
-                    title=category.title(),
-                    category=category.lower(),
-                    parent_id=None,
-                    transcription=category.title(),
-                    ai_placement={"suggested_parent": None, "confidence": 1.0, "reasoning": "Root category"},
-                    task_id=root_id,
-                )
+            # Ensure category exists in categories table
+            cat_name = category.lower()
+            existing_cats = await task_service.get_categories(user_id)
+            if cat_name not in existing_cats:
+                try:
+                    await task_service.create_category(user_id, cat_name)
+                except ValueError as e:
+                    return AgentResponse(success=False, message=str(e), type="error")
 
+            # Create the task at top-level (parent_id=None)
             task = await task_service.create_task(
                 user_id=user_id,
                 title=title,
-                category=category.lower(),
-                parent_id=root_id,
+                category=cat_name,
+                parent_id=None,
                 transcription=title,
-                ai_placement={"suggested_parent": root_id, "confidence": 0.9, "reasoning": "User confirmed category creation"},
+                ai_placement={"suggested_parent": None, "confidence": 0.9, "reasoning": "User confirmed category creation"},
             )
             return AgentResponse(
                 success=True,

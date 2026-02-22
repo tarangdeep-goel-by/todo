@@ -1,7 +1,7 @@
 """Main FastAPI application."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import agent, tasks
+from routers import agent, tasks, categories
 from config import get_settings
 
 settings = get_settings()
@@ -26,6 +26,7 @@ app.add_middleware(
 # Include routers
 app.include_router(agent.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
+app.include_router(categories.router, prefix="/api")
 
 
 @app.get("/health")
