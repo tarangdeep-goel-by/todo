@@ -1,10 +1,13 @@
 """Configuration management using Pydantic settings."""
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = ConfigDict(case_sensitive=False)
 
     # Database
     database_url: str
@@ -15,10 +18,6 @@ class Settings(BaseSettings):
     # Application
     app_env: str = "development"
     debug: bool = True
-
-    class Config:
-        # No .env file - all config from Docker environment
-        case_sensitive = False
 
 
 @lru_cache()

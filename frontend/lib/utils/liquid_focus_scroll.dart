@@ -30,11 +30,10 @@ class LiquidFocusScrollController {
   /// Create from actual available height (no subtractions needed)
   LiquidFocusScrollController.fromAvailable({
     required this.totalCards,
-    required double availableHeight,
+    required this.availableHeight,
   })  : viewportHeight = availableHeight,
         topBarHeight = 0,
         ctaZoneHeight = 0 {
-    this.availableHeight = availableHeight;
     final heights = _calculateHeights(totalCards, availableHeight);
     focusedHeight = heights['focused']!;
     compressedHeight = heights['compressed']!;

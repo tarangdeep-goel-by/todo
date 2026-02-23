@@ -89,7 +89,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
       );
       store.upsertTask(updated);
 
-      if (context.mounted) {
+      if (mounted) {
         final message = newStatus == 'completed'
             ? 'Completed: ${task.title}'
             : 'Restored: ${task.title}';
@@ -103,7 +103,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
     } catch (e) {
       // Rollback
       store.upsertTask(task);
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update task: $e')),
         );
@@ -125,7 +125,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
         ),
       );
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Undo failed: $e')),
         );

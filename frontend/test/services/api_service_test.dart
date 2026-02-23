@@ -32,7 +32,14 @@ void main() {
     apiService = ApiService(dio: mockDio);
   });
 
-  Response<dynamic> _ok(dynamic data, {int statusCode = 200}) {
+  final categoryJson = {
+    'id': 'cat-1',
+    'name': 'work',
+    'position': 0,
+    'created_at': '2025-01-15T00:00:00.000',
+  };
+
+  Response<dynamic> ok(dynamic data, {int statusCode = 200}) {
     return Response(
       data: data,
       statusCode: statusCode,
@@ -43,7 +50,7 @@ void main() {
   group('getTasks', () {
     test('returns task list', () async {
       when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
-          .thenAnswer((_) async => _ok({
+          .thenAnswer((_) async => ok({
                 'tasks': [taskJson],
                 'total_count': 1,
                 'limit': 50,
@@ -59,7 +66,7 @@ void main() {
   group('getTasksByCategory', () {
     test('returns filtered response', () async {
       when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
-          .thenAnswer((_) async => _ok({
+          .thenAnswer((_) async => ok({
                 'tasks': [taskJson],
                 'total_count': 1,
                 'limit': 50,
@@ -74,7 +81,7 @@ void main() {
   group('processVoiceCommand', () {
     test('returns agent response', () async {
       when(() => mockDio.post('/agent/process', data: any(named: 'data')))
-          .thenAnswer((_) async => _ok({
+          .thenAnswer((_) async => ok({
                 'success': true,
                 'message': 'Created',
                 'type': 'confirmation',
@@ -88,7 +95,7 @@ void main() {
   group('resolveQuestion', () {
     test('success', () async {
       when(() => mockDio.post('/agent/resolve', data: any(named: 'data')))
-          .thenAnswer((_) async => _ok({
+          .thenAnswer((_) async => ok({
                 'success': true,
                 'message': 'Done',
                 'type': 'confirmation',
@@ -104,7 +111,7 @@ void main() {
 
     test('with data map', () async {
       when(() => mockDio.post('/agent/resolve', data: any(named: 'data')))
-          .thenAnswer((_) async => _ok({
+          .thenAnswer((_) async => ok({
                 'success': true,
                 'message': 'Moved',
                 'type': 'confirmation',
@@ -121,7 +128,7 @@ void main() {
 
     test('returns question type for chained', () async {
       when(() => mockDio.post('/agent/resolve', data: any(named: 'data')))
-          .thenAnswer((_) async => _ok({
+          .thenAnswer((_) async => ok({
                 'success': false,
                 'message': 'Which one?',
                 'type': 'question',
@@ -145,7 +152,7 @@ void main() {
   group('createTask', () {
     test('returns created task', () async {
       when(() => mockDio.post('/tasks', data: any(named: 'data')))
-          .thenAnswer((_) async => _ok(taskJson));
+          .thenAnswer((_) async => ok(taskJson));
       final req = CreateTaskRequest(
         userId: 'u1',
         title: 'Task',
@@ -161,7 +168,7 @@ void main() {
     test('returns updated task', () async {
       when(() => mockDio.patch('/tasks/t1', data: any(named: 'data')))
           .thenAnswer((_) async =>
-              _ok(Map<String, dynamic>.from(taskJson)..['title'] = 'Updated'));
+              ok(Map<String, dynamic>.from(taskJson)..['title'] = 'Updated'));
       final req = UpdateTaskRequest(title: 'Updated');
       final task = await apiService.updateTask('t1', req);
       expect(task.title, 'Updated');
@@ -172,11 +179,87 @@ void main() {
     test('completes without error', () async {
       when(() => mockDio.delete('/tasks/t1',
               queryParameters: any(named: 'queryParameters')))
-          .thenAnswer((_) async => _ok({'success': true}));
+          .thenAnswer((_) async => ok({'success': true}));
       await expectLater(
         apiService.deleteTask('t1', userId: 'u1'),
         completes,
       );
+    });
+  });
+
+  group('getCategories', () {
+    test('returns category list', () async {
+      when(() => mockDio.get('/categories', queryParameters: any(named: 'queryParameters')))
+          .thenAnswer((_) async => ok([categoryJson]));
+      final cats = await apiService.getCategories('u1');
+      expect(cats.length, 1);
+      expect(cats.first.name, 'work');
+    });
+
+    test('throws on error', () async {
+      when(() => mockDio.get('/categories', queryParameters: any(named: 'queryParameters')))
+          .thenThrow(DioException(
+        response: Response(
+          data: {'detail': 'Server error'},
+          statusCode: 500,
+          requestOptions: RequestOptions(path: ''),
+        ),
+        requestOptions: RequestOptions(path: ''),
+      ));
+      expect(() => apiService.getCategories('u1'), throwsA(equals('Server error')));
+    });
+  });
+
+  group('createCategory', () {
+    test('returns created category', () async {
+      when(() => mockDio.post('/categories', data: any(named: 'data')))
+          .thenAnswer((_) async => ok(categoryJson));
+      final cat = await apiService.createCategory('u1', 'work');
+      expect(cat.name, 'work');
+    });
+  });
+
+  group('deleteCategory', () {
+    test('completes without error', () async {
+      when(() => mockDio.delete('/categories/cat-1',
+              queryParameters: any(named: 'queryParameters')))
+          .thenAnswer((_) async => ok({'success': true}));
+      await expectLater(
+        apiService.deleteCategory('cat-1', userId: 'u1'),
+        completes,
+      );
+    });
+  });
+
+  group('getTasksAdvanced', () {
+    test('passes filter params', () async {
+      when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
+          .thenAnswer((_) async => ok({
+                'tasks': [taskJson],
+                'total_count': 1,
+                'limit': 50,
+                'offset': 0,
+                'has_more': false,
+              }));
+      final resp = await apiService.getTasksAdvanced(
+        userId: 'u1',
+        category: 'work',
+        priority: 'high',
+        status: 'active',
+        sort: 'priority:desc',
+        limit: 10,
+        offset: 5,
+      );
+      expect(resp.tasks.length, 1);
+
+      // Verify query params were passed
+      final captured = verify(
+        () => mockDio.get('/tasks', queryParameters: captureAny(named: 'queryParameters')),
+      ).captured.single as Map<String, dynamic>;
+      expect(captured['category'], 'work');
+      expect(captured['priority'], 'high');
+      expect(captured['limit'], 10);
+      expect(captured['offset'], 5);
     });
   });
 

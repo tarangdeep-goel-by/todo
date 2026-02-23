@@ -70,6 +70,36 @@ class TestUpdateTask:
         resp = await test_client.patch("/tasks/ffffffff-ffff-ffff-ffff-ffffffffffff", json={"title": "x"})
         assert resp.status_code == 404
 
+    async def test_update_priority(self, test_client):
+        create_resp = await test_client.post("/tasks", json={
+            "user_id": "u1", "title": "T", "category": "work",
+            "transcription": "t",
+        })
+        task_id = create_resp.json()["id"]
+        resp = await test_client.patch(f"/tasks/{task_id}", json={"priority": "high"})
+        assert resp.status_code == 200
+        assert resp.json()["priority"] == "high"
+
+    async def test_update_tags(self, test_client):
+        create_resp = await test_client.post("/tasks", json={
+            "user_id": "u1", "title": "T", "category": "work",
+            "transcription": "t",
+        })
+        task_id = create_resp.json()["id"]
+        resp = await test_client.patch(f"/tasks/{task_id}", json={"tags": ["urgent", "review"]})
+        assert resp.status_code == 200
+        assert resp.json()["tags"] == ["urgent", "review"]
+
+    async def test_update_estimated_hours(self, test_client):
+        create_resp = await test_client.post("/tasks", json={
+            "user_id": "u1", "title": "T", "category": "work",
+            "transcription": "t",
+        })
+        task_id = create_resp.json()["id"]
+        resp = await test_client.patch(f"/tasks/{task_id}", json={"estimated_hours": 2.5})
+        assert resp.status_code == 200
+        assert resp.json()["estimated_hours"] == 2.5
+
 
 class TestCompleteTask:
     async def test_complete(self, test_client):
@@ -79,6 +109,20 @@ class TestCompleteTask:
         })
         task_id = create_resp.json()["id"]
         resp = await test_client.put(f"/tasks/{task_id}/complete")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "completed"
+
+    async def test_complete_with_active_children(self, test_client):
+        parent = await test_client.post("/tasks", json={
+            "user_id": "u1", "title": "Parent", "category": "work",
+            "transcription": "parent",
+        })
+        parent_id = parent.json()["id"]
+        await test_client.post("/tasks", json={
+            "user_id": "u1", "title": "Child", "category": "work",
+            "transcription": "child", "parent_id": parent_id,
+        })
+        resp = await test_client.put(f"/tasks/{parent_id}/complete")
         assert resp.status_code == 200
         assert resp.json()["status"] == "completed"
 
@@ -93,3 +137,12 @@ class TestDeleteTask:
         resp = await test_client.delete(f"/tasks/{task_id}", params={"user_id": "u1"})
         assert resp.status_code == 200
         assert resp.json()["success"] is True
+
+    async def test_delete_wrong_user(self, test_client):
+        create_resp = await test_client.post("/tasks", json={
+            "user_id": "u1", "title": "Mine", "category": "work",
+            "transcription": "mine",
+        })
+        task_id = create_resp.json()["id"]
+        resp = await test_client.delete(f"/tasks/{task_id}", params={"user_id": "hacker"})
+        assert resp.status_code == 403

@@ -120,8 +120,8 @@ class ApiService {
       final response = await _dio.post('/agent/resolve', data: {
         'user_id': userId,
         'action': action,
-        if (selectedTaskId != null) 'selected_task_id': selectedTaskId,
-        if (data != null) 'data': data,
+        'selected_task_id': ?selectedTaskId,
+        'data': ?data,
       });
       return AgentResponse.fromJson(response.data);
     } on DioException catch (e) {
