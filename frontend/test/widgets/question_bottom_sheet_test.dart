@@ -6,7 +6,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:frontend/widgets/question_bottom_sheet.dart';
 import 'package:frontend/models/api_response.dart';
 import 'package:frontend/providers/api_provider.dart';
-import 'package:frontend/services/api_service.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
@@ -16,7 +15,7 @@ void main() {
     mockApi = MockApiService();
   });
 
-  Widget _buildSheet(AgentResponse response) {
+  Widget buildSheet(AgentResponse response) {
     return ProviderScope(
       overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
@@ -55,7 +54,7 @@ void main() {
           'action': 'complete',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -75,7 +74,7 @@ void main() {
           'action': 'complete',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -105,7 +104,7 @@ void main() {
           'action': 'complete',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -141,7 +140,7 @@ void main() {
           'action': 'delete',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -169,7 +168,7 @@ void main() {
           'suggested_category': 'hobbies',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -199,7 +198,7 @@ void main() {
           'suggested_category': 'hobbies',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -227,7 +226,7 @@ void main() {
           'suggested_category': 'hobbies',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 
@@ -268,7 +267,7 @@ void main() {
           'action': 'move',
         },
       );
-      await tester.pumpWidget(_buildSheet(response));
+      await tester.pumpWidget(buildSheet(response));
       await tester.tap(find.text('Show'));
       await tester.pumpAndSettle();
 

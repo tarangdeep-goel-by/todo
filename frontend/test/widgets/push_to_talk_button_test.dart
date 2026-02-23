@@ -3,9 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:frontend/widgets/push_to_talk_button.dart';
-import 'package:frontend/providers/recording_provider.dart';
 import 'package:frontend/providers/api_provider.dart';
-import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/speech_service.dart';
 import '../helpers/test_helpers.dart';
 
@@ -21,7 +19,7 @@ void main() {
     when(() => mockSpeech.dispose()).thenReturn(null);
   });
 
-  Widget _buildButton() {
+  Widget buildButton() {
     return ProviderScope(
       overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
@@ -52,34 +50,34 @@ void main() {
 
   group('Idle state', () {
     testWidgets('shows "Hold to speak" text', (tester) async {
-      await pumpIgnoringOverflow(tester, _buildButton());
+      await pumpIgnoringOverflow(tester, buildButton());
       expect(find.text('Hold to speak'), findsOneWidget);
     });
 
     testWidgets('contains AnimatedContainer', (tester) async {
-      await pumpIgnoringOverflow(tester, _buildButton());
+      await pumpIgnoringOverflow(tester, buildButton());
       expect(find.byType(AnimatedContainer), findsOneWidget);
     });
   });
 
   group('Widget structure', () {
     testWidgets('renders GestureDetector for long press', (tester) async {
-      await pumpIgnoringOverflow(tester, _buildButton());
+      await pumpIgnoringOverflow(tester, buildButton());
       expect(find.byType(GestureDetector), findsWidgets);
     });
 
     testWidgets('renders PushToTalkButton', (tester) async {
-      await pumpIgnoringOverflow(tester, _buildButton());
+      await pumpIgnoringOverflow(tester, buildButton());
       expect(find.byType(PushToTalkButton), findsOneWidget);
     });
 
     testWidgets('has Row in idle state', (tester) async {
-      await pumpIgnoringOverflow(tester, _buildButton());
+      await pumpIgnoringOverflow(tester, buildButton());
       expect(find.byType(Row), findsWidgets);
     });
 
     testWidgets('has Center widget', (tester) async {
-      await pumpIgnoringOverflow(tester, _buildButton());
+      await pumpIgnoringOverflow(tester, buildButton());
       expect(find.byType(Center), findsWidgets);
     });
   });

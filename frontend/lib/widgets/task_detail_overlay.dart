@@ -704,7 +704,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                       itemCount: l1Tasks.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 4),
+                      separatorBuilder: (_, _) => const SizedBox(height: 4),
                       itemBuilder: (_, i) => _buildSubtaskRow(domain, l1Tasks[i]),
                     ),
             ),

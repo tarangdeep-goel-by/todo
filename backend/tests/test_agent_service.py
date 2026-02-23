@@ -123,6 +123,61 @@ class TestHandleEdit:
         assert result.success is True
 
 
+class TestHandleQuery:
+    async def test_query_returns_tasks(self, agent_service, mock_gemini, task_service, db_session):
+        await make_task_tree(task_service)
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "QUERY", filters={"category": "work", "status": "active"},
+        ))
+        result = await agent_service.process_voice_command("show work tasks", "test-user", db_session)
+        assert result.success is True
+        assert result.data["count"] > 0
+
+    async def test_query_no_tasks(self, agent_service, mock_gemini, task_service, db_session):
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "QUERY", filters={"category": "health", "status": "active"},
+        ))
+        result = await agent_service.process_voice_command("show health tasks", "test-user", db_session)
+        assert result.success is True
+        assert result.data["count"] == 0
+
+
+class TestHandleEditAdvanced:
+    async def test_edit_due_date(self, agent_service, mock_gemini, task_service, db_session):
+        tree = await make_task_tree(task_service)
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "EDIT", taskQuery="Groceries", changes={"dueDate": "tomorrow"},
+        ))
+        result = await agent_service.process_voice_command("edit groceries due tomorrow", "test-user", db_session)
+        assert result.success is True
+        assert "Updated" in result.message
+
+    async def test_edit_multiple_matches(self, agent_service, mock_gemini, task_service, db_session):
+        await task_service.create_task(
+            user_id="test-user", title="Meeting A", category="work", transcription="meeting a",
+        )
+        await task_service.create_task(
+            user_id="test-user", title="Meeting B", category="work", transcription="meeting b",
+        )
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "EDIT", taskQuery="Meeting", changes={"title": "Updated Meeting"},
+        ))
+        result = await agent_service.process_voice_command("edit meeting", "test-user", db_session)
+        assert result.type == "question"
+        assert len(result.data["matches"]) == 2
+
+
+class TestHandleDeleteNoMatch:
+    async def test_delete_no_match(self, agent_service, mock_gemini, task_service, db_session):
+        await make_task_tree(task_service)
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "DELETE", taskQuery="zzz_nonexistent_zzz",
+        ))
+        result = await agent_service.process_voice_command("delete zzz", "test-user", db_session)
+        assert result.success is False
+        assert "No tasks found" in result.message
+
+
 class TestHandleMove:
     async def test_move_to_specific_parent(self, agent_service, mock_gemini, task_service, db_session):
         tree = await make_task_tree(task_service)

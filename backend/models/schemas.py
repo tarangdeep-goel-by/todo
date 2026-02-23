@@ -1,5 +1,5 @@
 """Pydantic schemas for request/response validation."""
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 from enum import Enum
@@ -90,8 +90,7 @@ class TaskResponse(BaseModel):
     tags: Optional[List[str]] = None
     estimated_hours: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode='after')
     def compute_overdue(self) -> 'TaskResponse':
@@ -218,8 +217,7 @@ class CategoryResponse(BaseModel):
     position: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateCategoryRequest(BaseModel):
