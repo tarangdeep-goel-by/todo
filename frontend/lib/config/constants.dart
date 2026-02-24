@@ -25,7 +25,7 @@ class AppConstants {
   // API base URL
   // For Android device testing, use your machine's local IP
   // For Android emulator, use 10.0.2.2 instead of localhost
-  static const String apiBaseUrl = 'https://nav-notices-vertex-space.trycloudflare.com/api';
+  static const String apiBaseUrl = 'http://192.168.0.111:8001/api';
 
   // Audio recording settings
   static const String audioFolderName = 'audio_recordings';

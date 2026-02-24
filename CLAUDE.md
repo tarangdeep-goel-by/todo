@@ -25,12 +25,12 @@ cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
 ## Commands
 
 ```bash
-# Backend tests (100+, inside Docker)
+# Backend tests (143, inside Docker)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 docker exec todo-backend python -m pytest tests/test_agent_service.py -v                     # Single file
 docker exec todo-backend python -m pytest tests/test_agent_service.py::TestHandleAdd::test_add_task_basic -v  # Single test
 
-# Frontend tests (68+)
+# Frontend tests (120)
 cd frontend && flutter test                                              # All
 cd frontend && flutter test test/providers/task_store_provider_test.dart  # Single file
 cd frontend && flutter test --name "filters tasks by category"           # By name

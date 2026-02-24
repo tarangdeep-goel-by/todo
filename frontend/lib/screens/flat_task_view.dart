@@ -5,6 +5,7 @@ import '../providers/task_filter_provider.dart';
 import '../config/theme.dart';
 import '../widgets/task_item.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/loading_state.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
@@ -56,11 +57,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
     // Full spinner only on initial load
     if (storeState.isLoading && allFiltered.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.darkText,
-        ),
-      );
+      return const LoadingState();
     }
 
     if (storeState.error != null && allFiltered.isEmpty) {
@@ -68,6 +65,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         message: 'Unable to load tasks\n${storeState.error}',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
+        onRetry: () => ref.read(taskStoreProvider.notifier).fetchAll(),
       );
     }
 
@@ -82,27 +80,34 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     final displayTasks = allFiltered.take(_displayCount).toList();
     final hasMore = _displayCount < allFiltered.length;
 
-    return ListView.builder(
-      controller: _scrollController,
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 120),
-      itemCount: displayTasks.length + (hasMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == displayTasks.length) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(
-                color: AppColors.darkText,
+    return RefreshIndicator(
+      color: AppColors.darkText,
+      backgroundColor: AppColors.darkBg,
+      onRefresh: () => ref.read(taskStoreProvider.notifier).fetchAll(),
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.only(bottom: 120),
+        itemCount: displayTasks.length + (hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == displayTasks.length) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(
+                  color: AppColors.darkText,
+                ),
               ),
-            ),
+            );
+          }
+          return TaskItem(
+            task: displayTasks[index],
+            isDark: true,
           );
-        }
-        return TaskItem(
-          task: displayTasks[index],
-          isDark: true,
-        );
-      },
+        },
+      ),
     );
   }
 }

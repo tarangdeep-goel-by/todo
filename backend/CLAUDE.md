@@ -16,7 +16,7 @@ docker-compose down                # Stop
 
 ### Testing (always inside Docker — never create local venv)
 ```bash
-# All tests (100 tests, uses real PostgreSQL `todo_test` DB)
+# All tests (143 tests, uses real PostgreSQL `todo_test` DB)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 
 # Single test file
@@ -63,11 +63,12 @@ Client → FastAPI Router → Service → SQLAlchemy AsyncSession → PostgreSQL
 - **`utils/date_parser.py`** — Flexible date parsing ("today", "next monday", ISO strings) → timezone-aware UTC.
 
 ### Database
-- **Single table**: `tasks` with self-referencing `parent_id` FK (SET NULL on delete)
+- **Two tables**: `tasks` and `categories`
+- **`tasks`**: Self-referencing `parent_id` FK (SET NULL on delete), `category_id` FK to `categories` (SET NULL on delete)
+- **`categories`**: Persistent domain definitions (id, user_id, name, position). Unique constraint on `(user_id, name)`.
 - **Key columns**: UUID pk, JSONB `ai_placement_json`, ARRAY `tags`, computed `overdue` status (in Pydantic, not DB)
 - **Statuses**: `active` and `completed` only (no `archived`)
-- **Indexes**: `(user_id, category)`, `(user_id, status)`, `parent_id`, `created_at`
-- **4 migrations** in `migrations/versions/`
+- **Indexes**: `(user_id, category)`, `(user_id, category_id)`, `(user_id, status)`, `parent_id`, `created_at`
 
 ### Testing Setup
 - Tests use real PostgreSQL (`todo_test` DB), not SQLite — UUID and JSONB types require it
