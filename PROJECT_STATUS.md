@@ -275,27 +275,26 @@
 
 ## Next Steps
 
-### Immediate (If Needed)
-1. Test on iOS device
-2. Fix Hero animation warning
-3. Add Gemini API key to environment variables (not hardcoded)
-4. Create GitHub repository
-5. Set up CI/CD (optional)
+### Next Up (Approved from Market Research)
+1. **Task Decomposition via Voice** — new BREAKDOWN intent, Gemini suggests subtasks, user picks from list + adds custom (user-in-the-loop, no junk)
+2. **Smart Due Date Warnings** — "due soon" computed status extending overdue pattern, visible on both node + flat views
+3. **Calendar View Tab** — read-only timeline of tasks by due date, new tab alongside Node/Flat
 
-### Short Term (1-2 weeks)
-1. Gather user feedback
-2. Add task editing/deletion
-3. Implement search functionality
-4. Add due dates with notifications
-5. Optimize app size and performance
+### Backlog (Come Back To)
+- Recurring tasks / templates
+- Start dates ("don't show until")
+- Improve QUERY intent (40% accuracy in eval)
+- Habit tracking convergence
+- Calendar integration (Google Calendar sync)
+- Task extraction from email/Slack/meetings
+- Location-based reminders
+- Task dependencies
 
-### Long Term (1-3 months)
+### Long Term
 1. Multi-user authentication (Supabase)
 2. Cloud sync
-3. iOS App Store submission
-4. Android Play Store submission
-5. Analytics and crash reporting
-6. Advanced AI features (Gemini Live API)
+3. iOS App Store / Android Play Store submission
+4. AI auto-scheduling (Motion/Reclaim style)
 
 ---
 
@@ -309,6 +308,20 @@
 ---
 
 ## Changelog
+
+### 2026-02-25 - Intent Detection Eval + Market Research
+- ✅ Built eval harness for Gemini detect_intent() prompt (65 cases, 167-task static tree)
+  - Check DSL (exact/contains/gte/lte/null), multi-intent matching, async runner
+  - Console + JSON reporting, CLI filtering (--filter-id, --filter-category, --no-llm)
+  - **Baseline: 58/65 (89.2%)** — DELETE 100%, EDIT 100%, MOVE 100%, COMPLETE 90%, ADD 89%, QUERY 40%
+- ✅ Multi-intent pipeline: agent_service executes array of intents sequentially, aggregates results
+- ✅ EDIT vs MOVE distinction in Gemini prompt (category change = EDIT, parent change = MOVE)
+- ✅ Improved fuzzy matching (partial_ratio + stripped matching, near-exact filtering, threshold 60)
+- ✅ Dual-mode input pill (voice tap + keyboard text entry)
+- ✅ Competitive market research (10 apps + AI/voice trends)
+  - Key finding: Todoist Ramble (Jan 2026) validates voice-first with 76K beta users, same Gemini model
+  - Our advantage: 6 intent types vs Ramble's ADD-only, disambiguation flow, unlimited tree depth
+  - Identified 3 next features: task decomposition, due date warnings, calendar view
 
 ### 2026-02-25 - Completion Cascade & Ancestor Activation
 - ✅ Backend `_activate_ancestor_chain()` enforces invariant: completed task never has active descendants

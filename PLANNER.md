@@ -6,10 +6,24 @@
 
 ## Backlog
 
+### Features (Approved — Next Up)
+- **[FEATURE-009] Task Decomposition via Voice** — BREAKDOWN intent, Gemini generates subtask suggestions, user selects from list + can add custom, no junk tasks - P1
+- **[FEATURE-010] Smart Due Date Warnings** — "due soon" computed status (24/48hr), extend overdue patterns, show on node + flat views - P1
+- **[FEATURE-011] Calendar View Tab** — read-only timeline of tasks by due date, new tab alongside Node/Flat - P1
+
+### Features (From Market Research — Come Back To)
+- Recurring tasks / recurring task templates (e.g. sprint retro checklist) - P2
+- Start dates ("don't show until Monday") alongside due dates - P2
+- Improve QUERY intent accuracy (eval baseline: 2/5 = 40%) - P2
 - View transition animations (fracture/cluster effect between Node/Flat) - P2
 - Accessibility improvements (screen readers, reduced motion) - P2
+- Habit tracking (potential 6th domain or built into Health) - P3
+- Calendar integration (Google Calendar sync, then auto-scheduling a la Motion/Reclaim) - P3
+- Task extraction from external sources (email, Slack, meeting notes) - P3
+- Location-based reminders - P3
+- Task dependencies (B blocked by A) - P3
+- AI auto-prioritization based on deadlines, effort, patterns - P3
 - iOS testing and optimization - P3
-- Due date notifications - P3
 - Multi-user authentication - P3
 
 ---
