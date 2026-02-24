@@ -49,6 +49,7 @@ Detect the user's intent. Available intents:
 - DELETE: Remove/archive task(s) (keywords: delete, remove, archive, cancel)
 - EDIT: Modify existing task properties — title, priority, due date, OR category (keywords: edit, change, update, rename, reschedule, "is a [category] task", "belongs in [category]", "should be in [category]")
 - MOVE: Move task to a different PARENT TASK within the tree (keywords: move under, put under, relocate under). MOVE is ONLY for changing parent-child relationships, NOT for changing categories.
+- BREAKDOWN: User wants to break a task into subtasks (keywords: break down, split, decompose, break into steps, break into subtasks)
 - UNKNOWN: Unclear intent
 
 CRITICAL DISTINCTION — EDIT vs MOVE:
@@ -130,6 +131,9 @@ Each element in the array uses this format:
     - If user specifies a parent task, set targetParentQuery with search terms
     - Use targetParentId=null to indicate top-level placement (no parent)
 
+    // For BREAKDOWN:
+    "taskQuery": "search terms to find the task to break down"
+
     // For QUERY:
     "query": "search criteria",
     "filters": {{
@@ -193,6 +197,50 @@ More examples:
                 "confidence": 0.0,
                 "parameters": {}
             }]
+
+    async def generate_subtasks(self, task_title: str, task_description: str | None = None, context: str = "") -> List[str]:
+        """Generate 4-6 actionable subtask suggestions for a given task.
+
+        Args:
+            task_title: Title of the task to break down
+            task_description: Optional description for more context
+            context: Task tree context for awareness
+
+        Returns:
+            List of subtask title strings
+        """
+        desc_line = f"\nDescription: {task_description}" if task_description else ""
+        prompt = f"""Task to break down: "{task_title}"{desc_line}
+
+Current task tree context:
+{context}
+
+Generate 4-6 actionable subtasks for the task above. Each subtask should be:
+- Specific and actionable (starts with a verb or clear action)
+- Concise (2-6 words)
+- Independent enough to track separately
+- Together they should cover the full scope of the parent task
+
+Respond ONLY with a valid JSON array of strings. Example:
+["Research options", "Create outline", "Draft first version", "Review and revise", "Submit final"]
+"""
+        try:
+            response = self.model.generate_content(prompt)
+            if not response.text:
+                raise ValueError("Empty response from Gemini")
+
+            json_text = self._extract_json(response.text)
+            result = json.loads(json_text)
+
+            if not isinstance(result, list) or not all(isinstance(s, str) for s in result):
+                raise ValueError("Expected JSON array of strings")
+
+            print(f"[Gemini] generated {len(result)} subtask suggestions for '{task_title}'")
+            return result
+
+        except Exception as e:
+            print(f"[Gemini] subtask generation FAILED: {e}")
+            return []
 
     def _extract_json(self, text: str) -> str:
         """Extract JSON from response, handling markdown code blocks."""
