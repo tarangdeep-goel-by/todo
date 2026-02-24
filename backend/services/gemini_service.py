@@ -1,6 +1,6 @@
 """Gemini AI service for transcription and intent detection."""
 import google.generativeai as genai
-from typing import Dict, Any
+from typing import Dict, Any, List, Union
 import json
 import re
 
@@ -13,70 +13,50 @@ class GeminiService:
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
-    async def refine_transcription(self, raw_text: str) -> str:
-        """
-        Clean up transcription errors.
-
-        Args:
-            raw_text: Raw transcribed text
-
-        Returns:
-            Cleaned transcription text
-        """
-        prompt = f"""You are a text cleanup assistant. Clean up and improve the following speech-to-text transcription.
-
-Rules:
-1. Fix obvious transcription errors
-2. Add proper capitalization
-3. Remove filler words (um, uh, like)
-4. Keep the meaning exactly the same
-5. Make it concise and clear
-6. Return ONLY the cleaned text, no explanations
-
-Raw transcription: "{raw_text}"
-
-Cleaned text:"""
-
-        try:
-            response = self.model.generate_content(prompt)
-            refined = response.text.strip()
-            print(f"[Gemini] refine: '{raw_text}' -> '{refined}'")
-            return refined
-        except Exception as e:
-            print(f"[Gemini] refine FAILED: {e} | fallback to raw: '{raw_text}'")
-            return raw_text  # Fallback to original
-
     async def detect_intent(
         self,
         transcription: str,
         task_tree_context: str
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
-        Detect user intent and extract parameters.
+        Detect user intent(s) and extract parameters from a voice/text command.
+
+        Handles transcription cleanup internally — no separate refine step needed.
+        Returns a list of intents (single-element for simple commands, multi-element
+        for compound commands like "add X and Y under Z").
 
         Args:
-            transcription: User's voice command (cleaned)
+            transcription: Raw user command (voice transcription or typed text)
             task_tree_context: String representation of task tree
 
         Returns:
-            {
-                "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|UNKNOWN",
-                "confidence": 0.0-1.0,
-                "parameters": {...}
-            }
+            List of intent dicts, each with intent, confidence, parameters.
         """
         prompt = f"""Current task tree:
 {task_tree_context}
 
 User said: "{transcription}"
 
+IMPORTANT: The input may be a raw voice transcription with filler words (um, uh, like),
+minor errors, or odd spacing. Mentally clean it up before analyzing, but preserve all
+task names, proper nouns, and multi-word phrases EXACTLY as the user said them.
+Do NOT join separate words into one (e.g. "safe drop" must stay "safe drop", not "SafeDrop").
+Do NOT split a single command into multiple sentences.
+
 Detect the user's intent. Available intents:
 - ADD: Create new task (keywords: add, create, new, remember, note)
 - COMPLETE: Mark task(s) as done (keywords: complete, completed, done, finish, finished, mark). IMPORTANT: "completed [task name]" or "finished [task name]" means the user wants to COMPLETE that task
 - DELETE: Remove/archive task(s) (keywords: delete, remove, archive, cancel)
-- EDIT: Modify existing task properties (keywords: edit, change, update, rename, reschedule)
-- MOVE: Move task to different parent (keywords: move, relocate, transfer, put under)
+- EDIT: Modify existing task properties — title, priority, due date, OR category (keywords: edit, change, update, rename, reschedule, "is a [category] task", "belongs in [category]", "should be in [category]")
+- MOVE: Move task to a different PARENT TASK within the tree (keywords: move under, put under, relocate under). MOVE is ONLY for changing parent-child relationships, NOT for changing categories.
 - UNKNOWN: Unclear intent
+
+CRITICAL DISTINCTION — EDIT vs MOVE:
+- Changing a task's CATEGORY (work, personal, health, etc.) = EDIT with changes.category
+  Examples: "X is a work task", "X belongs in personal", "change X to work category"
+- Changing a task's PARENT (putting it under another task) = MOVE
+  Examples: "move X under Y", "put X under project Alpha"
+- If user says "[task] is a [category] task" → this is EDIT (category change), NOT MOVE
 
 For ADD tasks:
 - Determine category based on task nature
@@ -99,7 +79,16 @@ When user creates new category:
 - "Create [CategoryName] category" → Just acknowledge, wait for actual task
 - "Yes" or "Create it" after previous suggestion → Need explicit category mention to proceed
 
-Respond ONLY with valid JSON in this exact format:
+MULTI-TASK COMMANDS:
+If the user's command contains MULTIPLE independent actions, return a JSON ARRAY with one
+object per action. Each object has its own intent, confidence, and parameters.
+- "add X and Y under Z" → two ADD objects, both with suggestedParent pointing to Z
+- "complete A and delete B" → one COMPLETE + one DELETE object
+- "add X, Y, and Z to work" → three ADD objects
+
+For single-action commands, still return a JSON array with ONE element.
+
+Each element in the array uses this format:
 {{
   "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|UNKNOWN",
   "confidence": 0.95,
@@ -120,15 +109,16 @@ Respond ONLY with valid JSON in this exact format:
     "taskQuery": "search terms to find the task",
     "matchedTasks": ["task-id-1", "task-id-2"]
 
-    // For EDIT:
-    "taskQuery": "search terms to find the task",
+    // For EDIT (includes category changes, priority changes, due date changes, title changes):
+    "taskQuery": "search terms to find the task — use the task name as the user said it",
     "changes": {{
       "title": "new title if mentioned",
       "dueDate": "ISO date if mentioned",
+      "priority": "high|medium|low if mentioned",
       "category": "work or personal if mentioned"
     }}
 
-    // For MOVE:
+    // For MOVE (parent task changes ONLY — NOT category changes):
     "taskQuery": "search terms to find the task to move",
     "targetParentQuery": "search terms to find the new parent",
     "targetParentId": "task-id or null",
@@ -149,28 +139,31 @@ Respond ONLY with valid JSON in this exact format:
   }}
 }}
 
-Examples:
-- "Add groceries to shopping list" → ADD with title="Groceries", description=null, category="personal"
-- "Add urgent backend API task due tomorrow that should take 3 hours" → ADD with title="Backend API", description="Urgent task to complete the backend API implementation. Estimated 3 hours.", priority="high", dueDate="tomorrow", estimatedHours=3
-- "I need to call the dentist to reschedule my appointment for next week because the current one conflicts with my meeting" → ADD with title="Reschedule dentist", description="Call the dentist to reschedule. Current appointment conflicts with a meeting. Move to next week.", dueDate="next week"
-- "Add task due next monday" → ADD with dueDate="next monday"
-- "Complete the backend API task" → COMPLETE with taskQuery="backend API"
-- "Completed easy runs this week" → COMPLETE with taskQuery="easy runs this week"
-- "Finished the design review" → COMPLETE with taskQuery="design review"
-- "Delete the meeting prep task" → DELETE with taskQuery="meeting prep"
-- "Change doctor appointment to tomorrow" → EDIT with taskQuery="doctor appointment", changes.dueDate="tomorrow"
-- "Move groceries task under shopping list" → MOVE with taskQuery="groceries", targetParentQuery="shopping list"
-- "Move grocery shopping to the main level" → MOVE with taskQuery="grocery shopping", targetParentId=null, targetParentQuery=null
-- "Move task to root" → MOVE with targetParentId=null, targetParentQuery=null
-- "Move backend API to Project Alpha" → MOVE with taskQuery="backend API", targetParentQuery="Project Alpha"
-- "Show my work tasks" → QUERY with filters.category="work"
+Respond ONLY with a valid JSON ARRAY. Examples:
 
-NEW CATEGORY EXAMPLES:
-- "Add practice violin" → ADD with needsNewBranch=true, suggestedBranchName="Hobbies", title="Practice violin"
-- "Add schedule dentist appointment" → ADD with needsNewBranch=true, suggestedBranchName="Health", title="Schedule dentist appointment"
-- "Add learn Spanish course" → ADD with needsNewBranch=true, suggestedBranchName="Learning", title="Learn Spanish course"
-- "Add practice violin to Hobbies" → ADD with category="Hobbies", title="Practice violin", needsNewBranch=false (user explicitly creating category)
-- "Add task to Music category" → ADD with category="Music", needsNewBranch=false (user explicitly specifying new category)
+Single command (array of 1):
+[{{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Groceries", "category": "personal", "suggestedParent": null, "reasoning": "Personal errand", "needsNewBranch": false}}}}]
+
+Multi-task command (array of N):
+- "add tech spec and program plan under safe drop" →
+[
+  {{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Tech spec", "category": "work", "suggestedParent": "<safe-drop-task-id>", "reasoning": "Sub-task of safe drop"}}}},
+  {{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Program plan", "category": "work", "suggestedParent": "<safe-drop-task-id>", "reasoning": "Sub-task of safe drop"}}}}
+]
+
+- "complete grocery shopping and add meal prep" →
+[
+  {{"intent": "COMPLETE", "confidence": 0.95, "parameters": {{"taskQuery": "grocery shopping"}}}},
+  {{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Meal prep", "category": "personal", "suggestedParent": null, "reasoning": "Personal task"}}}}
+]
+
+More examples:
+- "create a new task safe drop" → [{{"intent": "ADD", ...}}]
+- "Complete the backend API task" → [{{"intent": "COMPLETE", "confidence": 0.95, "parameters": {{"taskQuery": "backend API"}}}}]
+- "Completed easy runs this week" → [{{"intent": "COMPLETE", ...}}]
+- "safe drop is a work task" → [{{"intent": "EDIT", "confidence": 0.95, "parameters": {{"taskQuery": "safe drop", "changes": {{"category": "work"}}}}}}]
+- "Move groceries under shopping list" → [{{"intent": "MOVE", ...}}]
+- "add X, Y, and Z under project Alpha" → 3 ADD objects in the array, all with suggestedParent=Alpha's ID
 """
 
         try:
@@ -182,17 +175,24 @@ NEW CATEGORY EXAMPLES:
             # Extract JSON from response (handle markdown code blocks)
             json_text = self._extract_json(response.text)
             result = json.loads(json_text)
-            print(f"[Gemini] intent: {result.get('intent')} | confidence: {result.get('confidence')} | params: {result.get('parameters')}")
+
+            # Normalize: always return a list
+            if isinstance(result, dict):
+                result = [result]
+
+            for i, intent in enumerate(result):
+                print(f"[Gemini] intent[{i}]: {intent.get('intent')} | confidence: {intent.get('confidence')} | params: {intent.get('parameters')}")
+
             return result
 
         except Exception as e:
             print(f"[Gemini] intent detection FAILED: {e}")
             # Return UNKNOWN intent on failure
-            return {
+            return [{
                 "intent": "UNKNOWN",
                 "confidence": 0.0,
                 "parameters": {}
-            }
+            }]
 
     def _extract_json(self, text: str) -> str:
         """Extract JSON from response, handling markdown code blocks."""

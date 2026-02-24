@@ -5,8 +5,8 @@ from tests.helpers import make_task_tree
 
 
 def _intent(intent, confidence=0.95, **params):
-    """Helper to build a Gemini intent response dict."""
-    return {"intent": intent, "confidence": confidence, "parameters": params}
+    """Helper to build a Gemini intent response (list of one dict)."""
+    return [{"intent": intent, "confidence": confidence, "parameters": params}]
 
 
 class TestProcessRouting:
