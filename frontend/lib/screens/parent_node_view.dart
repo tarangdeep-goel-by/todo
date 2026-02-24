@@ -11,6 +11,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/loading_state.dart';
 import '../utils/liquid_focus_scroll.dart';
 import '../services/haptic_service.dart';
 
@@ -373,22 +374,19 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
     final storeState = ref.watch(taskStoreProvider);
     final tasks = ref.watch(allTasksProvider);
 
-    // Derive domains from actual tasks
-    final domains = _getDomains();
+    // Derive domains from backend categories (watch to rebuild on fetch)
+    final domains = ref.watch(domainPalettesProvider).values.toList();
 
     if (storeState.isLoading && domains.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.darkText,
-        ),
-      );
+      return const LoadingState();
     }
 
     if (storeState.error != null && domains.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         message: 'Unable to load tasks',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
+        onRetry: () => ref.read(taskStoreProvider.notifier).fetchAll(),
       );
     }
 

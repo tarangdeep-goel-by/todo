@@ -12,7 +12,7 @@ Voice-first AI-powered hierarchical todo app. Flutter frontend communicates with
 # Run app (physical device — update apiBaseUrl in lib/config/constants.dart to your machine IP)
 flutter run
 
-# Run all tests (68+ tests)
+# Run all tests (120 tests)
 flutter test
 
 # Run single test file

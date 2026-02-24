@@ -7,12 +7,14 @@ class EmptyState extends StatelessWidget {
   final String message;
   final Color? textColor;
   final IconData? icon;
+  final VoidCallback? onRetry;
 
   const EmptyState({
     super.key,
     required this.message,
     this.textColor,
     this.icon,
+    this.onRetry,
   });
 
   @override
@@ -36,6 +38,17 @@ class EmptyState extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+          if (onRetry != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: Icon(Icons.refresh, color: textColor),
+              label: Text(
+                'Retry',
+                style: AppTypography.ctaLabelText(color: textColor),
+              ),
+            ),
+          ],
         ],
       ),
     );
