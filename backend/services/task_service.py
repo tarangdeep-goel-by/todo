@@ -231,8 +231,8 @@ class TaskService:
         Returns:
             Tree structure as string with all tasks organized by category
         """
-        # Get all active tasks
-        all_tasks = await self.get_tasks(user_id, status="active")
+        # Get ALL tasks (active + completed) so Gemini can reference completed parents
+        all_tasks = await self.get_tasks(user_id)
 
         # Group tasks by category
         categories = {}
@@ -249,7 +249,8 @@ class TaskService:
             # Get top-level tasks (parent_id=NULL)
             top_level = [t for t in tasks if t.parent_id is None]
             for task in top_level:
-                tree_str += f"├── {task.title} (id: {task.id})\n"
+                status_tag = " [COMPLETED]" if task.status == "completed" else ""
+                tree_str += f"├── {task.title} (id: {task.id}){status_tag}\n"
                 tree_str += self._build_subtree(tasks, task.id, indent=1)
             tree_str += "\n"
 
@@ -261,13 +262,14 @@ class TaskService:
         children = [t for t in tasks if t.parent_id == parent_id]
 
         for child in children:
-            result += "  " * indent + f"├── {child.title} (id: {child.id})\n"
+            status_tag = " [COMPLETED]" if child.status == "completed" else ""
+            result += "  " * indent + f"├── {child.title} (id: {child.id}){status_tag}\n"
             result += self._build_subtree(tasks, child.id, indent + 1)
 
         return result
 
     async def search_tasks(self, user_id: str, query: str,
-                           threshold: int = 70, limit: int = 5) -> List[Task]:
+                           threshold: int = 60, limit: int = 5) -> List[Task]:
         """Search with fuzzy matching."""
         all_tasks = await self.get_tasks(user_id, status="active")
         ranked = FuzzyMatcher.rank_matches(query, all_tasks, threshold, limit)

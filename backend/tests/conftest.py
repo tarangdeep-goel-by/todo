@@ -75,9 +75,8 @@ async def task_service(db_session):
 
 @pytest.fixture
 def mock_gemini():
-    """AsyncMock of GeminiService with passthrough refine."""
+    """AsyncMock of GeminiService."""
     mock = AsyncMock(spec=GeminiService)
-    mock.refine_transcription = AsyncMock(side_effect=lambda t: t)
     return mock
 
 

@@ -7,12 +7,26 @@ class FuzzyMatcher:
 
     @staticmethod
     def score_task_match(query: str, task_title: str, task_description: str = "",
-                         threshold: int = 70) -> int:
-        """Calculate weighted fuzzy match score."""
-        query_lower = query.lower()
+                         threshold: int = 60) -> int:
+        """Calculate weighted fuzzy match score.
 
-        # Title - token_set_ratio for word order independence
-        title_score = fuzz.token_set_ratio(query_lower, task_title.lower())
+        Uses max of token_set_ratio (word-order independent) and partial_ratio
+        (substring matching) to handle cases like "SafeDrop" vs "Safe drop".
+        """
+        query_lower = query.lower()
+        title_lower = task_title.lower()
+
+        # Primary: token_set_ratio (word order independent)
+        token_score = fuzz.token_set_ratio(query_lower, title_lower)
+        # Secondary: partial_ratio (substring/character matching)
+        partial_score = fuzz.partial_ratio(query_lower, title_lower)
+        # Tertiary: normalized query without spaces vs title without spaces
+        # Catches "SafeDrop" vs "Safe drop"
+        stripped_score = fuzz.ratio(
+            query_lower.replace(" ", ""),
+            title_lower.replace(" ", ""),
+        )
+        title_score = max(token_score, partial_score, stripped_score)
 
         # If no description, title score stands on its own
         if not task_description:
@@ -25,7 +39,7 @@ class FuzzyMatcher:
         return int(weighted)
 
     @staticmethod
-    def rank_matches(query: str, tasks: List, threshold: int = 70,
+    def rank_matches(query: str, tasks: List, threshold: int = 60,
                      limit: int = 5) -> List[Tuple[object, int]]:
         """Rank tasks by fuzzy score."""
         scored = []
@@ -38,5 +52,12 @@ class FuzzyMatcher:
             if score >= threshold:
                 scored.append((task, score))
         scored.sort(key=lambda x: x[1], reverse=True)
+
+        # If best match is near-exact (>=90), drop weaker matches to avoid
+        # flooding the user with false positives from common words like "task"
+        if scored and scored[0][1] >= 90:
+            cutoff = scored[0][1] - 10
+            scored = [(t, s) for t, s in scored if s >= cutoff]
+
         print(f"[FuzzyMatcher] matched {len(scored)} tasks")
         return scored[:limit]

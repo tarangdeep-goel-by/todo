@@ -23,6 +23,9 @@ class AgentService:
         """
         Main entry point for voice command processing.
 
+        Supports multi-intent commands — Gemini returns an array of intents
+        that are executed sequentially. Results are aggregated into one response.
+
         Args:
             transcription: Cleaned transcription from frontend
             user_id: User ID
@@ -34,20 +37,53 @@ class AgentService:
         print(f"\n{'='*60}")
         print(f"[Agent] INPUT: transcription='{transcription}', user_id='{user_id}'")
 
-        # Step 1: Refine transcription
-        refined = await self.gemini.refine_transcription(transcription)
-
-        # Step 2: Build FULL task tree context (both work and personal)
+        # Step 1: Build FULL task tree context (both work and personal)
         task_service = TaskService(db)
         tree_context = await task_service.build_full_tree_context(user_id)
         print(f"[Agent] tree context: {len(tree_context)} chars")
 
-        # Step 3: Detect intent (agent determines category, parent, everything)
-        intent_data = await self.gemini.detect_intent(refined, tree_context)
+        # Step 2: Detect intent(s) — returns a list
+        intent_list = await self.gemini.detect_intent(transcription, tree_context)
+        print(f"[Agent] received {len(intent_list)} intent(s)")
 
-        # Step 4: Validate confidence
-        if intent_data['confidence'] < 0.6:
-            print(f"[Agent] LOW CONFIDENCE: {intent_data['confidence']} — rejecting")
+        # Step 3: Execute each intent sequentially, aggregate results
+        results: List[AgentResponse] = []
+        for i, intent_data in enumerate(intent_list):
+            print(f"[Agent] processing intent {i+1}/{len(intent_list)}")
+            result = await self._execute_single_intent(intent_data, user_id, db)
+
+            # If any intent returns a question, stop and return it immediately
+            if result.type == "question":
+                print(f"[Agent] intent {i+1} returned question — stopping")
+                return result
+
+            results.append(result)
+
+        # Step 4: Aggregate results
+        if not results:
+            return AgentResponse(
+                success=False,
+                message="No actions detected. Try rephrasing.",
+                type="error",
+                data={}
+            )
+
+        if len(results) == 1:
+            return results[0]
+
+        # Multiple results — combine into one response
+        return self._aggregate_results(results)
+
+    async def _execute_single_intent(
+        self,
+        intent_data: Dict,
+        user_id: str,
+        db: AsyncSession
+    ) -> AgentResponse:
+        """Execute a single intent and return its response."""
+        # Validate confidence
+        if intent_data.get('confidence', 0) < 0.6:
+            print(f"[Agent] LOW CONFIDENCE: {intent_data.get('confidence')} — rejecting")
             return AgentResponse(
                 success=False,
                 message="Not sure what you meant. Please try rephrasing.",
@@ -55,7 +91,6 @@ class AgentService:
                 data=intent_data
             )
 
-        # Step 5: Route to handler
         intent = intent_data['intent']
         params = intent_data.get('parameters', {})
         print(f"[Agent] ROUTING: intent={intent}")
@@ -79,6 +114,34 @@ class AgentService:
                 type="error",
                 data=intent_data
             )
+
+    def _aggregate_results(self, results: List[AgentResponse]) -> AgentResponse:
+        """Combine multiple intent results into a single response."""
+        successes = [r for r in results if r.success]
+        failures = [r for r in results if not r.success]
+
+        # Build combined message
+        messages = [r.message for r in successes]
+        combined_message = " | ".join(messages)
+
+        if failures:
+            fail_msgs = [r.message for r in failures]
+            combined_message += f" (failed: {'; '.join(fail_msgs)})"
+
+        # Collect all task data
+        all_data = {
+            "results": [r.data for r in results if r.data],
+            "total_actions": len(results),
+            "successful": len(successes),
+            "failed": len(failures),
+        }
+
+        return AgentResponse(
+            success=len(successes) > 0,
+            message=combined_message,
+            type="confirmation",
+            data=all_data
+        )
 
     async def _handle_add(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
         """Handle ADD intent."""
