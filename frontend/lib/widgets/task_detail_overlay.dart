@@ -407,11 +407,32 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     if (_savingStatus || newStatus == task.status) return;
     HapticService.light();
     setState(() => _savingStatus = true);
-    await _updateField(
-      task,
-      status: newStatus,
-      completedAt: newStatus == 'completed' ? DateTime.now() : null,
-    );
+
+    final store = ref.read(taskStoreProvider.notifier);
+
+    if (newStatus == 'completed') {
+      // Optimistic: complete task + all descendants in store
+      store.completeWithDescendants(task.id);
+      try {
+        final apiService = ref.read(apiServiceProvider);
+        await apiService.completeTask(task.id);
+        // Refresh store to sync all descendant statuses from backend
+        await store.fetchAll();
+      } catch (e) {
+        // Rollback via full refresh on failure
+        await store.fetchAll();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to complete: $e')),
+          );
+        }
+      }
+    } else {
+      // Undo: use existing PATCH flow + activate ancestor chain
+      await _updateField(task, status: newStatus, completedAt: null);
+      store.activateAncestorChain(task.id);
+    }
+
     if (mounted) setState(() => _savingStatus = false);
   }
 
@@ -443,7 +464,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         parentId: parentTask.id,
         transcription: title,
       ));
-      ref.read(taskStoreProvider.notifier).upsertTask(newTask);
+      final store = ref.read(taskStoreProvider.notifier);
+      store.upsertTask(newTask);
+      // Backend activates ancestor chain; mirror optimistically on client
+      store.activateAncestorChain(newTask.id);
       if (mounted) {
         setState(() {
           _addingSubtask = false;

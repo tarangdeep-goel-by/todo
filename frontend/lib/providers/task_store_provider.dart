@@ -86,6 +86,50 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
     final updated = Map<String, Task>.from(state.tasks)..remove(taskId);
     state = state.copyWith(tasks: updated);
   }
+
+  /// Optimistically complete a task and all its descendants (BFS).
+  void completeWithDescendants(String taskId) {
+    final tasks = Map<String, Task>.from(state.tasks);
+    final now = DateTime.now();
+    final toProcess = [taskId];
+    final visited = <String>{};
+
+    while (toProcess.isNotEmpty) {
+      final currentId = toProcess.removeAt(0);
+      if (visited.contains(currentId)) continue;
+      visited.add(currentId);
+
+      final task = tasks[currentId];
+      if (task != null && task.status != 'completed') {
+        tasks[currentId] = task.copyWith(status: 'completed', completedAt: now);
+      }
+      // Find children of currentId
+      for (final t in tasks.values) {
+        if (t.parentId == currentId && !visited.contains(t.id)) {
+          toProcess.add(t.id);
+        }
+      }
+    }
+
+    state = state.copyWith(tasks: tasks);
+  }
+
+  /// Activate entire ancestor chain (set completed ancestors to active).
+  void activateAncestorChain(String taskId) {
+    final tasks = Map<String, Task>.from(state.tasks);
+    String? currentId = tasks[taskId]?.parentId;
+
+    while (currentId != null) {
+      final ancestor = tasks[currentId];
+      if (ancestor == null) break;
+      if (ancestor.isCompleted) {
+        tasks[currentId] = ancestor.copyWith(status: 'active', completedAt: null);
+      }
+      currentId = ancestor.parentId;
+    }
+
+    state = state.copyWith(tasks: tasks);
+  }
 }
 
 // --- Main provider ---

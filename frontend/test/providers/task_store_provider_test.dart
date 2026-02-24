@@ -542,4 +542,98 @@ void main() {
       expect(copy.error, isNull);
     });
   });
+
+  // ─── Cascade methods ────────────────────────────────────────
+
+  group('completeWithDescendants', () {
+    test('completes task and all children', () {
+      seedStore([
+        {'id': 'p', 'status': 'active'},
+        {'id': 'c1', 'parentId': 'p', 'status': 'active'},
+        {'id': 'c2', 'parentId': 'p', 'status': 'active'},
+      ]);
+
+      container.read(taskStoreProvider.notifier).completeWithDescendants('p');
+
+      expect(container.read(taskByIdProvider('p'))!.status, 'completed');
+      expect(container.read(taskByIdProvider('c1'))!.status, 'completed');
+      expect(container.read(taskByIdProvider('c2'))!.status, 'completed');
+    });
+
+    test('handles deep tree (grandchildren)', () {
+      seedStore([
+        {'id': 'gp', 'status': 'active'},
+        {'id': 'p', 'parentId': 'gp', 'status': 'active'},
+        {'id': 'c', 'parentId': 'p', 'status': 'active'},
+      ]);
+
+      container.read(taskStoreProvider.notifier).completeWithDescendants('gp');
+
+      expect(container.read(taskByIdProvider('gp'))!.status, 'completed');
+      expect(container.read(taskByIdProvider('p'))!.status, 'completed');
+      expect(container.read(taskByIdProvider('c'))!.status, 'completed');
+    });
+
+    test('skips already-completed descendants', () {
+      seedStore([
+        {'id': 'p', 'status': 'active'},
+        {'id': 'c', 'parentId': 'p', 'status': 'completed'},
+      ]);
+
+      container.read(taskStoreProvider.notifier).completeWithDescendants('p');
+
+      expect(container.read(taskByIdProvider('p'))!.status, 'completed');
+      expect(container.read(taskByIdProvider('c'))!.status, 'completed');
+    });
+  });
+
+  group('activateAncestorChain', () {
+    test('activates completed parent', () {
+      seedStore([
+        {'id': 'p', 'status': 'completed'},
+        {'id': 'c', 'parentId': 'p', 'status': 'active'},
+      ]);
+
+      container.read(taskStoreProvider.notifier).activateAncestorChain('c');
+
+      expect(container.read(taskByIdProvider('p'))!.status, 'active');
+    });
+
+    test('activates entire ancestor chain', () {
+      seedStore([
+        {'id': 'gp', 'status': 'completed'},
+        {'id': 'p', 'parentId': 'gp', 'status': 'completed'},
+        {'id': 'c', 'parentId': 'p', 'status': 'active'},
+      ]);
+
+      container.read(taskStoreProvider.notifier).activateAncestorChain('c');
+
+      expect(container.read(taskByIdProvider('gp'))!.status, 'active');
+      expect(container.read(taskByIdProvider('p'))!.status, 'active');
+    });
+
+    test('no-op for root task (no parent)', () {
+      seedStore([
+        {'id': 'root', 'status': 'active'},
+      ]);
+
+      // Should not throw
+      container.read(taskStoreProvider.notifier).activateAncestorChain('root');
+
+      expect(container.read(taskByIdProvider('root'))!.status, 'active');
+    });
+
+    test('skips already-active ancestors', () {
+      seedStore([
+        {'id': 'gp', 'status': 'active'},
+        {'id': 'p', 'parentId': 'gp', 'status': 'completed'},
+        {'id': 'c', 'parentId': 'p', 'status': 'active'},
+      ]);
+
+      container.read(taskStoreProvider.notifier).activateAncestorChain('c');
+
+      expect(container.read(taskByIdProvider('p'))!.status, 'active');
+      expect(container.read(taskByIdProvider('gp'))!.status, 'active');
+    });
+  });
 }
