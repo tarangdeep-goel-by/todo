@@ -91,8 +91,8 @@ class _DomainCardState extends ConsumerState<DomainCard> {
 
       if (mounted) {
         final message = newStatus == 'completed'
-            ? 'Completed: ${task.title}'
-            : 'Restored: ${task.title}';
+            ? 'Completed: ${task.sentenceTitle}'
+            : 'Restored: ${task.sentenceTitle}';
         showUndoSnackbar(
           context,
           message: message,
@@ -141,6 +141,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
     if (diff < 0) return 'Overdue';
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Tomorrow';
+    if (date.isBefore(now.add(const Duration(hours: 48)))) return 'Due Soon';
     if (diff < 7) return '${diff}d';
     return '${date.day}/${date.month}';
   }
@@ -210,7 +211,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      task.title,
+                      task.sentenceTitle,
                       style: AppTypography.metadataText(
                         color: domain.primary,
                       ).copyWith(
@@ -247,13 +248,16 @@ class _DomainCardState extends ConsumerState<DomainCard> {
         .where((t) =>
             t.isActive &&
             (t.isOverdue ||
+                t.isDueSoon ||
                 t.priority == 'high' ||
                 (t.dueDate != null && !t.dueDate!.isAfter(weekFromNow))))
         .toList()
       ..sort((a, b) {
-        // Overdue first
+        // Overdue first, then due_soon
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
+        if (a.isDueSoon && !b.isDueSoon) return -1;
+        if (!a.isDueSoon && b.isDueSoon) return 1;
         // High priority before others
         final aHigh = a.priority == 'high' ? 0 : 1;
         final bHigh = b.priority == 'high' ? 0 : 1;

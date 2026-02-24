@@ -30,7 +30,7 @@ class TestGetTaskById:
         task_id = create_resp.json()["id"]
         resp = await test_client.get(f"/tasks/{task_id}")
         assert resp.status_code == 200
-        assert resp.json()["title"] == "T1"
+        assert resp.json()["title"] == "t1"
 
     async def test_not_found(self, test_client):
         resp = await test_client.get("/tasks/ffffffff-ffff-ffff-ffff-ffffffffffff")
@@ -44,7 +44,7 @@ class TestCreateTask:
             "transcription": "new task",
         })
         assert resp.status_code == 201
-        assert resp.json()["title"] == "New Task"
+        assert resp.json()["title"] == "new task"
         assert resp.json()["category"] == "personal"
 
     async def test_validation_error(self, test_client):
@@ -64,7 +64,7 @@ class TestUpdateTask:
         task_id = create_resp.json()["id"]
         resp = await test_client.patch(f"/tasks/{task_id}", json={"title": "New"})
         assert resp.status_code == 200
-        assert resp.json()["title"] == "New"
+        assert resp.json()["title"] == "new"
 
     async def test_not_found(self, test_client):
         resp = await test_client.patch("/tasks/ffffffff-ffff-ffff-ffff-ffffffffffff", json={"title": "x"})

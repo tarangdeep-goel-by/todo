@@ -47,6 +47,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   Widget build(BuildContext context) {
     final storeState = ref.watch(taskStoreProvider);
     final allFiltered = ref.watch(flatViewTasksProvider);
+    final parentNames = ref.watch(l1ParentNamesProvider);
 
     // Reset display count when filter changes
     ref.listen(taskFilterProvider, (prev, next) {
@@ -105,6 +106,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
           return TaskItem(
             task: displayTasks[index],
             isDark: true,
+            parentName: parentNames[displayTasks[index].id],
           );
         },
       ),

@@ -84,7 +84,7 @@ class TestResolveEdit:
         )
         assert result.success is True
         updated = await task_service.get_task(task.id)
-        assert updated.title == "Buy groceries"
+        assert updated.title == "buy groceries"
 
     async def test_edit_due_date(self, agent_service, task_service, db_session):
         tree = await make_task_tree(task_service)

@@ -15,39 +15,14 @@ import 'task_detail_overlay.dart';
 class TaskItem extends ConsumerWidget {
   final Task task;
   final bool isDark;
+  final String? parentName;
 
   const TaskItem({
     super.key,
     required this.task,
     required this.isDark,
+    this.parentName,
   });
-
-  /// Find the level 1 branch (top-level task under domain)
-  String _getLevel1Branch(List<Task> allTasks) {
-    if (task.parentId == null) return task.title;
-
-    Task? current = task;
-    Task? level1Task;
-    final visited = <String>{};
-
-    while (current != null && current.parentId != null) {
-      if (visited.contains(current.id)) return task.category;
-      visited.add(current.id);
-
-      final parent = allTasks.cast<Task?>().firstWhere(
-        (t) => t!.id == current!.parentId,
-        orElse: () => null,
-      );
-      if (parent == null) break;
-      if (parent.parentId == null) {
-        level1Task = parent;
-        break;
-      }
-      current = parent;
-    }
-
-    return level1Task?.title ?? task.category;
-  }
 
   Future<void> _toggleTask(BuildContext context, WidgetRef ref) async {
     final newStatus = task.isCompleted ? 'active' : 'completed';
@@ -78,8 +53,8 @@ class TaskItem extends ConsumerWidget {
 
       if (context.mounted) {
         final message = newStatus == 'completed'
-            ? 'Completed: ${task.title}'
-            : 'Restored: ${task.title}';
+            ? 'Completed: ${task.sentenceTitle}'
+            : 'Restored: ${task.sentenceTitle}';
         showUndoSnackbar(
           context,
           message: message,
@@ -134,7 +109,7 @@ class TaskItem extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Deleted: ${task.title}'),
+            content: Text('Deleted: ${task.sentenceTitle}'),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -158,12 +133,11 @@ class TaskItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allTasks = ref.watch(allTasksProvider);
     final paletteMap = ref.watch(domainPalettesProvider);
     final domain = DomainColors.getDomain(task.category, isDark, paletteMap);
-    final level1Branch = _getLevel1Branch(allTasks);
     final isCompleted = task.isCompleted;
     final isOverdue = task.isOverdue;
+    final isDueSoon = task.isDueSoon;
 
     return Dismissible(
       key: Key(task.id),
@@ -249,24 +223,40 @@ class TaskItem extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(
-                  task.title,
-                  style: AppTypography.metadataText(
-                    color: isCompleted
-                        ? domain.primary.withValues(alpha: 0.5)
-                        : isOverdue
-                            ? const Color(0xFFFF6B6B)
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      task.sentenceTitle,
+                      style: AppTypography.metadataText(
+                        color: isCompleted
+                            ? domain.primary.withValues(alpha: 0.5)
                             : domain.primary,
-                  ).copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    decoration: isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
-                    decorationColor: domain.primary.withValues(alpha: 0.5),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                      ).copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                        decorationColor: domain.primary.withValues(alpha: 0.5),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (parentName != null)
+                      Text(
+                        parentName![0].toUpperCase() + parentName!.substring(1),
+                        style: AppTypography.metadataText(
+                          color: domain.primary.withValues(alpha: 0.4),
+                        ).copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -292,27 +282,48 @@ class TaskItem extends ConsumerWidget {
                 ),
                 const SizedBox(width: 4),
               ],
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: domain.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  level1Branch,
-                  style: AppTypography.metadataText(
-                    color: domain.primary,
-                  ).copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+              if (isDueSoon) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFB020).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Due Soon',
+                    style: AppTypography.metadataText(
+                      color: const Color(0xFFFFB020),
+                    ).copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 4),
+              ],
+              if (task.priority != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: domain.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    task.priority!.substring(0, 1).toUpperCase() + task.priority!.substring(1),
+                    style: AppTypography.metadataText(
+                      color: domain.primary.withValues(alpha: 0.8),
+                    ).copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

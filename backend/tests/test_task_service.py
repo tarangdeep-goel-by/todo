@@ -10,7 +10,7 @@ class TestCreateTask:
     async def test_create_minimal(self, task_service):
         task = await task_service.create_task(**make_task())
         assert task.id is not None
-        assert task.title == "Test Task"
+        assert task.title == "test task"
         assert task.status == "active"
 
     async def test_create_all_fields(self, task_service):
@@ -73,7 +73,7 @@ class TestUpdateTask:
     async def test_update_title(self, task_service):
         t = await task_service.create_task(**make_task())
         updated = await task_service.update_task(t.id, title="New Title")
-        assert updated.title == "New Title"
+        assert updated.title == "new title"
 
     async def test_update_not_found(self, task_service):
         result = await task_service.update_task(MISSING_UUID, title="x")
@@ -108,7 +108,7 @@ class TestBuildTreeContext:
         await make_task_tree(task_service)
         ctx = await task_service.build_full_tree_context("test-user")
         assert "Work" in ctx or "WORK" in ctx
-        assert "Project Alpha" in ctx
+        assert "project alpha" in ctx
 
 
 class TestSearchTasks:
@@ -116,4 +116,4 @@ class TestSearchTasks:
         await make_task_tree(task_service)
         results = await task_service.search_tasks("test-user", "Backend API")
         assert len(results) >= 1
-        assert results[0].title == "Backend API"
+        assert results[0].title == "backend api"
