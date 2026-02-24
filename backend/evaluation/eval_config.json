@@ -1,0 +1,1164 @@
+{
+  "dataset_name": "Todo Agent Intent Detection Eval v1",
+  "cases": [
+    {
+      "id": "add_01",
+      "transcription": "add a code review task under Backend services",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "code review",
+            "category_exact": "work",
+            "suggestedParent_exact": "eval-work-010",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_02",
+      "transcription": "create a new task called groceries",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "groceries",
+            "category_exact": "personal",
+            "suggestedParent_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_03",
+      "transcription": "remember to buy birthday gift for mom",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "birthday gift",
+            "category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_04",
+      "transcription": "add a high priority task to fix the login bug under auth service refactor",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "login bug",
+            "priority_exact": "high",
+            "suggestedParent_exact": "eval-work-011",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_05",
+      "transcription": "um add a task to uh practice meditation under mental wellness",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "meditation",
+            "category_exact": "health",
+            "suggestedParent_exact": "eval-health-026",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_06",
+      "transcription": "add yoga classes to my fitness routine",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "yoga",
+            "category_exact": "health",
+            "suggestedParent_exact": "eval-health-001",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_07",
+      "transcription": "create a task to learn GraphQL under software engineering",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "GraphQL",
+            "category_exact": "learning",
+            "suggestedParent_exact": "eval-learning-001",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_08",
+      "transcription": "add a music practice task",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "music practice",
+            "needsNewBranch_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_09",
+      "transcription": "add tech spec and program plan under ACME Corp API rebuild",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "tech spec",
+            "category_exact": "work",
+            "suggestedParent_exact": "eval-work-036",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "program plan",
+            "category_exact": "work",
+            "suggestedParent_exact": "eval-work-036",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_10",
+      "transcription": "add unit tests, integration tests, and load tests under infrastructure",
+      "difficulty": "hard",
+      "category": "ADD",
+      "expected_intent_count": 3,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "unit tests",
+            "suggestedParent_exact": "eval-work-019",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "integration tests",
+            "suggestedParent_exact": "eval-work-019",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "load tests",
+            "suggestedParent_exact": "eval-work-019",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_11",
+      "transcription": "add meal planning task due next friday with medium priority",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "meal planning",
+            "priority_exact": "medium",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_12",
+      "transcription": "create deploy monitoring dashboard under infrastructure",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "monitoring dashboard",
+            "suggestedParent_exact": "eval-work-019",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_13",
+      "transcription": "add a task called weekly standup notes",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "standup notes",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_14",
+      "transcription": "note to self pick up dry cleaning tomorrow",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "dry cleaning",
+            "category_exact": "personal",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_15",
+      "transcription": "add research Kubernetes under system design mastery",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "Kubernetes",
+            "suggestedParent_exact": "eval-learning-002",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_16",
+      "transcription": "add a task to Hobbies category called learn guitar",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "guitar",
+            "category_contains": "hobbies",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_17",
+      "transcription": "create a reading list task under AI and Machine Learning",
+      "difficulty": "easy",
+      "category": "ADD",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "reading list",
+            "suggestedParent_exact": "eval-learning-019",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_18",
+      "transcription": "add order new coffee table and find a rug for living room",
+      "difficulty": "medium",
+      "category": "ADD",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "coffee table",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "rug",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_01",
+      "transcription": "complete the payment integration v2 task",
+      "difficulty": "easy",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "payment integration",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_02",
+      "transcription": "I finished the marathon training base building phase",
+      "difficulty": "medium",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "base building",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_03",
+      "transcription": "mark the wireframe review as done",
+      "difficulty": "easy",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "wireframe review",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_04",
+      "transcription": "done with Genki II textbook chapters",
+      "difficulty": "medium",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "Genki",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_05",
+      "transcription": "completed the demo video preparation",
+      "difficulty": "medium",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "demo video",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_06",
+      "transcription": "finished reviewing senior dev applications",
+      "difficulty": "medium",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "senior dev",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_07",
+      "transcription": "mark morning meditation and journal gratitudes as complete",
+      "difficulty": "medium",
+      "category": "COMPLETE",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "morning meditation",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "journal gratitudes",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_08",
+      "transcription": "I'm done with the competitor analysis spreadsheet",
+      "difficulty": "easy",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "competitor analysis",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_09",
+      "transcription": "complete tempo runs and hill repeats",
+      "difficulty": "medium",
+      "category": "COMPLETE",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "tempo runs",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "hill repeats",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete_10",
+      "transcription": "finished the Riverpod advanced patterns task",
+      "difficulty": "easy",
+      "category": "COMPLETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "Riverpod",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "delete_01",
+      "transcription": "delete the social media campaign task",
+      "difficulty": "easy",
+      "category": "DELETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "social media",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "delete_02",
+      "transcription": "remove load testing setup from infrastructure",
+      "difficulty": "easy",
+      "category": "DELETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "load testing",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "delete_03",
+      "transcription": "cancel the team offsite planning",
+      "difficulty": "medium",
+      "category": "DELETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "offsite",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "delete_04",
+      "transcription": "delete the YouTube channel tasks",
+      "difficulty": "medium",
+      "category": "DELETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "YouTube",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "delete_05",
+      "transcription": "remove shoulder mobility routine and core work daily",
+      "difficulty": "medium",
+      "category": "DELETE",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "shoulder mobility",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "core work",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "delete_06",
+      "transcription": "uh yeah so like remove that um Google Ads experiment thing",
+      "difficulty": "hard",
+      "category": "DELETE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "DELETE",
+          "checks": {
+            "taskQuery_contains": "Google Ads",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_01",
+      "transcription": "change the priority of auth service refactor to medium",
+      "difficulty": "easy",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "auth service",
+            "changes.priority_exact": "medium",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_02",
+      "transcription": "the marathon training task is a personal task",
+      "difficulty": "medium",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "marathon training",
+            "changes.category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_03",
+      "transcription": "marathon training belongs in personal",
+      "difficulty": "medium",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "marathon training",
+            "changes.category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_04",
+      "transcription": "move marathon training to personal category",
+      "difficulty": "hard",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "marathon training",
+            "changes.category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_05",
+      "transcription": "rename the Globex dashboard MVP to Globex Analytics Dashboard",
+      "difficulty": "medium",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "Globex",
+            "changes.title_contains": "Analytics Dashboard",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_06",
+      "transcription": "set the due date for CPA appointment to next Monday",
+      "difficulty": "easy",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "CPA",
+            "changes.dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_07",
+      "transcription": "update priority of buy new running shoes to high",
+      "difficulty": "easy",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "running shoes",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_08",
+      "transcription": "change auth service refactor priority to low and rename it to JWT migration",
+      "difficulty": "hard",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "auth service",
+            "changes.priority_exact": "low",
+            "changes.title_contains": "JWT",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_09",
+      "transcription": "the meal prep system should be high priority",
+      "difficulty": "easy",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "meal prep",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_10",
+      "transcription": "reschedule tax preparation to April",
+      "difficulty": "medium",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "tax preparation",
+            "changes.dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_11",
+      "transcription": "kitchen renovation is a projects task",
+      "difficulty": "hard",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "kitchen renovation",
+            "changes.category_exact": "projects",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit_12",
+      "transcription": "update the description of ACME Corp API rebuild to include GraphQL migration",
+      "difficulty": "medium",
+      "category": "EDIT",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "taskQuery_contains": "ACME Corp",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_01",
+      "transcription": "move rate limiting middleware under frontend features",
+      "difficulty": "easy",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "rate limiting",
+            "targetParentQuery_contains": "frontend",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_02",
+      "transcription": "put the buy running shoes task under procurement",
+      "difficulty": "medium",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "running shoes",
+            "targetParentQuery_contains": "procurement",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_03",
+      "transcription": "move the Riverpod advanced patterns to top level",
+      "difficulty": "medium",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "Riverpod",
+            "targetParentId_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_04",
+      "transcription": "relocate complete fast.ai course under LLM engineering",
+      "difficulty": "medium",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "fast.ai",
+            "targetParentQuery_contains": "LLM engineering",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_05",
+      "transcription": "move design channel branding under content creation",
+      "difficulty": "easy",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "channel branding",
+            "targetParentQuery_contains": "content creation",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_06",
+      "transcription": "put interview potential users under startup exploration directly",
+      "difficulty": "medium",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "interview",
+            "targetParentQuery_contains": "startup",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_07",
+      "transcription": "move the Build landing page task to root level",
+      "difficulty": "medium",
+      "category": "MOVE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "landing page",
+            "targetParentId_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "move_08",
+      "transcription": "move auth service refactor and payment integration under infrastructure",
+      "difficulty": "hard",
+      "category": "MOVE",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "auth service",
+            "targetParentQuery_contains": "infrastructure",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "payment integration",
+            "targetParentQuery_contains": "infrastructure",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_01",
+      "transcription": "show me all my work tasks",
+      "difficulty": "easy",
+      "category": "QUERY",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "QUERY",
+          "checks": {
+            "filters.category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_02",
+      "transcription": "what tasks are completed",
+      "difficulty": "easy",
+      "category": "QUERY",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "QUERY",
+          "checks": {
+            "filters.status_exact": "completed",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_03",
+      "transcription": "list all high priority health tasks",
+      "difficulty": "medium",
+      "category": "QUERY",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "QUERY",
+          "checks": {
+            "filters.category_exact": "health",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_04",
+      "transcription": "what's on my learning list",
+      "difficulty": "easy",
+      "category": "QUERY",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "QUERY",
+          "checks": {
+            "filters.category_exact": "learning",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "query_05",
+      "transcription": "show me active personal tasks",
+      "difficulty": "medium",
+      "category": "QUERY",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "QUERY",
+          "checks": {
+            "filters.category_exact": "personal",
+            "filters.status_exact": "active",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge_01",
+      "transcription": "asdfghjkl mumble garble",
+      "difficulty": "easy",
+      "category": "EDGE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "UNKNOWN",
+          "checks": {
+            "confidence_lte": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge_02",
+      "transcription": "the kitchen renovation task should go under personal projects",
+      "difficulty": "hard",
+      "category": "EDGE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "MOVE",
+          "checks": {
+            "taskQuery_contains": "kitchen renovation",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge_03",
+      "transcription": "add a task under analyze survey results",
+      "difficulty": "medium",
+      "category": "EDGE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "suggestedParent_exact": "eval-work-006",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge_04",
+      "transcription": "complete groceries and add laundry",
+      "difficulty": "medium",
+      "category": "EDGE",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "COMPLETE",
+          "checks": {
+            "taskQuery_contains": "groceries",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "laundry",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge_05",
+      "transcription": "so um yeah I was thinking like maybe we should uh add a task to um you know review the uh quarterly budget or something",
+      "difficulty": "hard",
+      "category": "EDGE",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "ADD",
+          "checks": {
+            "title_contains": "quarterly budget",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "edge_06",
+      "transcription": "change the priority of the task with the running and also delete that one about the shoulder thing",
+      "difficulty": "hard",
+      "category": "EDGE",
+      "expected_intent_count": 2,
+      "expected_intents": [
+        {
+          "intent": "EDIT",
+          "checks": {
+            "confidence_gte": 0.5
+          }
+        },
+        {
+          "intent": "DELETE",
+          "checks": {
+            "confidence_gte": 0.5
+          }
+        }
+      ]
+    }
+  ]
+}

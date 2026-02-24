@@ -39,6 +39,11 @@ cd frontend && flutter analyze                                           # Lint 
 # Database migrations
 docker exec todo-backend alembic upgrade head                            # Apply
 docker exec todo-backend alembic revision --autogenerate -m "description"  # Create new
+
+# Intent detection eval (65 cases, ~90s with LLM)
+docker exec todo-backend python evaluation/run_eval.py                    # Full run
+docker exec todo-backend python evaluation/run_eval.py --filter-id add_01 # Single case
+docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-run (harness only)
 ```
 
 ## Architecture

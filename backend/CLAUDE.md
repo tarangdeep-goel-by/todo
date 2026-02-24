@@ -36,6 +36,16 @@ docker exec todo-backend alembic revision --autogenerate -m "description"  # Cre
 docker exec todo-backend alembic downgrade -1           # Rollback one
 ```
 
+### Intent Detection Eval (run after prompt changes)
+```bash
+docker exec todo-backend python evaluation/run_eval.py                          # Full run (65 cases, ~90s)
+docker exec todo-backend python evaluation/run_eval.py --filter-category ADD    # One intent type
+docker exec todo-backend python evaluation/run_eval.py --filter-id add_01       # Single case
+docker exec todo-backend python evaluation/run_eval.py --no-llm                 # Dry-run (harness only)
+# Results saved to evaluation/results/ (JSON, auto-timestamped)
+# Baseline: 58/65 (89.2%) — 2026-02-25
+```
+
 ## Architecture
 
 ### Request Flow
