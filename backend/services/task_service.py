@@ -52,6 +52,11 @@ class TaskService:
         )
 
         self.db.add(task)
+
+        # New child under a completed parent → activate ancestor chain
+        if parent_id:
+            await self._activate_ancestor_chain(task.id)
+
         await self.db.commit()
         await self.db.refresh(task)
         return task
@@ -105,6 +110,10 @@ class TaskService:
         for key, value in updates.items():
             if hasattr(task, key):
                 setattr(task, key, value)
+
+        # When undoing (status → active), activate completed ancestors
+        if updates.get('status') == 'active':
+            await self._activate_ancestor_chain(task_id)
 
         await self.db.commit()
         await self.db.refresh(task)
@@ -171,6 +180,44 @@ class TaskService:
                 to_process.append(child.id)
 
         return all_descendants
+
+    async def _activate_ancestor_chain(self, task_id: str) -> List[str]:
+        """Walk up parent_id chain, set all completed ancestors to active.
+
+        Does NOT commit — caller's commit covers it in the same transaction.
+        Returns list of ancestor IDs that were activated.
+        """
+        activated_ids = []
+        current_id = task_id
+
+        while current_id:
+            result = await self.db.execute(
+                select(Task.parent_id).where(Task.id == current_id)
+            )
+            row = result.first()
+            if not row or not row.parent_id:
+                break
+
+            parent_result = await self.db.execute(
+                select(Task.id, Task.status).where(Task.id == row.parent_id)
+            )
+            parent = parent_result.first()
+            if not parent:
+                break
+
+            if parent.status == "completed":
+                activated_ids.append(parent.id)
+
+            current_id = row.parent_id
+
+        if activated_ids:
+            await self.db.execute(
+                update(Task)
+                .where(Task.id.in_(activated_ids))
+                .values(status="active", completed_at=None)
+            )
+
+        return activated_ids
 
     async def build_full_tree_context(self, user_id: str) -> str:
         """

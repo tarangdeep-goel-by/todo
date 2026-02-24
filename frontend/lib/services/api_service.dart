@@ -149,6 +149,16 @@ class ApiService {
     }
   }
 
+  /// Complete task (cascades to all descendants via PUT endpoint)
+  Future<Task> completeTask(String taskId) async {
+    try {
+      final response = await _dio.put('/tasks/$taskId/complete');
+      return Task.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Delete task
   Future<void> deleteTask(String taskId, {String userId = AppConstants.defaultUserId}) async {
     try {
