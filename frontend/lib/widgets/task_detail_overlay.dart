@@ -83,6 +83,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   // Priority expansion
   bool _priorityExpanded = false;
 
+  // Navigation history stack
+  final List<({String? taskId, String? domainRoot})> _navHistory = [];
+
   // Saving flags
   bool _savingTitle = false;
   bool _savingDescription = false;
@@ -118,6 +121,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   void _navigateTo(String taskId) {
     HapticService.selection();
     setState(() {
+      _navHistory.add((taskId: _activeTaskId, domainRoot: _activeDomainRoot));
       _activeTaskId = taskId;
       _activeDomainRoot = null;
       _editingTitle = false;
@@ -130,7 +134,22 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   void _navigateToDomainRoot(String category) {
     HapticService.selection();
     setState(() {
+      _navHistory.add((taskId: _activeTaskId, domainRoot: _activeDomainRoot));
       _activeDomainRoot = category;
+    });
+  }
+
+  void _navigateBack() {
+    if (_navHistory.isEmpty) return;
+    HapticService.selection();
+    final prev = _navHistory.removeLast();
+    setState(() {
+      _activeTaskId = prev.taskId ?? '';
+      _activeDomainRoot = prev.domainRoot;
+      _editingTitle = false;
+      _editingDescription = false;
+      _addingSubtask = false;
+      _priorityExpanded = false;
     });
   }
 
@@ -517,61 +536,44 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
     final ancestors = _buildAncestorChain(task, allTasks);
 
-    return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Close button row
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  top: AppSpacing.sm,
-                  right: AppSpacing.md,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.close, color: domain.primary, size: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+    return PopScope(
+      canPop: _navHistory.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _navigateBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Close button — always dismisses overlay entirely
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.sm,
+                    right: AppSpacing.md,
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: domain.primary, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ),
               ),
-            ),
 
-            // Breadcrumb bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    // Category as first breadcrumb — tappable to navigate to domain root
-                    GestureDetector(
-                      onTap: () => _navigateToDomainRoot(task.category),
-                      child: Text(
-                        task.category,
-                        style: AppTypography.metadataText(
-                          color: domain.primary.withValues(alpha: 0.7),
-                        ).copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    // Ancestors
-                    for (int i = 0; i < ancestors.length; i++) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Icon(
-                          Icons.chevron_right,
-                          size: 14,
-                          color: domain.primary.withValues(alpha: 0.3),
-                        ),
-                      ),
+              // Breadcrumb bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // Category as first breadcrumb — tappable to navigate to domain root
                       GestureDetector(
-                        onTap: () => _navigateTo(ancestors[i].id),
+                        onTap: () => _navigateToDomainRoot(task.category),
                         child: Text(
-                          ancestors[i].title,
+                          task.category,
                           style: AppTypography.metadataText(
                             color: domain.primary.withValues(alpha: 0.7),
                           ).copyWith(
@@ -580,50 +582,73 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                           ),
                         ),
                       ),
+                      // Ancestors
+                      for (int i = 0; i < ancestors.length; i++) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(
+                            Icons.chevron_right,
+                            size: 14,
+                            color: domain.primary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _navigateTo(ancestors[i].id),
+                          child: Text(
+                            ancestors[i].title,
+                            style: AppTypography.metadataText(
+                              color: domain.primary.withValues(alpha: 0.7),
+                            ).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.sm),
 
-            // Scrollable content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    _buildTitle(domain, task),
+              // Scrollable content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      _buildTitle(domain, task),
 
-                    const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.lg),
 
-                    // Priority + Due date + Complete chips
-                    _buildChipRow(domain, task),
+                      // Priority + Due date + Complete chips
+                      _buildChipRow(domain, task),
 
-                    const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.lg),
 
-                    // Description
-                    _buildDescription(domain, task),
+                      // Description
+                      _buildDescription(domain, task),
 
-                    const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.lg),
 
-                    // Metadata (read-only)
-                    _buildMetadata(domain, task),
+                      // Metadata (read-only)
+                      _buildMetadata(domain, task),
 
-                    const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.lg),
 
-                    // Subtasks
-                    _buildSubtasksSection(domain, task, subtasks),
+                      // Subtasks
+                      _buildSubtasksSection(domain, task, subtasks),
 
-                    const SizedBox(height: 120),
-                  ],
+                      const SizedBox(height: 120),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -645,70 +670,76 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         return b.createdAt.compareTo(a.createdAt);
       });
 
-    return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Close button row
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  top: AppSpacing.sm,
-                  right: AppSpacing.md,
+    return PopScope(
+      canPop: _navHistory.isEmpty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _navigateBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Close button — always dismisses overlay entirely
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.sm,
+                    right: AppSpacing.md,
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: domain.primary, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ),
-                child: IconButton(
-                  icon: Icon(Icons.close, color: domain.primary, size: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+              ),
+
+              // Domain title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Text(
+                  category[0].toUpperCase() + category.substring(1),
+                  style: AppTypography.domainTitle(context, color: domain.primary)
+                      .copyWith(fontSize: 28),
                 ),
               ),
-            ),
 
-            // Domain title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text(
-                category[0].toUpperCase() + category.substring(1),
-                style: AppTypography.domainTitle(context, color: domain.primary)
-                    .copyWith(fontSize: 28),
+              const SizedBox(height: AppSpacing.sm),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Text(
+                  '${l1Tasks.where((t) => t.isActive).length} top-level tasks',
+                  style: AppTypography.metadataText(
+                    color: domain.primary.withValues(alpha: 0.6),
+                  ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
 
-            const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Text(
-                '${l1Tasks.where((t) => t.isActive).length} top-level tasks',
-                style: AppTypography.metadataText(
-                  color: domain.primary.withValues(alpha: 0.6),
-                ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            // L1 task list
-            Expanded(
-              child: l1Tasks.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No tasks in this domain',
-                        style: AppTypography.metadataText(
-                          color: domain.primary.withValues(alpha: 0.3),
-                        ).copyWith(fontSize: 14),
+              // L1 task list
+              Expanded(
+                child: l1Tasks.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No tasks in this domain',
+                          style: AppTypography.metadataText(
+                            color: domain.primary.withValues(alpha: 0.3),
+                          ).copyWith(fontSize: 14),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                        itemCount: l1Tasks.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 4),
+                        itemBuilder: (_, i) => _buildSubtaskRow(domain, l1Tasks[i]),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                      itemCount: l1Tasks.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 4),
-                      itemBuilder: (_, i) => _buildSubtaskRow(domain, l1Tasks[i]),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
