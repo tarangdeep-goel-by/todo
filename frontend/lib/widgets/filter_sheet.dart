@@ -337,6 +337,12 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         color: accentColor,
                       ),
                       _buildFilterChip(
+                        label: 'DUE SOON',
+                        isSelected: _currentFilter.statuses?.contains('due_soon') ?? false,
+                        onTap: () => _toggleStatus('due_soon'),
+                        color: const Color(0xFFFFB020),
+                      ),
+                      _buildFilterChip(
                         label: 'OVERDUE',
                         isSelected: _currentFilter.statuses?.contains('overdue') ?? false,
                         onTap: () => _toggleStatus('overdue'),

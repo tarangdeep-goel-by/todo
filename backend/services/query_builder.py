@@ -1,5 +1,5 @@
 """Dynamic query builder for task filtering and sorting."""
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func, case, and_
 from typing import List
 from models.task import Task
@@ -47,7 +47,7 @@ class QueryBuilder:
         if params.status:
             values = [v.lower() for v in params.parse_multi_value(params.status)]
             conditions = []
-            db_statuses = [v for v in values if v != 'overdue']
+            db_statuses = [v for v in values if v not in ('overdue', 'due_soon')]
             if db_statuses:
                 conditions.append(func.lower(Task.status).in_(db_statuses))
             if 'overdue' in values:
@@ -56,6 +56,15 @@ class QueryBuilder:
                     Task.status == 'active',
                     Task.due_date.isnot(None),
                     Task.due_date < now,
+                ))
+            if 'due_soon' in values:
+                now = datetime.now(timezone.utc)
+                soon = now + timedelta(hours=48)
+                conditions.append(and_(
+                    Task.status == 'active',
+                    Task.due_date.isnot(None),
+                    Task.due_date >= now,
+                    Task.due_date < soon,
                 ))
             if conditions:
                 from sqlalchemy import or_
@@ -112,14 +121,16 @@ class QueryBuilder:
     def _build_order_clause(field_name: str, direction: str):
         """Build ORDER BY clause for a single field."""
 
-        # Status needs special handling (overdue first, then active, then completed)
+        # Status needs special handling (overdue first, due_soon, then active, then completed)
         if field_name == "status":
             now = datetime.now(timezone.utc)
+            soon = now + timedelta(hours=48)
             status_case = case(
                 (and_(Task.status == "active", Task.due_date.isnot(None), Task.due_date < now), 0),
-                (Task.status == "active", 1),
-                (Task.status == "completed", 2),
-                else_=3
+                (and_(Task.status == "active", Task.due_date.isnot(None), Task.due_date >= now, Task.due_date < soon), 1),
+                (Task.status == "active", 2),
+                (Task.status == "completed", 3),
+                else_=4
             )
             return status_case.desc() if direction == "desc" else status_case.asc()
 
