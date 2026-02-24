@@ -1,16 +1,16 @@
 # TODO - Development Planner
 
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-02-25
 
 ---
 
 ## Backlog
 
-- Advanced Task Management - Voice driven + UI driven - P1
 - View transition animations (fracture/cluster effect between Node/Flat) - P2
 - Accessibility improvements (screen readers, reduced motion) - P2
-- Task editing/deletion UI - P2
 - iOS testing and optimization - P3
+- Due date notifications - P3
+- Multi-user authentication - P3
 
 ---
 
@@ -21,6 +21,61 @@
 ---
 
 ## Done
+
+### [FEATURE-008] Completion Cascade & Ancestor Activation ✅
+**Priority**: High
+**Description**: Enforce invariant that a completed task never has active descendants
+**Branch**: main
+**Status**: Completed 2026-02-25
+**Sub-Tickets**:
+- [x] [SUB-008-A] Backend `_activate_ancestor_chain()` method in TaskService
+- [x] [SUB-008-B] Hook into `update_task()` — undo (status→active) activates ancestors
+- [x] [SUB-008-C] Hook into `create_task()` — new child under completed parent activates ancestors
+- [x] [SUB-008-D] Frontend `ApiService.completeTask()` — PUT `/complete` endpoint
+- [x] [SUB-008-E] Frontend `completeWithDescendants()` BFS in TaskStoreNotifier
+- [x] [SUB-008-F] Frontend `activateAncestorChain()` in TaskStoreNotifier
+- [x] [SUB-008-G] Update `_toggleStatus()` to use cascade completion
+- [x] [SUB-008-H] Update `_saveSubtask()` to activate ancestors
+- [x] [SUB-008-I] 7 backend tests (undo + add-child scenarios)
+- [x] [SUB-008-J] 7 frontend tests (completeWithDescendants + activateAncestorChain)
+
+### [FEATURE-007] Loading/Error States & Pull-to-Refresh ✅
+**Priority**: Medium
+**Description**: Improve loading, error, and empty states across views
+**Branch**: main
+**Status**: Completed 2026-02-25
+**Sub-Tickets**:
+- [x] [SUB-007-A] Reusable `LoadingState` widget
+- [x] [SUB-007-B] `EmptyState` with optional onRetry callback
+- [x] [SUB-007-C] Pull-to-refresh on flat task view
+- [x] [SUB-007-D] Node view derives domains from `domainPalettesProvider`
+- [x] [SUB-007-E] Updated CLAUDE.md docs (test counts, schema)
+
+### [FEATURE-006] Categories & Domain Navigation ✅
+**Priority**: High
+**Description**: Categories as first-class backend concept, domain navigation in overlay
+**Branch**: main
+**Status**: Completed 2026-02-24
+**Sub-Tickets**:
+- [x] [SUB-006-A] Categories table with position-based ordering
+- [x] [SUB-006-B] category_id FK on tasks with migration
+- [x] [SUB-006-C] Categories API (CRUD, max 5 limit)
+- [x] [SUB-006-D] Clickable domain breadcrumb → domain root view
+- [x] [SUB-006-E] Step-by-step back navigation with history stack
+- [x] [SUB-006-F] Computed overdue status
+- [x] [SUB-006-G] Improved agent fuzzy matching
+
+### [FEATURE-005] Test Coverage & State Refactor ✅
+**Priority**: High
+**Description**: Massive test coverage improvement and state management refactor
+**Branch**: main
+**Status**: Completed 2026-02-24
+**Sub-Tickets**:
+- [x] [SUB-005-A] Refactor to TaskStoreNotifier single source of truth
+- [x] [SUB-005-B] Backend tests: 100→143
+- [x] [SUB-005-C] Frontend tests: 68→120
+- [x] [SUB-005-D] Fix all Flutter analyze warnings
+- [x] [SUB-005-E] Voice command integration and UI improvements
 
 ### [FEATURE-004] Filtering & Sorting UI ✅
 **Priority**: High
@@ -251,8 +306,8 @@
 ## Project Metadata
 
 **Repository**: /Users/tarang/Documents/Projects/todo
-**GitHub**: (To be created)
+**GitHub**: https://github.com/tarangdeep-goel-by/todo
 **Developer**: Tarang Goel
 **Started**: 2026-02-01
 **MVP Completed**: 2026-02-01
-**Status**: ✅ Production-ready MVP
+**Status**: ✅ Active development (150 backend tests, 127 frontend tests)
