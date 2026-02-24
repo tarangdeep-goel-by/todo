@@ -9,6 +9,7 @@ import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
+import '../widgets/calendar_task_view.dart';
 
 /// Main home screen with view switching
 class HomeScreen extends ConsumerStatefulWidget {
@@ -44,9 +45,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // Active filter chips (only in flat view)
                 if (viewMode == ViewMode.flat) const ActiveFilterChips(),
                 Expanded(
-                  child: viewMode == ViewMode.node
-                      ? const ParentNodeView()
-                      : const FlatTaskView(),
+                  child: switch (viewMode) {
+                    ViewMode.node => const ParentNodeView(),
+                    ViewMode.flat => const FlatTaskView(),
+                    ViewMode.calendar => const CalendarTaskView(),
+                  },
                 ),
               ],
             ),
