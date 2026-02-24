@@ -12,7 +12,7 @@ class TestFilterByCategory:
         params = TaskFilterParams(user_id="test-user", category="work")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
-        assert tasks[0].title == "Work A"
+        assert tasks[0].title == "work a"
 
     async def test_multi_category(self, task_service, db_session):
         await task_service.create_task(**make_task(title="Work A", category="work"))
@@ -30,7 +30,7 @@ class TestFilterByPriority:
         params = TaskFilterParams(user_id="test-user", priority="high")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
-        assert tasks[0].title == "High"
+        assert tasks[0].title == "high"
 
     async def test_multi_priority(self, task_service, db_session):
         await task_service.create_task(**make_task(title="High", priority="high"))
@@ -49,7 +49,7 @@ class TestFilterByStatus:
         params = TaskFilterParams(user_id="test-user", status="active")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
-        assert tasks[0].title == "Active"
+        assert tasks[0].title == "active"
 
     async def test_overdue_computed(self, task_service, db_session):
         yesterday = datetime.now(timezone.utc) - timedelta(days=1)
@@ -59,7 +59,7 @@ class TestFilterByStatus:
         params = TaskFilterParams(user_id="test-user", status="overdue")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
-        assert tasks[0].title == "Overdue"
+        assert tasks[0].title == "overdue"
 
     async def test_multi_status(self, task_service, db_session):
         await task_service.create_task(**make_task(title="Active"))
@@ -77,7 +77,7 @@ class TestFilterByParentId:
         params = TaskFilterParams(user_id="test-user", parent_id="null")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
-        assert tasks[0].title == "Parent"
+        assert tasks[0].title == "parent"
 
     async def test_specific_parent(self, task_service, db_session):
         parent = await task_service.create_task(**make_task(title="Parent"))
@@ -120,7 +120,7 @@ class TestFilterByDateRange:
         )
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
-        assert tasks[0].title == "Soon"
+        assert tasks[0].title == "soon"
 
 
 class TestSorting:
@@ -131,15 +131,15 @@ class TestSorting:
         await task_service.create_task(**make_task(title="Later", due_date=d2))
         params = TaskFilterParams(user_id="test-user", sort="due_date:desc")
         tasks, _ = await task_service.get_tasks_advanced(params)
-        assert tasks[0].title == "Later"
-        assert tasks[1].title == "Soon"
+        assert tasks[0].title == "later"
+        assert tasks[1].title == "soon"
 
     async def test_priority_desc(self, task_service, db_session):
         await task_service.create_task(**make_task(title="Low", priority="low"))
         await task_service.create_task(**make_task(title="High", priority="high"))
         params = TaskFilterParams(user_id="test-user", sort="priority:desc")
         tasks, _ = await task_service.get_tasks_advanced(params)
-        assert tasks[0].title == "High"
+        assert tasks[0].title == "high"
 
     async def test_default_sort_order(self, task_service, db_session):
         """Default: status:asc, due_date:asc, priority:desc, created_at:desc."""
@@ -150,7 +150,7 @@ class TestSorting:
         params = TaskFilterParams(user_id="test-user")
         tasks, _ = await task_service.get_tasks_advanced(params)
         # Overdue (status rank 0) should come before active (rank 1)
-        assert tasks[0].title == "Overdue"
+        assert tasks[0].title == "overdue"
 
 
 class TestPagination:

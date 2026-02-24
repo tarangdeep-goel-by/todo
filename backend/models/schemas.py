@@ -1,19 +1,18 @@
 """Pydantic schemas for request/response validation."""
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 
 
 class TaskStatus(str, Enum):
-    """Task status enum — includes computed 'overdue' for responses."""
+    """Task status enum — only real persisted states."""
     ACTIVE = "active"
     COMPLETED = "completed"
-    OVERDUE = "overdue"
 
 
 class WriteTaskStatus(str, Enum):
-    """Writable task statuses (overdue is computed, never set directly)."""
+    """Writable task statuses."""
     ACTIVE = "active"
     COMPLETED = "completed"
 
@@ -91,12 +90,6 @@ class TaskResponse(BaseModel):
     estimated_hours: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-    @model_validator(mode='after')
-    def compute_overdue(self) -> 'TaskResponse':
-        if self.status == TaskStatus.ACTIVE and self.due_date and self.due_date < datetime.now(timezone.utc):
-            self.status = TaskStatus.OVERDUE
-        return self
 
 
 class AgentResponse(BaseModel):

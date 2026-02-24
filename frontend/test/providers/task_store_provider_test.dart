@@ -333,6 +333,82 @@ void main() {
     });
   });
 
+  // ─── Due Soon ──────────────────────────────────────────────
+
+  group('due_soon status', () {
+    test('_computeDisplayStatus returns due_soon for task due in 24h', () {
+      seedStore([
+        {
+          'id': 'soon',
+          'status': 'active',
+          'dueDate': DateTime.now().add(const Duration(hours: 24)),
+        },
+      ]);
+
+      container.read(taskFilterProvider.notifier).state =
+          const TaskFilter(statuses: ['due_soon']);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result.length, 1);
+      expect(result.first.id, 'soon');
+    });
+
+    test('task due in 49h is active, not due_soon', () {
+      seedStore([
+        {
+          'id': 'later',
+          'status': 'active',
+          'dueDate': DateTime.now().add(const Duration(hours: 49)),
+        },
+      ]);
+
+      container.read(taskFilterProvider.notifier).state =
+          const TaskFilter(statuses: ['due_soon']);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result, isEmpty);
+    });
+
+    test('overdue task stays overdue, not due_soon', () {
+      seedStore([
+        {
+          'id': 'past',
+          'status': 'active',
+          'dueDate': DateTime.now().subtract(const Duration(hours: 1)),
+        },
+      ]);
+
+      container.read(taskFilterProvider.notifier).state =
+          const TaskFilter(statuses: ['due_soon']);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result, isEmpty);
+    });
+
+    test('sort order: overdue < due_soon < active < completed', () {
+      seedStore([
+        {'id': 'completed', 'status': 'completed'},
+        {'id': 'active', 'status': 'active'},
+        {
+          'id': 'due_soon',
+          'status': 'active',
+          'dueDate': DateTime.now().add(const Duration(hours: 24)),
+        },
+        {
+          'id': 'overdue',
+          'status': 'active',
+          'dueDate': DateTime.now().subtract(const Duration(hours: 1)),
+        },
+      ]);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result[0].id, 'overdue');
+      expect(result[1].id, 'due_soon');
+      expect(result[2].id, 'active');
+      expect(result[3].id, 'completed');
+    });
+  });
+
   // ─── Flat view: sort ───────────────────────────────────────
 
   group('flatViewTasksProvider sorting', () {
@@ -634,6 +710,108 @@ void main() {
 
       expect(container.read(taskByIdProvider('p'))!.status, 'active');
       expect(container.read(taskByIdProvider('gp'))!.status, 'active');
+    });
+  });
+
+  // ─── Flat view: parent-hiding ───────────────────────────────
+
+  group('flatViewTasksProvider parent-hiding', () {
+    test('hides parent with active children', () {
+      seedStore([
+        {'id': 'parent', 'title': 'Parent Task'},
+        {'id': 'child1', 'parentId': 'parent', 'status': 'active'},
+        {'id': 'child2', 'parentId': 'parent', 'status': 'active'},
+      ]);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result.map((t) => t.id).toList(), isNot(contains('parent')));
+      expect(result.length, 2);
+    });
+
+    test('shows parent when all children are completed', () {
+      seedStore([
+        {'id': 'parent', 'title': 'Parent Task'},
+        {'id': 'child1', 'parentId': 'parent', 'status': 'completed'},
+        {'id': 'child2', 'parentId': 'parent', 'status': 'completed'},
+      ]);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result.map((t) => t.id).toList(), contains('parent'));
+    });
+
+    test('handles 3-level chains — hides middle and root', () {
+      seedStore([
+        {'id': 'root', 'title': 'Root'},
+        {'id': 'mid', 'parentId': 'root', 'status': 'active'},
+        {'id': 'leaf', 'parentId': 'mid', 'status': 'active'},
+      ]);
+
+      final result = container.read(flatViewTasksProvider);
+      // root hidden (mid is active child), mid hidden (leaf is active child)
+      expect(result.map((t) => t.id).toList(), isNot(contains('root')));
+      expect(result.map((t) => t.id).toList(), isNot(contains('mid')));
+      expect(result.map((t) => t.id).toList(), contains('leaf'));
+    });
+
+    test('leaf-only tasks are always shown', () {
+      seedStore([
+        {'id': 'standalone', 'title': 'No Children'},
+      ]);
+
+      final result = container.read(flatViewTasksProvider);
+      expect(result.length, 1);
+      expect(result.first.id, 'standalone');
+    });
+
+    test('parent hidden even when children filtered out by category', () {
+      seedStore([
+        {'id': 'parent', 'title': 'Work Parent', 'category': 'work'},
+        {'id': 'child', 'parentId': 'parent', 'status': 'active', 'category': 'personal'},
+      ]);
+
+      container.read(taskFilterProvider.notifier).state =
+          const TaskFilter(categories: ['work']);
+
+      final result = container.read(flatViewTasksProvider);
+      // parent is hidden because child is active (uses unfiltered list)
+      expect(result, isEmpty);
+    });
+  });
+
+  // ─── L1 parent names ────────────────────────────────────────
+
+  group('l1ParentNamesProvider', () {
+    test('maps child to root parent title', () {
+      seedStore([
+        {'id': 'root', 'title': 'Root Task'},
+        {'id': 'child', 'title': 'Child', 'parentId': 'root'},
+      ]);
+
+      final names = container.read(l1ParentNamesProvider);
+      expect(names['child'], 'Root Task');
+      expect(names.containsKey('root'), false);
+    });
+
+    test('maps grandchild to root parent title', () {
+      seedStore([
+        {'id': 'root', 'title': 'Root'},
+        {'id': 'mid', 'title': 'Mid', 'parentId': 'root'},
+        {'id': 'leaf', 'title': 'Leaf', 'parentId': 'mid'},
+      ]);
+
+      final names = container.read(l1ParentNamesProvider);
+      expect(names['mid'], 'Root');
+      expect(names['leaf'], 'Root');
+    });
+
+    test('returns empty map for root-only tasks', () {
+      seedStore([
+        {'id': 'a', 'title': 'Task A'},
+        {'id': 'b', 'title': 'Task B'},
+      ]);
+
+      final names = container.read(l1ParentNamesProvider);
+      expect(names, isEmpty);
     });
   });
 }

@@ -179,11 +179,45 @@ final childTasksProvider = Provider.family<List<Task>, String>((ref, parentId) {
   return all.where((t) => t.parentId == parentId).toList();
 });
 
-/// Flat view tasks: filtered + sorted client-side using TaskFilter.
+/// Flat view tasks: filtered + sorted, with parent-hiding.
+/// Parents that have active children are hidden — children show instead.
 final flatViewTasksProvider = Provider<List<Task>>((ref) {
   final all = ref.watch(allTasksProvider);
   final filter = ref.watch(taskFilterProvider);
-  return _filterAndSort(all, filter);
+  final filtered = _filterAndSort(all, filter);
+
+  // Build set of parents that have active children (using unfiltered list)
+  final parentsWithActiveChildren = <String>{};
+  for (final task in all) {
+    if (task.parentId != null && task.status == 'active') {
+      parentsWithActiveChildren.add(task.parentId!);
+    }
+  }
+
+  return filtered.where((t) => !parentsWithActiveChildren.contains(t.id)).toList();
+});
+
+/// Maps task ID → L1 (root) parent title for subtitle display.
+final l1ParentNamesProvider = Provider<Map<String, String>>((ref) {
+  final tasks = ref.watch(taskStoreProvider).tasks;
+  final result = <String, String>{};
+  for (final task in tasks.values) {
+    if (task.parentId == null) continue;
+    // Walk to root ancestor
+    String? currentId = task.parentId;
+    final visited = <String>{};
+    Task? root;
+    while (currentId != null) {
+      if (visited.contains(currentId)) break;
+      visited.add(currentId);
+      final parent = tasks[currentId];
+      if (parent == null) break;
+      root = parent;
+      currentId = parent.parentId;
+    }
+    if (root != null) result[task.id] = root.title;
+  }
+  return result;
 });
 
 // --- Client-side filter + sort ---
@@ -249,10 +283,17 @@ int _multiSort(Task a, Task b, List<SortOption> sorts) {
   return 0;
 }
 
-/// Compute display status: active tasks past due become 'overdue'.
+/// Compute display status: active tasks past due become 'overdue',
+/// active tasks due within 48h become 'due_soon'.
 String _computeDisplayStatus(Task t) {
-  if (t.status == 'active' && t.dueDate != null && t.dueDate!.isBefore(DateTime.now())) {
-    return 'overdue';
+  if (t.status == 'active' && t.dueDate != null) {
+    final now = DateTime.now();
+    if (t.dueDate!.isBefore(now)) {
+      return 'overdue';
+    }
+    if (t.dueDate!.isBefore(now.add(const Duration(hours: 48)))) {
+      return 'due_soon';
+    }
   }
   return t.status;
 }
@@ -282,10 +323,12 @@ int _statusRank(String status) {
   switch (status) {
     case 'overdue':
       return 0;
-    case 'active':
+    case 'due_soon':
       return 1;
+    case 'active':
+      return 2;
     default:
-      return 2; // completed
+      return 3; // completed
   }
 }
 

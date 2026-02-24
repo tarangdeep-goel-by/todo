@@ -219,7 +219,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   void _startEditingTitle(Task task) {
     setState(() {
       _editingTitle = true;
-      _titleController.text = task.title;
+      _titleController.text = task.sentenceTitle;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _titleFocus.requestFocus();
@@ -228,7 +228,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   Future<void> _saveTitle(Task task) async {
     final newTitle = _titleController.text.trim();
-    if (newTitle.isEmpty || newTitle == task.title) {
+    if (newTitle.isEmpty || newTitle.toLowerCase() == task.title) {
       setState(() => _editingTitle = false);
       return;
     }
@@ -794,7 +794,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     return GestureDetector(
       onTap: () => _startEditingTitle(task),
       child: Text(
-        task.title,
+        task.sentenceTitle,
         style: AppTypography.domainTitle(context, color: domain.primary)
             .copyWith(fontSize: 28),
       ),

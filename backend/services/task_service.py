@@ -38,7 +38,7 @@ class TaskService:
         task = Task(
             id=task_id or str(uuid.uuid4()),
             user_id=user_id,
-            title=title,
+            title=title.lower(),
             description=description,
             parent_id=parent_id,
             category=category,
@@ -109,6 +109,8 @@ class TaskService:
 
         for key, value in updates.items():
             if hasattr(task, key):
+                if key == 'title' and isinstance(value, str):
+                    value = value.lower()
                 setattr(task, key, value)
 
         # When undoing (status → active), activate completed ancestors

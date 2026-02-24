@@ -133,7 +133,17 @@ class Task {
     );
   }
 
+  /// Title in sentence case (first letter capitalized).
+  String get sentenceTitle =>
+      title.isEmpty ? title : title[0].toUpperCase() + title.substring(1);
+
   bool get isCompleted => status == 'completed';
-  bool get isOverdue => status == 'overdue';
-  bool get isActive => status == 'active' || status == 'overdue';
+  bool get isOverdue =>
+      status == 'active' && dueDate != null && dueDate!.isBefore(DateTime.now());
+  bool get isDueSoon =>
+      status == 'active' &&
+      dueDate != null &&
+      !dueDate!.isBefore(DateTime.now()) &&
+      dueDate!.isBefore(DateTime.now().add(const Duration(hours: 48)));
+  bool get isActive => status == 'active';
 }

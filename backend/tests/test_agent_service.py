@@ -36,7 +36,7 @@ class TestHandleAdd:
         ))
         result = await agent_service.process_voice_command("write tests", "test-user", db_session)
         assert result.success is True
-        assert "Write tests" in result.message
+        assert "write tests" in result.message
 
     async def test_add_with_due_date(self, agent_service, mock_gemini, task_service, db_session):
         tree = await make_task_tree(task_service)
@@ -176,6 +176,62 @@ class TestHandleDeleteNoMatch:
         result = await agent_service.process_voice_command("delete zzz", "test-user", db_session)
         assert result.success is False
         assert "No tasks found" in result.message
+
+
+class TestHandleBreakdown:
+    async def test_single_match_returns_suggestions(self, agent_service, mock_gemini, task_service, db_session):
+        tree = await make_task_tree(task_service)
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "BREAKDOWN", taskQuery="Project Alpha",
+        ))
+        mock_gemini.generate_subtasks = AsyncMock(return_value=[
+            "Define requirements", "Create design doc", "Implement MVP", "Write tests"
+        ])
+        result = await agent_service.process_voice_command("break down project alpha", "test-user", db_session)
+        assert result.type == "question"
+        assert result.data["action"] == "select_subtasks"
+        assert len(result.data["suggestions"]) == 4
+        assert result.data["parent_task"]["title"] == "project alpha"
+
+    async def test_multiple_matches_returns_question(self, agent_service, mock_gemini, task_service, db_session):
+        await task_service.create_task(
+            user_id="test-user", title="Meeting A", category="work", transcription="meeting a",
+        )
+        await task_service.create_task(
+            user_id="test-user", title="Meeting B", category="work", transcription="meeting b",
+        )
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "BREAKDOWN", taskQuery="Meeting",
+        ))
+        result = await agent_service.process_voice_command("break down meeting", "test-user", db_session)
+        assert result.type == "question"
+        assert result.data["action"] == "select_breakdown_target"
+
+    async def test_no_match_returns_error(self, agent_service, mock_gemini, task_service, db_session):
+        await make_task_tree(task_service)
+        mock_gemini.detect_intent = AsyncMock(return_value=_intent(
+            "BREAKDOWN", taskQuery="zzz_nonexistent_zzz",
+        ))
+        result = await agent_service.process_voice_command("break down zzz", "test-user", db_session)
+        assert result.success is False
+        assert "No tasks found" in result.message
+
+    async def test_create_subtasks_resolve(self, agent_service, mock_gemini, task_service, db_session):
+        tree = await make_task_tree(task_service)
+        parent = tree["project_alpha"]
+        result = await agent_service.resolve_question(
+            user_id="test-user",
+            selected_task_id=None,
+            action="create_subtasks",
+            data={
+                "parent_task_id": parent.id,
+                "selected_titles": ["Sub A", "Sub B", "Sub C"],
+            },
+            db=db_session,
+        )
+        assert result.success is True
+        assert result.data["created_count"] == 3
+        assert len(result.data["created_ids"]) == 3
 
 
 class TestHandleMove:
