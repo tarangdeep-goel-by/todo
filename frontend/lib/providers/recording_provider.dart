@@ -5,6 +5,7 @@ enum RecordingState {
   idle,
   listening,
   processing,
+  typing,
 }
 
 /// Provider for recording state
