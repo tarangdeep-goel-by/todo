@@ -373,7 +373,10 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
     final storeState = ref.watch(taskStoreProvider);
     final tasks = ref.watch(allTasksProvider);
 
-    if (storeState.isLoading && tasks.isEmpty) {
+    // Derive domains from actual tasks
+    final domains = _getDomains();
+
+    if (storeState.isLoading && domains.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
           color: AppColors.darkText,
@@ -381,16 +384,13 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
       );
     }
 
-    if (storeState.error != null && tasks.isEmpty) {
+    if (storeState.error != null && domains.isEmpty) {
       return const EmptyState(
         message: 'Unable to load tasks',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
       );
     }
-
-    // Derive domains from actual tasks
-    final domains = _getDomains();
 
     if (domains.isEmpty) {
       return Center(
