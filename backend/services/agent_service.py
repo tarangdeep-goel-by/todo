@@ -105,6 +105,8 @@ class AgentService:
             return await self._handle_edit(params, user_id, db)
         elif intent == "MOVE":
             return await self._handle_move(params, user_id, db)
+        elif intent == "BREAKDOWN":
+            return await self._handle_breakdown(params, user_id, db)
         elif intent == "QUERY":
             return await self._handle_query(params, user_id, db)
         else:
@@ -568,6 +570,68 @@ class AgentService:
                 data={"task_id": task.id, "new_parent_id": parent.id}
             )
 
+        elif action == "select_breakdown_target":
+            task = await task_service.get_task(selected_task_id)
+            if not task:
+                return AgentResponse(success=False, message="Task not found", type="error")
+            tree_context = await task_service.build_full_tree_context(user_id)
+            suggestions = await self.gemini.generate_subtasks(
+                task_title=task.title,
+                task_description=task.description,
+                context=tree_context,
+            )
+            if not suggestions:
+                return AgentResponse(
+                    success=False,
+                    message=f"Could not generate subtasks for '{task.title}'",
+                    type="error",
+                    data={"task_id": task.id}
+                )
+            return AgentResponse(
+                success=True,
+                message=f"Suggested subtasks for '{task.title}'",
+                type="question",
+                data={
+                    "action": "select_subtasks",
+                    "parent_task": {"id": task.id, "title": task.title, "category": task.category},
+                    "suggestions": suggestions,
+                }
+            )
+
+        elif action == "create_subtasks":
+            parent_task_id = data.get('parent_task_id')
+            selected_titles = data.get('selected_titles', [])
+            if not parent_task_id or not selected_titles:
+                return AgentResponse(success=False, message="Missing parent task or subtask titles", type="error")
+
+            parent = await task_service.get_task(parent_task_id)
+            if not parent:
+                return AgentResponse(success=False, message="Parent task not found", type="error")
+
+            created_ids = []
+            for title in selected_titles:
+                sub = await task_service.create_task(
+                    user_id=user_id,
+                    title=title,
+                    category=parent.category,
+                    category_id=parent.category_id,
+                    parent_id=parent.id,
+                    transcription=title,
+                    ai_placement={"suggested_parent": parent.id, "confidence": 0.95, "reasoning": "Breakdown subtask"},
+                )
+                created_ids.append(sub.id)
+
+            return AgentResponse(
+                success=True,
+                message=f"Created {len(created_ids)} subtasks under '{parent.title}'",
+                type="confirmation",
+                data={
+                    "parent_task_id": parent.id,
+                    "created_count": len(created_ids),
+                    "created_ids": created_ids,
+                }
+            )
+
         elif action == "create_category":
             title = data.get('suggested_title', '')
             category = data.get('suggested_category', '')
@@ -600,6 +664,61 @@ class AgentService:
             )
 
         return AgentResponse(success=False, message=f"Unknown action: {action}", type="error")
+
+    async def _handle_breakdown(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+        """Handle BREAKDOWN intent — generate subtask suggestions for a task."""
+        task_service = TaskService(db)
+        query = params.get('taskQuery', '')
+
+        matched_tasks = await self._resolve_tasks(params, user_id, db)
+
+        if not matched_tasks:
+            return AgentResponse(
+                success=False,
+                message=f"No tasks found matching '{query}'",
+                type="error",
+                data={"taskQuery": query}
+            )
+
+        if len(matched_tasks) > 1:
+            return AgentResponse(
+                success=False,
+                message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
+                type="question",
+                data={
+                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
+                    "action": "select_breakdown_target",
+                    "intent": "BREAKDOWN"
+                }
+            )
+
+        # Single match — generate subtask suggestions
+        task = matched_tasks[0]
+        tree_context = await task_service.build_full_tree_context(user_id)
+        suggestions = await self.gemini.generate_subtasks(
+            task_title=task.title,
+            task_description=task.description,
+            context=tree_context,
+        )
+
+        if not suggestions:
+            return AgentResponse(
+                success=False,
+                message=f"Could not generate subtasks for '{task.title}'",
+                type="error",
+                data={"task_id": task.id}
+            )
+
+        return AgentResponse(
+            success=True,
+            message=f"Suggested subtasks for '{task.title}'",
+            type="question",
+            data={
+                "action": "select_subtasks",
+                "parent_task": {"id": task.id, "title": task.title, "category": task.category},
+                "suggestions": suggestions,
+            }
+        )
 
     async def _handle_query(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
         """Handle QUERY intent."""

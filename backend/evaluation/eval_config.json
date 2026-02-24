@@ -1159,6 +1159,70 @@
           }
         }
       ]
+    },
+    {
+      "id": "breakdown_01",
+      "transcription": "break down the quarterly report",
+      "difficulty": "easy",
+      "category": "BREAKDOWN",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "BREAKDOWN",
+          "checks": {
+            "taskQuery_contains": "quarterly report",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "breakdown_02",
+      "transcription": "split grocery shopping into steps",
+      "difficulty": "easy",
+      "category": "BREAKDOWN",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "BREAKDOWN",
+          "checks": {
+            "taskQuery_contains": "grocery",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "breakdown_03",
+      "transcription": "decompose the ACME Corp API rebuild into subtasks",
+      "difficulty": "medium",
+      "category": "BREAKDOWN",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "BREAKDOWN",
+          "checks": {
+            "taskQuery_contains": "ACME",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "breakdown_04",
+      "transcription": "break the marathon training into smaller tasks",
+      "difficulty": "medium",
+      "category": "BREAKDOWN",
+      "expected_intent_count": 1,
+      "expected_intents": [
+        {
+          "intent": "BREAKDOWN",
+          "checks": {
+            "taskQuery_contains": "marathon",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
     }
   ]
 }

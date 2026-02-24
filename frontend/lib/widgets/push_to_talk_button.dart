@@ -10,6 +10,7 @@ import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'waveform_painter.dart';
 import 'question_bottom_sheet.dart';
+import 'subtask_selection_sheet.dart';
 
 /// Dual-mode input pill: tap-to-talk voice + keyboard text entry
 class PushToTalkButton extends ConsumerStatefulWidget {
@@ -417,12 +418,27 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
 
       if (mounted) {
         if (response.type == 'question' && response.data != null) {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) => QuestionBottomSheet(response: response),
-          );
+          final action = response.data!['action'] as String?;
+          if (action == 'select_subtasks') {
+            final parentTask = response.data!['parent_task'] as Map<String, dynamic>;
+            final suggestions = (response.data!['suggestions'] as List).cast<String>();
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => SubtaskSelectionSheet(
+                parentTask: parentTask,
+                suggestions: suggestions,
+              ),
+            );
+          } else {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => QuestionBottomSheet(response: response),
+            );
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(response.message)),
