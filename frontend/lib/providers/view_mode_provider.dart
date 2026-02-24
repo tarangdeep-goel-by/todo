@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum ViewMode {
   node, // Parent node view with domain cards
   flat, // Flat all-tasks view
+  calendar, // Calendar timeline view grouped by due date
 }
 
 /// Provider for current view mode
