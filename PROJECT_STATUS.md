@@ -1,36 +1,30 @@
 # TODO App - Project Status
 
-**Last Updated**: 2026-02-06
-**Status**: ✅ Task Detail Overlay & Undo Complete
+**Last Updated**: 2026-02-25
+**Status**: ✅ Completion Cascade & Ancestor Activation
 
 ---
 
 ## Current Sprint
 
-**Sprint**: Task Detail Overlay & Undo
-**Duration**: 2026-02-05 to 2026-02-06
-**Goal**: Add task detail editing overlay with undo support and improve agent task creation
+**Sprint**: Task Integrity & Polish
+**Duration**: 2026-02-25
+**Goal**: Enforce completion invariant and improve UX polish
 
 ### Completed This Sprint
-- ✅ TaskDetailOverlay replaces read-only TaskDetailSheet
-  - Breadcrumb navigation (category + ancestor tasks)
-  - Inline editing: title, description, priority, due date
-  - Status toggle via checkbox chip (Complete ☐/☑)
-  - Subtask display with tap-to-navigate
-  - Inline add subtask with text field
-- ✅ UndoSnackbar component with domain colors
-  - Slide-up animation, 4s auto-dismiss
-  - Undo button reverts task status via API
-- ✅ Backend default sort: status:asc → due_date:asc → priority:desc → created_at:desc
-  - Active tasks appear before completed
-  - QueryBuilder handles status CASE (active=0, completed=1)
-- ✅ Removed notes field, use description instead
-  - Migration 004 drops notes column
-  - Agent generates short title (2-6 words) + longer description
-  - Fuzzy search weights: title 60%, description 30%, tags 10%
-- ✅ UpdateTaskRequest now includes priority field
-- ✅ DomainCard long-press opens overlay
-- ✅ Removed level 1 branch pill from TaskItem
+- ✅ Completion cascade: completing a task now cascades to all descendants
+  - UI calls PUT `/complete` instead of PATCH for status→completed
+  - `completeWithDescendants()` optimistic BFS in frontend store
+- ✅ Ancestor activation: undoing a child or adding a subtask activates completed ancestors
+  - `_activate_ancestor_chain()` in TaskService (backend)
+  - `activateAncestorChain()` in TaskStoreNotifier (frontend)
+  - Hooked into `update_task()` and `create_task()` server-side
+- ✅ Loading/error state improvements
+  - Reusable `LoadingState` widget
+  - `EmptyState` with optional retry button
+  - Pull-to-refresh on flat view and node view
+  - Node view derives domains from `domainPalettesProvider`
+- ✅ 14 new tests (7 backend, 7 frontend) for cascade behavior
 
 ---
 
@@ -81,7 +75,7 @@
 - [x] Flutter analyze: 0 errors, 0 warnings
 - [x] Deprecated API fixes (withOpacity → withValues)
 
-#### Backend Technical (NEW)
+#### Backend Technical
 - [x] FastAPI REST API with async PostgreSQL
 - [x] SQLAlchemy ORM with Alembic migrations
 - [x] Gemini AI agent for voice command processing
@@ -92,11 +86,14 @@
 - [x] Docker Compose setup (backend + postgres)
 - [x] Performance testing framework
 - [x] Complex prompt testing suite (15 scenarios)
+- [x] Categories as first-class DB entities (categories table with position)
+- [x] Completion cascade (parent → all descendants)
+- [x] Ancestor activation (undo/add-child → activate completed ancestors)
 - [x] Multi-level filtering and sorting API
   - Multi-value exact match filters (category, priority, status, parent_id, tags)
   - Date range filters (created_at, updated_at, due_date, completed_at)
   - Multi-level sorting with priority mapping (high=3, medium=2, low=1)
-  - Smart default sort: priority desc → due_date asc → created_at desc
+  - Smart default sort: status asc → due_date asc → priority desc → created_at desc
   - Pagination with metadata (total_count, has_more)
   - Dynamic SQLAlchemy query builder
   - NULL handling for date fields (NULLS LAST)
@@ -153,22 +150,17 @@
 ### Code Statistics
 
 #### Frontend (VOKL)
-- **Total Files**: 25+ (focused on maximalist design)
-- **Lines of Code**: ~2,800 (VOKL-specific implementation)
-- **Key Components**: 9 custom widgets, 3 screens, 5 services
-- **Design System**: 5 domain palettes × 2 modes (10 color schemes)
-- **Animations**: 7 custom animations, 4 easing curves
-- **Build Time**: ~3 min (first), ~20s (subsequent)
-- **App Size**: TBD (not optimized yet)
-- **Backend Connection**: Local network IP (192.168.0.101:8001)
-- **Test Data**: 38 tasks seeded across 5 domains
+- **Total Files**: 30+
+- **Key Components**: 12 custom widgets, 3 screens, 5 services
+- **Design System**: 5 domain palettes (OKLCH, dark mode)
+- **Tests**: 127 (providers, widgets, config)
+- **Backend Connection**: Local network IP (192.168.0.111:8001)
 
 #### Backend
-- **Total Files**: 45
-- **Lines of Code**: ~3,426
-- **Test Coverage**: Complex prompt suite (15 scenarios)
-- **API Endpoints**: 6 (agent/process, tasks CRUD, health)
-- **Database Tables**: 1 (tasks with JSONB, indexes)
+- **Total Files**: 50+
+- **Tests**: 150 (services, API, query builder, agent, categories, ancestor activation)
+- **API Endpoints**: 9 (agent process/resolve, tasks CRUD/complete, categories CRUD, health)
+- **Database Tables**: 2 (tasks, categories)
 
 ### Dependencies
 
@@ -225,17 +217,20 @@
 
 ### Automated Testing
 
-#### Frontend
-- ✅ Unit tests: Passing
-- ✅ Widget tests: Basic coverage
+#### Frontend (127 tests)
+- ✅ Provider tests: 45 (TaskStoreNotifier, derived providers, cascade methods)
+- ✅ Widget tests: 70+ (task item, domain card, filter, empty/loading states)
+- ✅ Config tests: Typography, theme
+- ✅ Flutter analyze: 0 issues
 - ⬜ Integration tests: Not implemented
-- ⬜ E2E tests: Not implemented
 
-#### Backend
-- ✅ Complex prompt suite: 15 scenarios
-- ✅ Category limit tests: Passing
-- ✅ Date parsing tests: Verified
-- ✅ Fuzzy search tests: Implemented
+#### Backend (150 tests)
+- ✅ TaskService: CRUD, tree ops, search, categories
+- ✅ AgentService: Intent detection, resolve actions
+- ✅ API endpoints: Tasks, agent, categories
+- ✅ QueryBuilder: Filtering, sorting, pagination
+- ✅ Ancestor activation: 7 tests (undo + add-child scenarios)
+- ✅ Utilities: Fuzzy matcher, date parser, JSON extraction
 - ✅ Performance framework: Ready (50-500 task trees)
 
 ### Device Testing
@@ -314,6 +309,41 @@
 ---
 
 ## Changelog
+
+### 2026-02-25 - Completion Cascade & Ancestor Activation
+- ✅ Backend `_activate_ancestor_chain()` enforces invariant: completed task never has active descendants
+  - Hooked into `update_task()` (undo→active) and `create_task()` (new child under completed parent)
+- ✅ Frontend completion cascade via PUT `/complete` endpoint
+  - `completeWithDescendants()` BFS in TaskStoreNotifier
+  - `activateAncestorChain()` walks up parent chain
+  - `_toggleStatus` and `_saveSubtask` updated in task detail overlay
+- ✅ `ApiService.completeTask()` — new PUT endpoint call
+- ✅ Loading/error state improvements
+  - Reusable `LoadingState` widget
+  - `EmptyState` with optional `onRetry` callback
+  - Pull-to-refresh (`RefreshIndicator`) on flat and node views
+  - Node view derives domains from `domainPalettesProvider`
+- ✅ 14 new tests (7 backend ancestor activation, 7 frontend cascade methods)
+- ✅ Updated CLAUDE.md docs with current test counts and schema
+
+**Test Totals**: 150 backend, 127 frontend
+
+### 2026-02-24 - Categories, Navigation & Test Coverage
+- ✅ Categories as first-class backend concept (persistent `categories` table)
+  - `category_id` FK on tasks, deterministic UUID generation
+  - Categories API (CRUD, position-based ordering, max 5 limit)
+- ✅ `category_id` FK added to tasks with migration
+- ✅ Clickable domain navigation in task detail overlay
+  - Tap category breadcrumb → domain root view (L1 tasks)
+  - Step-by-step back navigation with history stack
+- ✅ Node view derives domains from backend categories (not task data)
+- ✅ Computed overdue status (active + past due date)
+- ✅ Improved agent fuzzy matching, removed unused tags
+- ✅ Massive test coverage improvement (100→143 backend, 68→120 frontend)
+- ✅ Refactored to TaskStoreNotifier single source of truth
+- ✅ Voice command integration and UI improvements
+
+**New Files**: `test_ancestor_activation.py`, `test_categories.py`, `loading_state.dart`
 
 ### 2026-02-06 - Task Detail Overlay & Undo
 - ✅ TaskDetailOverlay with breadcrumb navigation and inline editing
