@@ -20,7 +20,7 @@ class AppSpacing {
 
   // CTA button
   static const double ctaBottomMargin = 32.0; // Distance from bottom safe area
-  static const double ctaIdleWidth = 180.0;
+  static const double ctaIdleWidth = 200.0;
   static const double ctaIdleHeight = 56.0;
   static const double ctaActiveWidth = 280.0;
   static const double ctaActiveHeight = 72.0;
