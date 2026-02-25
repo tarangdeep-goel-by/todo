@@ -11,6 +11,7 @@ import '../services/haptic_service.dart';
 import 'waveform_painter.dart';
 import 'question_bottom_sheet.dart';
 import 'subtask_selection_sheet.dart';
+import 'ramble_sheet.dart';
 import 'styled_snackbar.dart';
 
 /// Dual-mode input pill: tap-to-talk voice + keyboard text entry
@@ -135,10 +136,11 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
           height: 24,
           color: textColor.withValues(alpha: 0.15),
         ),
-        // Voice half
+        // Voice half — tap: single command, long-press: ramble mode
         Expanded(
           child: GestureDetector(
             onTap: _startListening,
+            onLongPress: _launchRamble,
             behavior: HitTestBehavior.opaque,
             child: Center(
               child: Row(
@@ -294,6 +296,17 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   void _activateKeyboard() {
     HapticService.light();
     ref.read(recordingStateProvider.notifier).state = RecordingState.typing;
+  }
+
+  void _launchRamble() {
+    HapticService.medium();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder: (_) => const RambleSheet(),
+    );
   }
 
   Future<void> _startListening() async {
