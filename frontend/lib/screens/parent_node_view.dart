@@ -12,6 +12,7 @@ import '../providers/task_store_provider.dart';
 import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/styled_snackbar.dart';
 import '../utils/liquid_focus_scroll.dart';
 import '../services/haptic_service.dart';
 
@@ -253,8 +254,9 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
       HapticService.light();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create domain: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to create domain: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -349,11 +351,9 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted: ${domain.name}'),
-            duration: const Duration(seconds: 2),
-          ),
+        showStyledSnackbar(context,
+          message: 'Deleted: ${domain.name}',
+          style: SnackbarStyle.success,
         );
       }
     } catch (e) {
@@ -362,8 +362,9 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
         store.upsertTask(t);
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete domain: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to delete domain: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -391,27 +392,18 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
     }
 
     if (domains.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const EmptyState(
-              message: 'No domains yet',
-              textColor: AppColors.darkText,
-              icon: Icons.folder_open,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextButton.icon(
-              onPressed: () => _showAddDomainSheet(0),
-              icon: const Icon(Icons.add, color: AppColors.darkText),
-              label: Text(
-                'Add Domain',
-                style:
-                    AppTypography.ctaLabelText(color: AppColors.darkText),
-              ),
-            ),
-          ],
-        ),
+      return EmptyState(
+        title: 'Your world, organized',
+        message:
+            'Speak a task and VOKL creates domains automatically.\nOr add one manually below.',
+        textColor: AppColors.darkText,
+        icon: Icons.auto_awesome,
+        examples: const [
+          'Add buy groceries to personal',
+          'Schedule standup for work',
+        ],
+        actionLabel: 'Add Domain',
+        onAction: () => _showAddDomainSheet(0),
       );
     }
 

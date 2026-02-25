@@ -10,6 +10,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../widgets/undo_snackbar.dart';
+import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
 
 /// Domain card widget with focus/compressed states
@@ -104,8 +105,9 @@ class _DomainCardState extends ConsumerState<DomainCard> {
       // Rollback
       store.upsertTask(task);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update task: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to update task: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -126,8 +128,9 @@ class _DomainCardState extends ConsumerState<DomainCard> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Undo failed: $e')),
+        showStyledSnackbar(context,
+          message: 'Undo failed: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -365,13 +368,18 @@ class _DomainCardState extends ConsumerState<DomainCard> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Domain name (smaller)
-          Text(
-            domain.name,
-            style: AppTypography.ctaLabelText(color: domain.primary).copyWith(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              domain.name,
+              style: AppTypography.ctaLabelText(color: domain.primary).copyWith(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: AppSpacing.sm),
 
           // Task count (right aligned, bolder)
           Text(

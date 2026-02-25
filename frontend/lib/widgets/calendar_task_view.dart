@@ -12,6 +12,7 @@ import 'task_detail_overlay.dart';
 import 'empty_state.dart';
 import 'loading_state.dart';
 import 'undo_snackbar.dart';
+import 'styled_snackbar.dart';
 
 /// Calendar timeline view — tasks grouped by due date sections.
 class CalendarTaskView extends ConsumerStatefulWidget {
@@ -50,9 +51,14 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
 
     if (datedTasks.isEmpty && undatedTasks.isEmpty) {
       return const EmptyState(
-        message: 'No active tasks\nTap the button below to add one',
+        title: 'Timeline is clear',
+        message: 'Tasks with due dates appear here\non a chronological timeline.',
         textColor: AppColors.darkText,
         icon: Icons.calendar_today,
+        examples: [
+          'Add dentist appointment, due Friday',
+          'Schedule team review for next week',
+        ],
       );
     }
 
@@ -252,8 +258,9 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     } catch (e) {
       store.upsertTask(task);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update task: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to update task: $e',
+          style: SnackbarStyle.error,
         );
       }
     }

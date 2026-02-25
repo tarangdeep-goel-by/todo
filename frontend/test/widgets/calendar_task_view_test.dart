@@ -28,7 +28,7 @@ void main() {
       await tester.pumpWidget(buildCalendarView());
       await tester.pump();
 
-      expect(find.text('No active tasks\nTap the button below to add one'), findsOneWidget);
+      expect(find.text('Timeline is clear'), findsOneWidget);
     });
 
     testWidgets('groups overdue tasks in Overdue section', (tester) async {
