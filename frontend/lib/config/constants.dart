@@ -5,8 +5,6 @@ class AppAnimations {
   // Custom easing curves (from design brief)
   static const easeOutQuint = Cubic(0.22, 1.0, 0.36, 1.0);
   static const easeOutCubic = Cubic(0.33, 1.0, 0.68, 1.0);
-  static const easeInQuad = Cubic(0.55, 0.085, 0.68, 0.53);
-
   // Durations
   static const cardExpand = Duration(milliseconds: 350);
   static const cardCollapse = Duration(milliseconds: 350);
