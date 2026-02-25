@@ -1,9 +1,10 @@
 """Agent service for processing voice commands."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List
+import uuid
 from .gemini_service import GeminiService
 from .task_service import TaskService
-from models.schemas import AgentResponse
+from models.schemas import AgentResponse, BrainDumpResponse, BrainDumpTaskProposal, BrainDumpSubmitResponse
 from utils.date_parser import parse_flexible_date
 
 
@@ -664,6 +665,148 @@ class AgentService:
             )
 
         return AgentResponse(success=False, message=f"Unknown action: {action}", type="error")
+
+    async def process_brain_dump(
+        self,
+        transcription: str,
+        user_id: str,
+        db: AsyncSession,
+        category: str | None = None,
+    ) -> BrainDumpResponse:
+        """
+        Process a voice brain dump into task proposals for user review.
+
+        Unlike process_voice_command() which auto-executes, this returns
+        structured task proposals that the user can review, edit, and
+        submit separately.
+
+        Args:
+            transcription: Raw voice transcription
+            user_id: User ID
+            db: Database session
+            category: Optional pre-fill category for all tasks
+
+        Returns:
+            BrainDumpResponse with list of proposed tasks
+        """
+        print(f"\n{'='*60}")
+        print(f"[Agent] BRAIN DUMP: transcription='{transcription}', user_id='{user_id}'")
+
+        task_service = TaskService(db)
+        tree_context = await task_service.build_full_tree_context(user_id)
+
+        # Get task proposals from Gemini
+        raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context)
+
+        if not raw_tasks:
+            return BrainDumpResponse(
+                success=False,
+                tasks=[],
+                transcription=transcription,
+                message="Could not extract any tasks. Try rephrasing.",
+            )
+
+        # Get available categories for validation
+        available_categories = await task_service.get_categories(user_id)
+
+        # Convert raw Gemini output to task proposals
+        proposals: List[BrainDumpTaskProposal] = []
+        for raw in raw_tasks:
+            content = raw.get("content", "").strip()
+            if not content:
+                continue
+
+            task_category = category or raw.get("category", "personal")
+            # Validate category exists; fall back to "personal"
+            if task_category.lower() not in available_categories:
+                task_category = "personal"
+
+            # Resolve parent if parentQuery provided
+            parent_id = None
+            parent_query = raw.get("parentQuery")
+            if parent_query:
+                parent_tasks = await task_service.search_tasks(user_id, parent_query)
+                if parent_tasks:
+                    parent_id = parent_tasks[0].id
+
+            proposals.append(BrainDumpTaskProposal(
+                id=str(uuid.uuid4()),
+                content=content,
+                description=raw.get("description"),
+                category=task_category.lower(),
+                due_date=parse_flexible_date(raw.get("dueDate")),
+                priority=raw.get("priority"),
+                parent_id=parent_id,
+                labels=raw.get("labels", []),
+            ))
+
+        print(f"[Agent] brain dump produced {len(proposals)} task proposals")
+
+        return BrainDumpResponse(
+            success=True,
+            tasks=proposals,
+            transcription=transcription,
+            message=f"Found {len(proposals)} tasks",
+        )
+
+    async def submit_brain_dump(
+        self,
+        user_id: str,
+        tasks: List[BrainDumpTaskProposal],
+        db: AsyncSession,
+    ) -> BrainDumpSubmitResponse:
+        """
+        Commit reviewed brain dump tasks to the database.
+
+        Args:
+            user_id: User ID
+            tasks: List of reviewed/edited task proposals
+            db: Database session
+
+        Returns:
+            BrainDumpSubmitResponse with created task IDs
+        """
+        print(f"\n{'='*60}")
+        print(f"[Agent] SUBMIT BRAIN DUMP: {len(tasks)} tasks for user '{user_id}'")
+
+        task_service = TaskService(db)
+        created_ids: List[str] = []
+
+        for proposal in tasks:
+            try:
+                task = await task_service.create_task(
+                    user_id=user_id,
+                    title=proposal.content,
+                    category=proposal.category,
+                    parent_id=proposal.parent_id,
+                    transcription=proposal.content,
+                    description=proposal.description,
+                    due_date=proposal.due_date,
+                    priority=proposal.priority,
+                    ai_placement={
+                        "confidence": 0.9,
+                        "reasoning": "Brain dump voice input",
+                    },
+                )
+                created_ids.append(task.id)
+                print(f"[Agent] created task '{task.title}' ({task.id})")
+            except Exception as e:
+                print(f"[Agent] failed to create task '{proposal.content}': {e}")
+
+        if not created_ids:
+            return BrainDumpSubmitResponse(
+                success=False,
+                created_count=0,
+                created_task_ids=[],
+                message="Failed to create any tasks",
+            )
+
+        return BrainDumpSubmitResponse(
+            success=True,
+            created_count=len(created_ids),
+            created_task_ids=created_ids,
+            message=f"Created {len(created_ids)} tasks",
+        )
 
     async def _handle_breakdown(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
         """Handle BREAKDOWN intent — generate subtask suggestions for a task."""
