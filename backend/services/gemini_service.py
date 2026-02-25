@@ -198,6 +198,104 @@ More examples:
                 "parameters": {}
             }]
 
+    async def detect_brain_dump(
+        self,
+        transcription: str,
+        task_tree_context: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Parse a voice brain dump into structured task proposals.
+
+        Unlike detect_intent() which returns intents for immediate execution,
+        this returns addTask tool calls for user review before committing.
+
+        Args:
+            transcription: Raw voice transcription (may contain multiple tasks)
+            task_tree_context: String representation of user's current task tree
+
+        Returns:
+            List of task proposal dicts, each with content, category, dueDate, priority, etc.
+        """
+        prompt = f"""Current task tree:
+{task_tree_context}
+
+User said: "{transcription}"
+
+IMPORTANT: The input is a raw voice transcription — a "brain dump" where the user is dictating
+everything they need to get done. It may contain filler words (um, uh, like), pauses, corrections,
+and multiple tasks run together.
+
+Your job: Extract ALL individual tasks from the transcription and return them as structured proposals.
+
+Available categories from the task tree above. Pick the best match for each task.
+If no category fits, use "personal" as default.
+
+For EACH task, extract:
+- content (required): Concise task title (2-8 words). Clean up filler words but preserve meaning.
+- description (optional): Additional context from speech, or null if speech was already brief.
+- category (required): Best matching category from the task tree.
+- dueDate (optional): Date string if mentioned ("tomorrow", "next friday", "march 15", etc.)
+- priority (optional): "high", "medium", or "low" if mentioned/implied (urgent, important, etc.)
+- parentQuery (optional): Search query to find parent task if user implies hierarchy ("under project X", "for the website redesign")
+- labels (optional): Array of label/tag strings if mentioned
+
+Rules:
+1. Each distinct action/task becomes its own entry — "buy milk and call dentist" = 2 tasks
+2. Ignore filler/meta-speech: "um", "let me think", "oh yeah", "what else"
+3. If user corrects themselves ("no wait, I mean..."), use the correction only
+4. Preserve proper nouns and multi-word task names exactly
+5. Default category is "personal" if unclear
+6. If only one task is found, still return an array of one
+
+Return a JSON array:
+[
+  {{
+    "content": "Buy groceries",
+    "description": null,
+    "category": "personal",
+    "dueDate": "tomorrow",
+    "priority": null,
+    "parentQuery": null,
+    "labels": []
+  }},
+  {{
+    "content": "Review PR #42",
+    "description": "The auth refactor PR from Sarah",
+    "category": "work",
+    "dueDate": null,
+    "priority": "high",
+    "parentQuery": null,
+    "labels": []
+  }}
+]
+
+Respond ONLY with a valid JSON array. No markdown, no explanation."""
+
+        try:
+            response = self.model.generate_content(prompt)
+
+            if not response.text:
+                raise ValueError("Empty response from Gemini")
+
+            json_text = self._extract_json(response.text)
+            result = json.loads(json_text)
+
+            # Normalize: always return a list
+            if isinstance(result, dict):
+                result = [result]
+
+            if not isinstance(result, list):
+                raise ValueError(f"Expected JSON array, got {type(result)}")
+
+            for i, task in enumerate(result):
+                print(f"[Gemini] brain_dump[{i}]: content='{task.get('content')}' | category='{task.get('category')}' | due='{task.get('dueDate')}'")
+
+            return result
+
+        except Exception as e:
+            print(f"[Gemini] brain dump detection FAILED: {e}")
+            return []
+
     async def generate_subtasks(self, task_title: str, task_description: str | None = None, context: str = "") -> List[str]:
         """Generate 4-6 actionable subtask suggestions for a given task.
 

@@ -52,6 +52,7 @@ class TaskService:
         )
 
         self.db.add(task)
+        await self.db.flush()
 
         # New child under a completed parent → activate ancestor chain
         if parent_id:

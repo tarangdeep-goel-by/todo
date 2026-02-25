@@ -31,6 +31,47 @@ class AgentResolveRequest(BaseModel):
     data: Optional[Dict[str, Any]] = None
 
 
+class BrainDumpRequest(BaseModel):
+    """Request schema for brain dump voice processing."""
+    transcription: str = Field(..., min_length=1, max_length=5000)
+    user_id: str = Field(..., min_length=1)
+    category: Optional[str] = None  # Pre-fill category for all tasks
+
+
+class BrainDumpTaskProposal(BaseModel):
+    """A single proposed task from brain dump."""
+    id: str  # Client-generated temp ID
+    content: str
+    description: Optional[str] = None
+    category: str
+    due_date: Optional[datetime] = None
+    priority: Optional[str] = None
+    parent_id: Optional[str] = None
+    labels: List[str] = []
+
+
+class BrainDumpResponse(BaseModel):
+    """Response schema for brain dump processing."""
+    success: bool
+    tasks: List[BrainDumpTaskProposal] = []
+    transcription: str  # Echo back for display
+    message: Optional[str] = None
+
+
+class BrainDumpSubmitRequest(BaseModel):
+    """Request schema for committing reviewed brain dump tasks."""
+    user_id: str = Field(..., min_length=1)
+    tasks: List[BrainDumpTaskProposal]
+
+
+class BrainDumpSubmitResponse(BaseModel):
+    """Response schema for brain dump submission."""
+    success: bool
+    created_count: int
+    created_task_ids: List[str] = []
+    message: str
+
+
 class CreateTaskRequest(BaseModel):
     """Request schema for creating a task."""
     user_id: str
