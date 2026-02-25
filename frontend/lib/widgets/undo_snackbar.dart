@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -79,8 +80,8 @@ class _UndoSnackbarOverlayState extends State<_UndoSnackbarOverlay>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
-      reverseDuration: const Duration(milliseconds: 200),
+      duration: AppAnimations.snackbarIn,
+      reverseDuration: AppAnimations.snackbarOut,
     );
 
     _slideAnimation = Tween<Offset>(
@@ -88,7 +89,7 @@ class _UndoSnackbarOverlayState extends State<_UndoSnackbarOverlay>
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: AppAnimations.easeOutCubic,
       reverseCurve: Curves.easeIn,
     ));
 

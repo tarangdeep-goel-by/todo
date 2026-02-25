@@ -178,7 +178,7 @@ class TaskItem extends ConsumerWidget {
           vertical: 4,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFFE84878), // Crimson rose
+          color: AppColors.deleteAction,
           borderRadius: const BorderRadius.only(
             topRight: Radius.circular(AppSpacing.radiusMd),
             bottomRight: Radius.circular(AppSpacing.radiusMd),
@@ -188,7 +188,7 @@ class TaskItem extends ConsumerWidget {
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         child: const Icon(
           Icons.delete_forever,
-          color: Color(0xFF0D0B09),
+          color: AppColors.darkBg,
           size: 32,
         ),
       ),
@@ -266,13 +266,13 @@ class TaskItem extends ConsumerWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B6B).withValues(alpha: 0.2),
+                    color: AppColors.overdue.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Overdue',
                     style: AppTypography.metadataText(
-                      color: const Color(0xFFFF6B6B),
+                      color: AppColors.overdue,
                     ).copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -288,13 +288,13 @@ class TaskItem extends ConsumerWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFB020).withValues(alpha: 0.2),
+                    color: AppColors.dueSoon.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Due Soon',
                     style: AppTypography.metadataText(
-                      color: const Color(0xFFFFB020),
+                      color: AppColors.dueSoon,
                     ).copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,

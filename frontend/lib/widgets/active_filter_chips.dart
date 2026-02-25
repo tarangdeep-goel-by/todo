@@ -86,10 +86,10 @@ class ActiveFilterChips extends ConsumerWidget {
           if (filter.priorities?.isNotEmpty ?? false)
             ...filter.priorities!.map((priority) {
               final color = priority == 'high'
-                  ? const Color(0xFFFF6B6B)
+                  ? AppColors.priorityHigh
                   : priority == 'medium'
-                      ? const Color(0xFFFFA726)
-                      : const Color(0xFF66BB6A);
+                      ? AppColors.priorityMedium
+                      : AppColors.priorityLow;
               return _buildChip(
                 label: 'PRI: ${priority.toUpperCase()}',
                 color: color,
@@ -107,9 +107,9 @@ class ActiveFilterChips extends ConsumerWidget {
           if (filter.statuses?.isNotEmpty ?? false)
             ...filter.statuses!.map((status) {
               final color = status == 'overdue'
-                  ? const Color(0xFFFF6B6B)
+                  ? AppColors.overdue
                   : status == 'completed'
-                      ? const Color(0xFF66BB6A)
+                      ? AppColors.completed
                       : accentColor;
               return _buildChip(
                 label: status.toUpperCase(),
@@ -141,7 +141,7 @@ class ActiveFilterChips extends ConsumerWidget {
           if (filter.dueDateGte != null || filter.dueDateLte != null)
             _buildChip(
               label: 'DUE DATE',
-              color: const Color(0xFFFF6B6B),
+              color: AppColors.overdue,
               onRemove: () {
                 HapticService.light();
                 ref.read(taskFilterProvider.notifier).state = filter.copyWith(

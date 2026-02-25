@@ -4,6 +4,15 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const darkBg = Color(0xFF0D0B09); // Warm near-black
   static const darkText = Color(0xFFF0EBE5); // Warm off-white
+
+  // Status / priority indicators (used across task items, filters, badges)
+  static const overdue = Color(0xFFFF6B6B); // Soft red
+  static const dueSoon = Color(0xFFFFB020); // Amber
+  static const priorityHigh = Color(0xFFFF6B6B); // Same as overdue
+  static const priorityMedium = Color(0xFFFFA726); // Orange
+  static const priorityLow = Color(0xFF66BB6A); // Green
+  static const completed = Color(0xFF66BB6A); // Same as priorityLow
+  static const deleteAction = Color(0xFFE84878); // Crimson rose
 }
 
 /// Domain color palette for a single domain

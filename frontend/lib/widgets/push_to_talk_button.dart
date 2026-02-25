@@ -64,7 +64,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     // Colors
     final idleBg = AppColors.darkText;
     final idleText = AppColors.darkBg;
-    final activeBg = DomainColors.workDark.primary; // TODO: Use last focused domain
+    final activeBg = DomainColors.workDark.primary;
     final activeText = DomainColors.workDark.textOnPrimary;
     final bgColor = (isListening || isProcessing) ? activeBg : idleBg;
 

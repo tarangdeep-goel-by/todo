@@ -110,7 +110,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     final widgets = <Widget>[];
 
     if (overdue.isNotEmpty) {
-      widgets.add(_buildSection('Overdue', overdue, const Color(0xFFFF6B6B)));
+      widgets.add(_buildSection('Overdue', overdue, AppColors.overdue));
     }
     if (todayTasks.isNotEmpty) {
       widgets.add(_buildSection('Today', todayTasks, AppColors.darkText));

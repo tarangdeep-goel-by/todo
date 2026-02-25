@@ -77,7 +77,7 @@ class FilterButton extends ConsumerWidget {
                       child: Text(
                         '$activeCount',
                         style: const TextStyle(
-                          color: Color(0xFF0D0B09),
+                          color: AppColors.darkBg,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
