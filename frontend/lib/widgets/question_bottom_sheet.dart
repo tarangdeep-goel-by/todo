@@ -8,6 +8,7 @@ import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import 'styled_snackbar.dart';
 
 /// Bottom sheet for resolving question-type agent responses.
 /// Shows color-coded task options or category creation confirmation.
@@ -58,15 +59,17 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
           builder: (_) => QuestionBottomSheet(response: result),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.message)),
+        showStyledSnackbar(context,
+          message: result.message,
+          style: SnackbarStyle.success,
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loadingId = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -91,14 +94,16 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
       if (!mounted) return;
       Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
+      showStyledSnackbar(context,
+        message: result.message,
+        style: SnackbarStyle.success,
       );
     } catch (e) {
       if (mounted) {
         setState(() => _loadingId = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -206,6 +211,8 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 // Loading spinner or arrow

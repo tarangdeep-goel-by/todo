@@ -9,6 +9,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../widgets/undo_snackbar.dart';
+import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
 
 /// Task item widget for flat view with swipe actions
@@ -65,8 +66,9 @@ class TaskItem extends ConsumerWidget {
     } catch (e) {
       store.upsertTask(task);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update task: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to update task: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -87,8 +89,9 @@ class TaskItem extends ConsumerWidget {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Undo failed: $e')),
+        showStyledSnackbar(context,
+          message: 'Undo failed: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -107,11 +110,9 @@ class TaskItem extends ConsumerWidget {
       await apiService.deleteTask(task.id);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted: ${task.sentenceTitle}'),
-            duration: const Duration(seconds: 2),
-          ),
+        showStyledSnackbar(context,
+          message: 'Deleted: ${task.sentenceTitle}',
+          style: SnackbarStyle.success,
         );
       }
 
@@ -120,11 +121,9 @@ class TaskItem extends ConsumerWidget {
       // Rollback
       store.upsertTask(task);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete task: $e'),
-            duration: const Duration(seconds: 3),
-          ),
+        showStyledSnackbar(context,
+          message: 'Failed to delete task: $e',
+          style: SnackbarStyle.error,
         );
       }
       return false;

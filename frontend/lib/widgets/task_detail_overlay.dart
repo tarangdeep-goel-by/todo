@@ -10,6 +10,7 @@ import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import 'styled_snackbar.dart';
 
 /// Sentinel for "field not provided" in _updateField
 const _noChange = Object();
@@ -207,8 +208,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       // Rollback
       store.upsertTask(currentTask);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to update: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -422,8 +424,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         // Rollback via full refresh on failure
         await store.fetchAll();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to complete: $e')),
+          showStyledSnackbar(context,
+            message: 'Failed to complete: $e',
+            style: SnackbarStyle.error,
           );
         }
       }
@@ -478,8 +481,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     } catch (e) {
       if (mounted) {
         setState(() => _savingSubtask = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add subtask: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to add subtask: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -618,13 +622,17 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                         ),
                         GestureDetector(
                           onTap: () => _navigateTo(ancestors[i].id),
-                          child: Text(
-                            ancestors[i].title,
-                            style: AppTypography.metadataText(
-                              color: domain.primary.withValues(alpha: 0.7),
-                            ).copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                          child: Flexible(
+                            child: Text(
+                              ancestors[i].title,
+                              style: AppTypography.metadataText(
+                                color: domain.primary.withValues(alpha: 0.7),
+                              ).copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -797,6 +805,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         task.sentenceTitle,
         style: AppTypography.domainTitle(context, color: domain.primary)
             .copyWith(fontSize: 28),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

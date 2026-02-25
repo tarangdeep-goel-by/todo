@@ -7,6 +7,7 @@ import '../config/constants.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import 'styled_snackbar.dart';
 
 String _sentenceCase(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
@@ -91,14 +92,16 @@ class _SubtaskSelectionSheetState extends ConsumerState<SubtaskSelectionSheet> {
       if (!mounted) return;
       Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
+      showStyledSnackbar(context,
+        message: result.message,
+        style: SnackbarStyle.success,
       );
     } catch (e) {
       if (mounted) {
         setState(() => _isCreating = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -166,6 +169,8 @@ class _SubtaskSelectionSheetState extends ConsumerState<SubtaskSelectionSheet> {
                   _sentenceCase(widget.parentTask['title'] as String? ?? ''),
                   style: AppTypography.metadataText(color: domain.primary)
                       .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

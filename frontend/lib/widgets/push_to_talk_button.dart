@@ -11,6 +11,7 @@ import '../services/haptic_service.dart';
 import 'waveform_painter.dart';
 import 'question_bottom_sheet.dart';
 import 'subtask_selection_sheet.dart';
+import 'styled_snackbar.dart';
 
 /// Dual-mode input pill: tap-to-talk voice + keyboard text entry
 class PushToTalkButton extends ConsumerStatefulWidget {
@@ -296,6 +297,13 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   }
 
   Future<void> _startListening() async {
+    // Guard: ignore if already listening or processing
+    final currentState = ref.read(recordingStateProvider);
+    if (currentState == RecordingState.listening ||
+        currentState == RecordingState.processing) {
+      return;
+    }
+
     HapticService.medium();
     _canStopListening = false;
 
@@ -329,8 +337,9 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       speechService.onError = (error) {
         if (mounted) {
           _resetState();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Speech error: $error')),
+          showStyledSnackbar(context,
+            message: 'Speech error: $error',
+            style: SnackbarStyle.error,
           );
         }
       };
@@ -341,8 +350,9 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     } catch (e) {
       _resetState();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start listening: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to start listening: $e',
+          style: SnackbarStyle.error,
         );
       }
     }
@@ -363,8 +373,9 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       if (transcription.trim().isEmpty) {
         _resetState();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nothing heard. Try again.')),
+          showStyledSnackbar(context,
+            message: 'Nothing heard. Try again.',
+            style: SnackbarStyle.info,
           );
         }
         return;
@@ -374,8 +385,9 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     } catch (e) {
       _resetState();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to process: $e',
+          style: SnackbarStyle.error,
         );
       }
     } finally {
@@ -440,16 +452,18 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
             );
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response.message)),
+          showStyledSnackbar(context,
+            message: response.message,
+            style: SnackbarStyle.success,
           );
         }
       }
     } catch (e) {
       _resetState();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process: $e')),
+        showStyledSnackbar(context,
+          message: 'Failed to process: $e',
+          style: SnackbarStyle.error,
         );
       }
     }

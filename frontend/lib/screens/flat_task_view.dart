@@ -72,9 +72,14 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
     if (allFiltered.isEmpty) {
       return const EmptyState(
-        message: 'No tasks found\nTap and hold the button below to add one',
+        title: 'All clear',
+        message: 'Your tasks will appear here.\nSpeak or type a command below to get started.',
         textColor: AppColors.darkText,
         icon: Icons.task_alt,
+        examples: [
+          'Add meeting prep to work',
+          'Buy milk, high priority, due tomorrow',
+        ],
       );
     }
 
