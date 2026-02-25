@@ -2,8 +2,6 @@ class TaskFilter {
   final List<String>? categories;
   final List<String>? priorities;
   final List<String>? statuses;
-  final String? parentId;
-  final List<String>? tags;
 
   final DateTime? createdAtGte;
   final DateTime? createdAtLte;
@@ -16,8 +14,6 @@ class TaskFilter {
     this.categories,
     this.priorities,
     this.statuses,
-    this.parentId,
-    this.tags,
     this.createdAtGte,
     this.createdAtLte,
     this.dueDateGte,
@@ -31,8 +27,6 @@ class TaskFilter {
     Object? categories = _sentinel,
     Object? priorities = _sentinel,
     Object? statuses = _sentinel,
-    Object? parentId = _sentinel,
-    Object? tags = _sentinel,
     Object? createdAtGte = _sentinel,
     Object? createdAtLte = _sentinel,
     Object? dueDateGte = _sentinel,
@@ -43,8 +37,6 @@ class TaskFilter {
       categories: identical(categories, _sentinel) ? this.categories : categories as List<String>?,
       priorities: identical(priorities, _sentinel) ? this.priorities : priorities as List<String>?,
       statuses: identical(statuses, _sentinel) ? this.statuses : statuses as List<String>?,
-      parentId: identical(parentId, _sentinel) ? this.parentId : parentId as String?,
-      tags: identical(tags, _sentinel) ? this.tags : tags as List<String>?,
       createdAtGte: identical(createdAtGte, _sentinel) ? this.createdAtGte : createdAtGte as DateTime?,
       createdAtLte: identical(createdAtLte, _sentinel) ? this.createdAtLte : createdAtLte as DateTime?,
       dueDateGte: identical(dueDateGte, _sentinel) ? this.dueDateGte : dueDateGte as DateTime?,
@@ -57,7 +49,6 @@ class TaskFilter {
       categories != null ||
       priorities != null ||
       statuses != null ||
-      tags != null ||
       createdAtGte != null ||
       dueDateGte != null ||
       sortOptions.isNotEmpty;
@@ -67,7 +58,6 @@ class TaskFilter {
     if (categories?.isNotEmpty ?? false) count++;
     if (priorities?.isNotEmpty ?? false) count++;
     if (statuses?.isNotEmpty ?? false) count++;
-    if (tags?.isNotEmpty ?? false) count++;
     if (createdAtGte != null || createdAtLte != null) count++;
     if (dueDateGte != null || dueDateLte != null) count++;
     if (sortOptions.isNotEmpty) count++;
