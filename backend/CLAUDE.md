@@ -16,7 +16,7 @@ docker-compose down                # Stop
 
 ### Testing (always inside Docker — never create local venv)
 ```bash
-# All tests (143 tests, uses real PostgreSQL `todo_test` DB)
+# All tests (154 tests, uses real PostgreSQL `todo_test` DB)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 
 # Single test file
@@ -58,7 +58,7 @@ Client → FastAPI Router → Service → SQLAlchemy AsyncSession → PostgreSQL
 ### Voice Command Pipeline (`POST /api/agent/process`)
 1. `GeminiService.refine_transcription()` — cleans up raw transcript
 2. `TaskService.build_full_tree_context()` — builds indented tree string for AI context
-3. `GeminiService.detect_intent()` — returns intent (ADD/COMPLETE/DELETE/EDIT/MOVE/QUERY) + params
+3. `GeminiService.detect_intent()` — returns intent (ADD/COMPLETE/DELETE/EDIT/MOVE/QUERY/BREAKDOWN) + params
 4. Confidence check (rejects < 0.6)
 5. Intent handler executes action, returns `AgentResponse`
 6. Ambiguous commands return `type="question"` with matches → client calls `POST /api/agent/resolve`

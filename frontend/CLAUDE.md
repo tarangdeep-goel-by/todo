@@ -12,7 +12,7 @@ Voice-first AI-powered hierarchical todo app. Flutter frontend communicates with
 # Run app (physical device — update apiBaseUrl in lib/config/constants.dart to your machine IP)
 flutter run
 
-# Run all tests (120 tests)
+# Run all tests (125 tests)
 flutter test
 
 # Run single test file
@@ -57,10 +57,11 @@ store.upsertTask(updatedTask);          // Immediate UI
 await apiService.updateTask(taskId, payload);  // Backend sync
 ```
 
-### Two View Modes
+### Three View Modes (3-way toggle: Node / Flat / Calendar)
 
 1. **Node View** (`parent_node_view.dart`): Domain cards with liquid-focus scroll — one card expands (70% height), others compress (7.5%). Gesture-driven with `LiquidFocusScrollController`.
 2. **Flat View** (`flat_task_view.dart`): All tasks in a filtered/sorted list with `FilterSheet` and `ActiveFilterChips`.
+3. **Calendar View** (`calendar_task_view.dart`): Active tasks grouped by due date sections (Overdue → Today → Tomorrow → Next 7 days → Later → No Date).
 
 ### Client-Side Filtering & Sorting
 
@@ -74,7 +75,7 @@ await apiService.updateTask(taskId, payload);  // Backend sync
 
 1. `PushToTalkButton` → `AudioService` records .m4a
 2. Audio uploaded via `ApiService.processAgent()` → backend `/api/agent/process`
-3. Backend uses Gemini to transcribe, detect intent (ADD/COMPLETE/EDIT/DELETE/QUERY)
+3. Backend uses Gemini to transcribe, detect intent (ADD/COMPLETE/EDIT/DELETE/QUERY/BREAKDOWN)
 4. If ambiguous, backend returns `type: "question"` → `QuestionBottomSheet` shown
 5. User answers → `ApiService.resolveAgent()` → backend `/api/agent/resolve`
 6. On success, `store.upsertTask()` updates UI immediately
@@ -87,7 +88,7 @@ await apiService.updateTask(taskId, payload);  // Backend sync
 | `apiServiceProvider` | Provider | Dio-based HTTP client |
 | `taskFilterProvider` | StateNotifierProvider | Active filter state for flat view |
 | `recordingProvider` | StateNotifierProvider | Recording state machine |
-| `viewModeProvider` | StateProvider | Node vs Flat toggle |
+| `viewModeProvider` | StateProvider | Node / Flat / Calendar toggle |
 
 ## Testing Patterns
 
@@ -116,5 +117,5 @@ expect(result, hasLength(1));
 - **Task statuses**: Only `active` and `completed` stored; `overdue` is computed client-side
 - **User ID**: Hardcoded `default-user` (MVP, no auth)
 - **Animations**: Custom curves in `AppAnimations` (constants.dart) — `easeOutQuint`, `easeOutCubic`
-- **Theme**: OKLCH color system with 5 domain palettes; only dark mode implemented
+- **Theme**: OKLCH color system with 5 domain palettes in `lib/config/theme.dart` (dark mode only, no theme provider)
 - **Typography**: Google Fonts (Bricolage Grotesque, DM Sans, Space Mono) via `google_fonts` package

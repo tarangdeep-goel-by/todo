@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Voice-first AI-powered hierarchical todo app. Flutter mobile frontend communicates with a FastAPI backend via REST API. Users speak voice commands, backend AI (Gemini) transcribes, detects intent (ADD/COMPLETE/EDIT/DELETE/MOVE/QUERY), and executes against a PostgreSQL database. Tasks are organized into 5 domains (Work, Personal, Health, Learning, Projects) with unlimited tree depth.
+Voice-first AI-powered hierarchical todo app. Flutter mobile frontend communicates with a FastAPI backend via REST API. Users speak voice commands, backend AI (Gemini) transcribes, detects intent (ADD/COMPLETE/EDIT/DELETE/MOVE/QUERY/BREAKDOWN), and executes against a PostgreSQL database. Tasks are organized into 5 domains (Work, Personal, Health, Learning, Projects) with unlimited tree depth.
 
 ## Quick Start
 
@@ -25,12 +25,12 @@ cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
 ## Commands
 
 ```bash
-# Backend tests (143, inside Docker)
+# Backend tests (154, inside Docker)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 docker exec todo-backend python -m pytest tests/test_agent_service.py -v                     # Single file
 docker exec todo-backend python -m pytest tests/test_agent_service.py::TestHandleAdd::test_add_task_basic -v  # Single test
 
-# Frontend tests (120)
+# Frontend tests (125)
 cd frontend && flutter test                                              # All
 cd frontend && flutter test test/providers/task_store_provider_test.dart  # Single file
 cd frontend && flutter test --name "filters tasks by category"           # By name
