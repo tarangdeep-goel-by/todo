@@ -129,6 +129,41 @@ class ApiService {
     }
   }
 
+  /// Process brain dump — extract task proposals from voice transcription
+  Future<BrainDumpResponse> processBrainDump({
+    required String transcription,
+    required String userId,
+    String? category,
+  }) async {
+    try {
+      final data = <String, dynamic>{
+        'transcription': transcription,
+        'user_id': userId,
+      };
+      if (category != null) data['category'] = category;
+      final response = await _dio.post('/agent/braindump', data: data);
+      return BrainDumpResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Submit reviewed brain dump tasks
+  Future<BrainDumpSubmitResponse> submitBrainDump({
+    required String userId,
+    required List<BrainDumpTaskProposal> tasks,
+  }) async {
+    try {
+      final response = await _dio.post('/agent/braindump/submit', data: {
+        'user_id': userId,
+        'tasks': tasks.map((t) => t.toJson()).toList(),
+      });
+      return BrainDumpSubmitResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Create task manually
   Future<Task> createTask(CreateTaskRequest request) async {
     try {
