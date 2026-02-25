@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -13,7 +14,7 @@ const _errorPalette = DomainPalette(
   primary: Color(0xFFE84878),
   darkShade: Color(0xFF8A1A45),
   surface: Color(0xFF1F0D14),
-  textOnPrimary: Color(0xFF0D0B09),
+  textOnPrimary: AppColors.darkBg,
 );
 
 /// Info palette (neutral warm).
@@ -22,7 +23,7 @@ const _infoPalette = DomainPalette(
   primary: Color(0xFFB0A99E),
   darkShade: Color(0xFF3A3530),
   surface: Color(0xFF1A1815),
-  textOnPrimary: Color(0xFF0D0B09),
+  textOnPrimary: AppColors.darkBg,
 );
 
 /// Shows a styled snackbar matching the app's design language.
@@ -108,8 +109,8 @@ class _StyledSnackbarOverlayState extends State<_StyledSnackbarOverlay>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
-      reverseDuration: const Duration(milliseconds: 200),
+      duration: AppAnimations.snackbarIn,
+      reverseDuration: AppAnimations.snackbarOut,
     );
 
     _slideAnimation = Tween<Offset>(
@@ -117,7 +118,7 @@ class _StyledSnackbarOverlayState extends State<_StyledSnackbarOverlay>
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: AppAnimations.easeOutCubic,
       reverseCurve: Curves.easeIn,
     ));
 

@@ -15,6 +15,8 @@ class AppAnimations {
   static const staggerDelay = Duration(milliseconds: 50);
   static const ctaExpand = Duration(milliseconds: 200);
   static const ctaContract = Duration(milliseconds: 300);
+  static const snackbarIn = Duration(milliseconds: 250);
+  static const snackbarOut = Duration(milliseconds: 200);
 }
 
 /// App-wide constants

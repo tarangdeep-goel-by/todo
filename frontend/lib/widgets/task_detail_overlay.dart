@@ -919,7 +919,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B6B),
+                  color: AppColors.overdue,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: Row(
@@ -928,13 +928,13 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                     const Icon(
                       Icons.warning_amber_rounded,
                       size: 16,
-                      color: Color(0xFF0D0B09),
+                      color: AppColors.darkBg,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'Overdue',
                       style: AppTypography.metadataText(
-                        color: const Color(0xFF0D0B09),
+                        color: AppColors.darkBg,
                       ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ],

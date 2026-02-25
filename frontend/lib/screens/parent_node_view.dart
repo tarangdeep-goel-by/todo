@@ -293,12 +293,12 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFE84878),
+              foregroundColor: AppColors.deleteAction,
             ),
             child: Text(
               'Delete',
               style: AppTypography.ctaLabelText(
-                color: const Color(0xFFE84878),
+                color: AppColors.deleteAction,
               ).copyWith(fontWeight: FontWeight.w700),
             ),
           ),
@@ -462,13 +462,13 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
                   return false;
                 },
                 background: Container(
-                  color: const Color(0xFFE84878),
+                  color: AppColors.deleteAction,
                   alignment: Alignment.centerRight,
                   padding:
                       const EdgeInsets.only(right: AppSpacing.lg),
                   child: const Icon(
                     Icons.delete_forever,
-                    color: Color(0xFF0D0B09),
+                    color: AppColors.darkBg,
                     size: 32,
                   ),
                 ),
