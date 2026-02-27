@@ -27,7 +27,7 @@ class AgentResponse {
 /// A proposed task from brain dump (not yet created)
 class BrainDumpTaskProposal {
   String id;
-  String action; // "add", "complete", or "edit"
+  String action; // "add", "complete", "edit", "delete", or "move"
   String content;
   String? description;
   String category;
@@ -36,7 +36,9 @@ class BrainDumpTaskProposal {
   String? parentId;
   List<String> labels;
   Map<String, dynamic>? changes; // For edit actions
-  String? matchedTaskId; // Resolved existing task ID for complete/edit
+  String? matchedTaskId; // Resolved existing task ID for complete/edit/delete/move
+  String? targetParentId; // MOVE: resolved destination parent UUID
+  String? targetContent; // MOVE: display name of target parent
 
   BrainDumpTaskProposal({
     required this.id,
@@ -50,6 +52,8 @@ class BrainDumpTaskProposal {
     this.labels = const [],
     this.changes,
     this.matchedTaskId,
+    this.targetParentId,
+    this.targetContent,
   });
 
   factory BrainDumpTaskProposal.fromJson(Map<String, dynamic> json) {
@@ -67,6 +71,8 @@ class BrainDumpTaskProposal {
       labels: (json['labels'] as List?)?.cast<String>() ?? [],
       changes: json['changes'] as Map<String, dynamic>?,
       matchedTaskId: json['matched_task_id'] as String?,
+      targetParentId: json['target_parent_id'] as String?,
+      targetContent: json['target_content'] as String?,
     );
   }
 
@@ -83,6 +89,8 @@ class BrainDumpTaskProposal {
       'labels': labels,
       'changes': changes,
       'matched_task_id': matchedTaskId,
+      'target_parent_id': targetParentId,
+      'target_content': targetContent,
     };
   }
 }

@@ -349,6 +349,26 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     });
   }
 
+  void _editProposal(BrainDumpTaskProposal proposal) async {
+    HapticService.medium();
+    final paletteMap = ref.read(domainPalettesProvider);
+    final edited = await showModalBottomSheet<BrainDumpTaskProposal>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProposalEditSheet(
+        proposal: proposal,
+        paletteMap: paletteMap,
+      ),
+    );
+    if (edited != null) {
+      setState(() {
+        final idx = _proposals.indexWhere((p) => p.id == edited.id);
+        if (idx != -1) _proposals[idx] = edited;
+      });
+    }
+  }
+
   void _reRecord() {
     HapticService.light();
     _transcriptController.clear();
@@ -434,7 +454,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         subtitle = 'Extracting tasks from your ramble.';
       case _RamblePhase.reviewing:
         title = 'Review tasks';
-        subtitle = 'Deselect any you don\u2019t want to create.';
+        subtitle = 'Tap to toggle, long-press to edit.';
     }
 
     return Container(
@@ -633,6 +653,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   ) {
     return GestureDetector(
       onTap: () => _toggleProposal(proposal.id),
+      onLongPress: () => _editProposal(proposal),
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
         opacity: isSelected ? 1.0 : 0.4,
@@ -657,7 +678,9 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                 height: 40,
                 margin: const EdgeInsets.only(top: 2),
                 decoration: BoxDecoration(
-                  color: domain.primary,
+                  color: proposal.action == 'delete'
+                      ? AppColors.deleteAction
+                      : domain.primary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -699,6 +722,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                           _buildChip(
                             DateFormat('MMM d').format(proposal.dueDate!),
                             domain.primary.withValues(alpha: 0.7),
+                          ),
+                        if (proposal.action == 'move' &&
+                            proposal.targetContent != null)
+                          _buildChip(
+                            '\u2192 ${proposal.targetContent}',
+                            AppColors.dueSoon,
                           ),
                         if (proposal.changes != null)
                           for (final entry in proposal.changes!.entries)
@@ -763,6 +792,8 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     return switch (action) {
       'complete' => 'Complete',
       'edit' => 'Edit',
+      'delete' => 'Delete',
+      'move' => 'Move',
       _ => 'Add',
     };
   }
@@ -771,6 +802,8 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     return switch (action) {
       'complete' => AppColors.completed,
       'edit' => AppColors.dueSoon,
+      'delete' => AppColors.deleteAction,
+      'move' => AppColors.dueSoon,
       _ => domain.primary,
     };
   }
@@ -993,5 +1026,434 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         ],
       ),
     );
+  }
+}
+
+// ────────── Proposal Edit Sheet ──────────
+
+class _ProposalEditSheet extends StatefulWidget {
+  final BrainDumpTaskProposal proposal;
+  final Map<String, DomainPalette> paletteMap;
+
+  const _ProposalEditSheet({
+    required this.proposal,
+    required this.paletteMap,
+  });
+
+  @override
+  State<_ProposalEditSheet> createState() => _ProposalEditSheetState();
+}
+
+class _ProposalEditSheetState extends State<_ProposalEditSheet> {
+  late final TextEditingController _titleController;
+  late String _category;
+  late String _priority;
+  DateTime? _dueDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.proposal.content);
+    _category = widget.proposal.category;
+    _priority = widget.proposal.priority ?? 'none';
+    _dueDate = widget.proposal.dueDate;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) return;
+
+    final edited = BrainDumpTaskProposal(
+      id: widget.proposal.id,
+      action: widget.proposal.action,
+      content: title,
+      description: widget.proposal.description,
+      category: _category,
+      dueDate: _dueDate,
+      priority: _priority == 'none' ? null : _priority,
+      parentId: widget.proposal.parentId,
+      labels: widget.proposal.labels,
+      changes: widget.proposal.changes,
+      matchedTaskId: widget.proposal.matchedTaskId,
+      targetParentId: widget.proposal.targetParentId,
+      targetContent: widget.proposal.targetContent,
+    );
+    Navigator.pop(context, edited);
+  }
+
+  Future<void> _pickDate() async {
+    final domain = DomainColors.getDomain(_category, true, widget.paletteMap);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dueDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: domain.primary,
+              surface: AppColors.darkBg,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) setState(() => _dueDate = picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final domain = DomainColors.getDomain(_category, true, widget.paletteMap);
+    final categories = widget.paletteMap.keys.toList();
+    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.only(bottom: bottomPad),
+      decoration: BoxDecoration(
+        color: AppColors.darkBg,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusLg),
+        ),
+        border: Border(
+          top: BorderSide(color: domain.primary.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.darkText.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm,
+              ),
+              child: Text(
+                'Edit proposal',
+                style: AppTypography.metadataText(color: AppColors.darkText)
+                    .copyWith(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
+
+            // Title field
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: TextField(
+                controller: _titleController,
+                style: AppTypography.metadataText(color: AppColors.darkText)
+                    .copyWith(fontSize: 15, height: 1.4),
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  labelStyle: AppTypography.metadataText(
+                    color: AppColors.darkText.withValues(alpha: 0.5),
+                  ).copyWith(fontSize: 13),
+                  filled: true,
+                  fillColor: AppColors.darkText.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    borderSide: BorderSide(
+                      color: domain.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    borderSide: BorderSide(
+                      color: domain.primary.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    borderSide: BorderSide(
+                      color: domain.primary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.all(AppSpacing.md),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // Category chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Category',
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: categories.map((cat) {
+                      final catDomain = DomainColors.getDomain(
+                        cat, true, widget.paletteMap,
+                      );
+                      final selected = cat == _category;
+                      return GestureDetector(
+                        onTap: () => setState(() => _category = cat),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? catDomain.primary
+                                : catDomain.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: catDomain.primary.withValues(
+                                alpha: selected ? 1.0 : 0.3,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            cat[0].toUpperCase() + cat.substring(1),
+                            style: AppTypography.metadataText(
+                              color: selected
+                                  ? catDomain.textOnPrimary
+                                  : catDomain.primary,
+                            ).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // Priority chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Priority',
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['none', 'low', 'medium', 'high'].map((p) {
+                      final selected = p == _priority;
+                      final color = _priorityChipColor(p);
+                      return GestureDetector(
+                        onTap: () => setState(() => _priority = p),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? color
+                                : color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: color.withValues(
+                                alpha: selected ? 1.0 : 0.3,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            p[0].toUpperCase() + p.substring(1),
+                            style: AppTypography.metadataText(
+                              color: selected ? Colors.white : color,
+                            ).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // Due date
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Due date',
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: _pickDate,
+                    onLongPress: () => setState(() => _dueDate = null),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: domain.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: domain.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 14,
+                            color: domain.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _dueDate != null
+                                ? DateFormat('MMM d').format(_dueDate!)
+                                : 'No date',
+                            style: AppTypography.metadataText(
+                              color: domain.primary,
+                            ).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_dueDate != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Long-press to clear',
+                        style: AppTypography.metadataText(
+                          color: AppColors.darkText.withValues(alpha: 0.3),
+                        ).copyWith(fontSize: 11),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // Footer buttons
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg, 0, AppSpacing.lg,
+                MediaQuery.of(context).padding.bottom + AppSpacing.md,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusMd,
+                          ),
+                          border: Border.all(
+                            color: AppColors.darkText.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Cancel',
+                            style: AppTypography.metadataText(
+                              color: AppColors.darkText.withValues(alpha: 0.7),
+                            ).copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: GestureDetector(
+                      onTap: _save,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: domain.primary,
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusMd,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Save',
+                            style: AppTypography.metadataText(
+                              color: domain.textOnPrimary,
+                            ).copyWith(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _priorityChipColor(String priority) {
+    return switch (priority) {
+      'high' => AppColors.priorityHigh,
+      'medium' => AppColors.priorityMedium,
+      'low' => AppColors.priorityLow,
+      _ => AppColors.darkText.withValues(alpha: 0.5),
+    };
   }
 }

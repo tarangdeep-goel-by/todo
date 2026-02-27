@@ -762,6 +762,18 @@ class AgentService:
                 message="Could not extract any tasks. Try rephrasing.",
             )
 
+        # Deduplicate: Gemini sometimes returns identical entries
+        seen = set()
+        deduped = []
+        for raw in raw_tasks:
+            key = (raw.get("action", "add").lower(), raw.get("content", "").strip().lower())
+            if key not in seen:
+                seen.add(key)
+                deduped.append(raw)
+            else:
+                print(f"[Agent] brain dump dedup: dropped duplicate '{key[1]}' ({key[0]})")
+        raw_tasks = deduped
+
         # Get available categories for validation
         available_categories = await task_service.get_categories(user_id)
 
@@ -779,9 +791,9 @@ class AgentService:
             if task_category.lower() not in available_categories:
                 task_category = "personal"
 
-            # For complete/edit actions, resolve the existing task via fuzzy search
+            # For actions on existing tasks, resolve via fuzzy search
             matched_task_id = None
-            if action in ("complete", "edit"):
+            if action in ("complete", "edit", "delete", "move", "breakdown"):
                 matched = await task_service.search_tasks(user_id, content)
                 if matched:
                     matched_task_id = str(matched[0].id)
@@ -790,6 +802,34 @@ class AgentService:
                 else:
                     print(f"[Agent] brain dump could not resolve '{content}' for {action}, skipping")
                     continue
+
+            # BREAKDOWN: expand into ADD subtask proposals inline
+            if action == "breakdown" and matched_task_id:
+                matched_task = await task_service.get_task(matched_task_id)
+                if matched_task:
+                    subtask_titles = await self.gemini.generate_subtasks(
+                        matched_task.title, matched_task.description, tree_context)
+                    for sub in subtask_titles:
+                        proposals.append(BrainDumpTaskProposal(
+                            id=str(uuid.uuid4()), action="add", content=sub,
+                            category=task_category.lower(), parent_id=matched_task_id))
+                continue  # don't append raw breakdown proposal
+
+            # MOVE: resolve target parent
+            target_parent_id = None
+            target_content = None
+            if action == "move":
+                target_query = raw.get("targetParentQuery")
+                if target_query:
+                    targets = await task_service.search_tasks(user_id, target_query)
+                    if targets:
+                        target_parent_id = str(targets[0].id)
+                        target_content = targets[0].title
+                    else:
+                        print(f"[Agent] brain dump could not resolve move target '{target_query}', skipping")
+                        continue
+                else:
+                    target_content = "top-level"  # move to root
 
             # Resolve parent if parentQuery provided (ADD only)
             parent_id = None
@@ -812,6 +852,8 @@ class AgentService:
                 labels=raw.get("labels", []),
                 changes=raw.get("changes"),
                 matched_task_id=matched_task_id,
+                target_parent_id=target_parent_id,
+                target_content=target_content,
             ))
 
         print(f"[Agent] brain dump produced {len(proposals)} task proposals")
@@ -847,6 +889,8 @@ class AgentService:
         created_ids: List[str] = []
         completed_count = 0
         edited_count = 0
+        deleted_count = 0
+        moved_count = 0
 
         for proposal in tasks:
             try:
@@ -873,6 +917,16 @@ class AgentService:
                     edited_count += 1
                     print(f"[Agent] edited task '{proposal.content}' ({proposal.matched_task_id}): {changes}")
 
+                elif action == "delete" and proposal.matched_task_id:
+                    await task_service.delete_task_with_children(proposal.matched_task_id)
+                    deleted_count += 1
+                    print(f"[Agent] deleted task '{proposal.content}' ({proposal.matched_task_id})")
+
+                elif action == "move" and proposal.matched_task_id:
+                    await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
+                    moved_count += 1
+                    print(f"[Agent] moved task '{proposal.content}' ({proposal.matched_task_id}) → {proposal.target_parent_id}")
+
                 else:
                     # Default: ADD
                     task = await task_service.create_task(
@@ -895,7 +949,7 @@ class AgentService:
             except Exception as e:
                 print(f"[Agent] failed to process '{proposal.content}' ({proposal.action}): {e}")
 
-        total = len(created_ids) + completed_count + edited_count
+        total = len(created_ids) + completed_count + edited_count + deleted_count + moved_count
         if total == 0:
             return BrainDumpSubmitResponse(
                 success=False,
@@ -912,6 +966,10 @@ class AgentService:
             parts.append(f"completed {completed_count}")
         if edited_count:
             parts.append(f"edited {edited_count}")
+        if deleted_count:
+            parts.append(f"deleted {deleted_count}")
+        if moved_count:
+            parts.append(f"moved {moved_count}")
         message = ", ".join(parts) + f" task{'s' if total != 1 else ''}"
 
         return BrainDumpSubmitResponse(
