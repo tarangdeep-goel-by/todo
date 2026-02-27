@@ -28,7 +28,7 @@ Future<bool> processAndHandleAgentResponse({
 
     if (!context.mounted) return true;
 
-    _handleAgentResponse(context: context, response: response);
+    handleAgentResponse(context: context, response: response);
     return true;
   } catch (e) {
     if (context.mounted) {
@@ -42,7 +42,7 @@ Future<bool> processAndHandleAgentResponse({
 }
 
 /// Handle an AgentResponse — show question sheet, subtask selection, or success snackbar.
-void _handleAgentResponse({
+void handleAgentResponse({
   required BuildContext context,
   required AgentResponse response,
 }) {

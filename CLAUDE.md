@@ -53,12 +53,15 @@ docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-r
 │  Flutter Frontend    │  REST   │  FastAPI Backend                 │
 │  (Riverpod state)    │ ◄─────► │  (async Python)                  │
 │                      │         │                                  │
-│  TaskStoreNotifier   │         │  /api/agent/process  ← voice     │
-│  ├── allTasks        │         │  /api/agent/resolve  ← disambig  │
-│  ├── byCategory      │         │  /api/tasks/*        ← CRUD      │
-│  ├── byId            │         │                                  │
-│  ├── children        │         │  AgentService → GeminiService    │
-│  └── flatFiltered    │         │  TaskService  → QueryBuilder     │
+│  TaskStoreNotifier   │  WS     │  /api/agent/process  ← voice     │
+│  ├── allTasks        │ ◄─────► │  /api/agent/resolve  ← disambig  │
+│  ├── byCategory      │         │  /api/agent/braindump ← ramble   │
+│  ├── byId            │         │  /ws/ramble           ← stream   │
+│  ├── children        │         │  /api/tasks/*         ← CRUD     │
+│  └── flatFiltered    │         │                                  │
+│                      │         │  AgentService → GeminiService    │
+│  RambleSheet ──────► │         │  RambleService (Gemini Live)     │
+│  PushToTalkButton    │         │  TaskService  → QueryBuilder     │
 └─────────────────────┘         └──────────┬───────────────────────┘
                                            │
                                     ┌──────┴──────┐
@@ -66,6 +69,11 @@ docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-r
                                     │ (port 5433)  │
                                     └─────────────┘
 ```
+
+### Two Voice Input Modes
+
+1. **Single Command** (tap mic): Record → upload .m4a → `/api/agent/process` → single intent executed
+2. **Brain Dump / Ramble** (long-press mic): Stream PCM audio via `/ws/ramble` → Gemini Live transcribes in real-time → user reviews transcript → `/api/agent/braindump` extracts multiple task proposals → user reviews/edits → `/api/agent/braindump/submit` creates tasks in batch
 
 ### Detailed Guides
 
