@@ -62,14 +62,25 @@ class TaskService:
         await self.db.refresh(task)
         return task
 
+    VALID_DOMAINS = {"work", "personal", "health", "learning", "projects"}
+
     async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
-        """Look up category ID from category name string."""
+        """Look up category ID from category name string. Auto-creates valid domains."""
+        name = category.lower().strip()
         result = await self.db.execute(
             select(Category.id)
-            .where(Category.user_id == user_id, Category.name == category.lower().strip())
+            .where(Category.user_id == user_id, Category.name == name)
         )
         row = result.scalar_one_or_none()
-        return row
+        if row:
+            return row
+
+        # Auto-create if it's one of the 5 valid domains
+        if name in self.VALID_DOMAINS:
+            cat = await self.create_category(user_id, name)
+            return cat.id
+
+        return None
 
     async def get_task(self, task_id: str) -> Optional[Task]:
         """Get task by ID."""

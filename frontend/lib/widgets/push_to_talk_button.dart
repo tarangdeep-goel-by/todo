@@ -5,16 +5,11 @@ import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
 import '../providers/recording_provider.dart';
-import '../providers/api_provider.dart';
-import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
-import 'waveform_painter.dart';
-import 'question_bottom_sheet.dart';
-import 'subtask_selection_sheet.dart';
+import '../utils/agent_response_handler.dart';
 import 'ramble_sheet.dart';
-import 'styled_snackbar.dart';
 
-/// Dual-mode input pill: tap-to-talk voice + keyboard text entry
+/// Dual-mode input pill: tap for keyboard, long-press for ramble voice
 class PushToTalkButton extends ConsumerStatefulWidget {
   const PushToTalkButton({super.key});
 
@@ -25,8 +20,6 @@ class PushToTalkButton extends ConsumerStatefulWidget {
 class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
-  bool _canStopListening = false;
-  bool _isStoppingListening = false;
 
   @override
   void dispose() {
@@ -38,10 +31,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   @override
   Widget build(BuildContext context) {
     final recordingState = ref.watch(recordingStateProvider);
-    final waveformData = ref.watch(waveformDataProvider);
-    final transcription = ref.watch(transcriptionTextProvider);
 
-    final isListening = recordingState == RecordingState.listening;
     final isProcessing = recordingState == RecordingState.processing;
     final isTyping = recordingState == RecordingState.typing;
 
@@ -53,11 +43,11 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     if (isTyping) {
       width = screenWidth - 48;
       height = AppSpacing.ctaIdleHeight;
-    } else if (isListening) {
+    } else if (isProcessing) {
       width = AppSpacing.ctaActiveWidth;
       height = AppSpacing.ctaActiveHeight;
     } else {
-      // idle + processing
+      // idle
       width = AppSpacing.ctaIdleWidth;
       height = AppSpacing.ctaIdleHeight;
     }
@@ -67,7 +57,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     final idleText = AppColors.darkBg;
     final activeBg = DomainColors.workDark.primary;
     final activeText = DomainColors.workDark.textOnPrimary;
-    final bgColor = (isListening || isProcessing) ? activeBg : idleBg;
+    final bgColor = isProcessing ? activeBg : idleBg;
 
     return Center(
       child: AnimatedContainer(
@@ -82,8 +72,6 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
         clipBehavior: Clip.antiAlias,
         child: _buildContent(
           recordingState,
-          waveformData,
-          transcription,
           idleText,
           activeText,
         ),
@@ -93,16 +81,13 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
 
   Widget _buildContent(
     RecordingState state,
-    List<double> waveformData,
-    String transcription,
     Color idleText,
     Color activeText,
   ) {
     switch (state) {
       case RecordingState.idle:
-        return _buildIdleContent(idleText);
       case RecordingState.listening:
-        return _buildListeningContent(waveformData, transcription, activeText);
+        return _buildIdleContent(idleText);
       case RecordingState.processing:
         return _buildProcessingContent(activeText);
       case RecordingState.typing:
@@ -111,96 +96,18 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   }
 
   Widget _buildIdleContent(Color textColor) {
-    return Row(
-      children: [
-        // Keyboard half
-        Expanded(
-          child: GestureDetector(
-            onTap: _activateKeyboard,
-            behavior: HitTestBehavior.opaque,
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.keyboard_alt_outlined, size: 16, color: textColor),
-                  const SizedBox(width: 6),
-                  Text('Type', style: AppTypography.ctaLabelText(color: textColor)),
-                ],
-              ),
-            ),
-          ),
-        ),
-        // Divider
-        Container(
-          width: 1,
-          height: 24,
-          color: textColor.withValues(alpha: 0.15),
-        ),
-        // Voice half — tap: single command, long-press: ramble mode
-        Expanded(
-          child: GestureDetector(
-            onTap: _startListening,
-            onLongPress: _launchRamble,
-            behavior: HitTestBehavior.opaque,
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.mic_none_rounded, size: 16, color: textColor),
-                  const SizedBox(width: 6),
-                  Text('Speak', style: AppTypography.ctaLabelText(color: textColor)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildListeningContent(
-    List<double> waveformData,
-    String transcription,
-    Color activeText,
-  ) {
     return GestureDetector(
-      onTap: () {
-        if (_canStopListening) _stopListening();
-      },
+      onTap: _activateKeyboard,
+      onLongPress: _launchRamble,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Center(
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.stop_circle_outlined, size: 24, color: activeText),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomPaint(
-                    painter: WaveformPainter(
-                      amplitudes: waveformData,
-                      color: activeText,
-                    ),
-                    child: const SizedBox(height: 24),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    transcription.isNotEmpty ? transcription : 'Listening...',
-                    style: TextStyle(
-                      color: activeText.withValues(
-                        alpha: transcription.isNotEmpty ? 1.0 : 0.6,
-                      ),
-                      fontSize: 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
+            Icon(Icons.keyboard_alt_outlined, size: 16, color: textColor),
+            const SizedBox(width: 8),
+            Text('Type or hold to talk',
+                style: AppTypography.ctaLabelText(color: textColor)),
           ],
         ),
       ),
@@ -309,105 +216,6 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     );
   }
 
-  Future<void> _startListening() async {
-    // Guard: ignore if already listening or processing
-    final currentState = ref.read(recordingStateProvider);
-    if (currentState == RecordingState.listening ||
-        currentState == RecordingState.processing) {
-      return;
-    }
-
-    HapticService.medium();
-    _canStopListening = false;
-
-    // Immediate state change for responsive UI
-    ref.read(recordingStateProvider.notifier).state = RecordingState.listening;
-
-    // Allow stopping after minimum duration to prevent accidental double-tap
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) _canStopListening = true;
-    });
-
-    try {
-      final speechService = ref.read(speechServiceProvider);
-
-      // Wire callbacks
-      speechService.onResult = (text, isFinal) {
-        if (mounted) {
-          ref.read(transcriptionTextProvider.notifier).state = text;
-        }
-      };
-
-      speechService.onSoundLevelChange = (level) {
-        if (mounted) {
-          final current = List<double>.from(ref.read(waveformDataProvider));
-          current.add(level);
-          if (current.length > 50) current.removeAt(0);
-          ref.read(waveformDataProvider.notifier).state = current;
-        }
-      };
-
-      speechService.onError = (error) {
-        if (mounted) {
-          _resetState();
-          showStyledSnackbar(context,
-            message: 'Speech error: $error',
-            style: SnackbarStyle.error,
-          );
-        }
-      };
-
-      // Fast if already initialized via eager init in HomeScreen
-      await speechService.initialize();
-      await speechService.startListening();
-    } catch (e) {
-      _resetState();
-      if (mounted) {
-        showStyledSnackbar(context,
-          message: 'Failed to start listening: $e',
-          style: SnackbarStyle.error,
-        );
-      }
-    }
-  }
-
-  Future<void> _stopListening() async {
-    if (_isStoppingListening) return;
-    _isStoppingListening = true;
-
-    try {
-      HapticService.light();
-
-      final speechService = ref.read(speechServiceProvider);
-      await speechService.stopListening();
-
-      final transcription = ref.read(transcriptionTextProvider);
-
-      if (transcription.trim().isEmpty) {
-        _resetState();
-        if (mounted) {
-          showStyledSnackbar(context,
-            message: 'Nothing heard. Try again.',
-            style: SnackbarStyle.info,
-          );
-        }
-        return;
-      }
-
-      await _processCommand(transcription);
-    } catch (e) {
-      _resetState();
-      if (mounted) {
-        showStyledSnackbar(context,
-          message: 'Failed to process: $e',
-          style: SnackbarStyle.error,
-        );
-      }
-    } finally {
-      _isStoppingListening = false;
-    }
-  }
-
   Future<void> _submitText() async {
     final text = _textController.text.trim();
     if (text.isEmpty) {
@@ -430,61 +238,16 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   Future<void> _processCommand(String text) async {
     ref.read(recordingStateProvider.notifier).state = RecordingState.processing;
 
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final response = await apiService.processVoiceCommand(
-        text,
-        AppConstants.defaultUserId,
-      );
+    await processAndHandleAgentResponse(
+      context: context,
+      ref: ref,
+      text: text,
+    );
 
-      await ref.read(taskStoreProvider.notifier).fetchAll();
-
-      _resetState();
-
-      if (mounted) {
-        if (response.type == 'question' && response.data != null) {
-          final action = response.data!['action'] as String?;
-          if (action == 'select_subtasks') {
-            final parentTask = response.data!['parent_task'] as Map<String, dynamic>;
-            final suggestions = (response.data!['suggestions'] as List).cast<String>();
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => SubtaskSelectionSheet(
-                parentTask: parentTask,
-                suggestions: suggestions,
-              ),
-            );
-          } else {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => QuestionBottomSheet(response: response),
-            );
-          }
-        } else {
-          showStyledSnackbar(context,
-            message: response.message,
-            style: SnackbarStyle.success,
-          );
-        }
-      }
-    } catch (e) {
-      _resetState();
-      if (mounted) {
-        showStyledSnackbar(context,
-          message: 'Failed to process: $e',
-          style: SnackbarStyle.error,
-        );
-      }
-    }
+    _resetState();
   }
 
   void _resetState() {
     ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
-    ref.read(waveformDataProvider.notifier).state = [];
-    ref.read(transcriptionTextProvider.notifier).state = '';
   }
 }

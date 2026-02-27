@@ -19,7 +19,7 @@ class WriteTaskStatus(str, Enum):
 
 class AgentProcessRequest(BaseModel):
     """Request schema for agent processing."""
-    transcription: str = Field(..., min_length=1, max_length=1000)
+    transcription: str = Field(..., min_length=1, max_length=5000)
     user_id: str = Field(..., min_length=1)
 
 
