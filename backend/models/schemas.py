@@ -41,6 +41,7 @@ class BrainDumpRequest(BaseModel):
 class BrainDumpTaskProposal(BaseModel):
     """A single proposed task from brain dump."""
     id: str  # Client-generated temp ID
+    action: str = "add"  # "add", "complete", or "edit"
     content: str
     description: Optional[str] = None
     category: str
@@ -48,6 +49,8 @@ class BrainDumpTaskProposal(BaseModel):
     priority: Optional[str] = None
     parent_id: Optional[str] = None
     labels: List[str] = []
+    changes: Optional[Dict[str, Any]] = None  # For edit actions (e.g. {"priority": "low"})
+    matched_task_id: Optional[str] = None  # Resolved existing task ID for complete/edit
 
 
 class BrainDumpResponse(BaseModel):

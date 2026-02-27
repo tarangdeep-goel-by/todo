@@ -222,51 +222,63 @@ More examples:
 User said: "{transcription}"
 
 IMPORTANT: The input is a raw voice transcription — a "brain dump" where the user is dictating
-everything they need to get done. It may contain filler words (um, uh, like), pauses, corrections,
-and multiple tasks run together.
+multiple things at once. It may contain filler words (um, uh, like), pauses, corrections,
+and multiple actions run together.
 
-Your job: Extract ALL individual tasks from the transcription and return them as structured proposals.
+Your job: Extract ALL individual actions from the transcription. Actions can be:
+- ADD: Create a NEW task (user wants to do something new, "I need to...", "add...", "remember to...")
+- COMPLETE: Mark an EXISTING task as done (keywords: "completed", "finished", "done with", "I have completed")
+- EDIT: Modify an EXISTING task (keywords: "change priority", "is low/high priority", "reschedule", "rename")
+
+CRITICAL INTENT DETECTION (same rules as single-command pipeline):
+- "I have completed X" / "finished X" / "X is done" → COMPLETE (NOT add)
+- "X is low/high/medium priority" / "set X to low priority" → EDIT (priority change)
+- "reschedule X to tomorrow" → EDIT (date change)
+- Only use ADD when user is describing a genuinely NEW task to create
 
 Available categories from the task tree above. Pick the best match for each task.
 If no category fits, use "personal" as default.
 
-For EACH task, extract:
-- content (required): Concise task title (2-8 words). Clean up filler words but preserve meaning.
-- description (optional): Additional context from speech, or null if speech was already brief.
-- category (required): Best matching category from the task tree.
+For EACH action, return an object with:
+- action (required): "add", "complete", or "edit"
+- content (required): For ADD: concise task title (2-8 words). For COMPLETE/EDIT: search query to find the existing task.
+- description (optional): Additional context, or null if speech was brief.
+- category (required): Best matching category from the task tree (for ADD; for COMPLETE/EDIT use the task's existing category or "work" as fallback).
 - dueDate (optional): Date string if mentioned ("tomorrow", "next friday", "march 15", etc.)
-- priority (optional): "high", "medium", or "low" if mentioned/implied (urgent, important, etc.)
-- parentQuery (optional): Search query to find parent task if user implies hierarchy ("under project X", "for the website redesign")
+- priority (optional): "high", "medium", or "low" if mentioned/implied
+- parentQuery (optional): Search query for parent task if hierarchy implied
 - labels (optional): Array of label/tag strings if mentioned
+- changes (optional, EDIT only): Object with fields to change, e.g. {{"priority": "low"}}, {{"dueDate": "tomorrow"}}
 
 Rules:
-1. Each distinct action/task becomes its own entry — "buy milk and call dentist" = 2 tasks
+1. Each distinct action becomes its own entry
 2. Ignore filler/meta-speech: "um", "let me think", "oh yeah", "what else"
 3. If user corrects themselves ("no wait, I mean..."), use the correction only
-4. Preserve proper nouns and multi-word task names exactly
-5. Default category is "personal" if unclear
-6. If only one task is found, still return an array of one
+4. Preserve proper nouns and multi-word task names exactly (e.g. "safe drop" stays "safe drop")
+5. Do NOT join separate words into one (e.g. "safe drop" ≠ "SafeDrop")
+6. Match task names against the task tree — if a task exists, the user likely means COMPLETE or EDIT, not ADD
 
-Return a JSON array:
+Examples:
+
+Input: "I have completed save drop spec. I have completed after hours. Going to the gym is low priority."
 [
-  {{
-    "content": "Buy groceries",
-    "description": null,
-    "category": "personal",
-    "dueDate": "tomorrow",
-    "priority": null,
-    "parentQuery": null,
-    "labels": []
-  }},
-  {{
-    "content": "Review PR #42",
-    "description": "The auth refactor PR from Sarah",
-    "category": "work",
-    "dueDate": null,
-    "priority": "high",
-    "parentQuery": null,
-    "labels": []
-  }}
+  {{"action": "complete", "content": "save drop spec", "category": "work"}},
+  {{"action": "complete", "content": "after hours", "category": "work"}},
+  {{"action": "edit", "content": "going to the gym", "category": "personal", "changes": {{"priority": "low"}}}}
+]
+
+Input: "buy milk and call dentist tomorrow and finish the report"
+[
+  {{"action": "add", "content": "Buy milk", "category": "personal"}},
+  {{"action": "add", "content": "Call dentist", "category": "personal", "dueDate": "tomorrow"}},
+  {{"action": "add", "content": "Finish the report", "category": "work"}}
+]
+
+Input: "completed the PR review, need to deploy staging, set database migration to high priority"
+[
+  {{"action": "complete", "content": "PR review", "category": "work"}},
+  {{"action": "add", "content": "Deploy staging", "category": "work"}},
+  {{"action": "edit", "content": "database migration", "category": "work", "changes": {{"priority": "high"}}}}
 ]
 
 Respond ONLY with a valid JSON array. No markdown, no explanation."""
