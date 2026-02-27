@@ -1,25 +1,25 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
-import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
+import '../utils/agent_response_handler.dart';
 import 'waveform_painter.dart';
 import 'styled_snackbar.dart';
 
-String _sentenceCase(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-
 /// Ramble mode states
-enum _RamblePhase { recording, processing, reviewing, submitting }
+enum _RamblePhase { recording, editing, processing }
 
 /// Full-screen bottom sheet for voice brain dump.
-/// Records speech → extracts multiple tasks → user reviews → submits.
+/// Streams audio → Gemini transcribes → user edits transcript → sends via unified pipeline.
 class RambleSheet extends ConsumerStatefulWidget {
   final String? prefilledCategory;
 
@@ -31,101 +31,161 @@ class RambleSheet extends ConsumerStatefulWidget {
 
 class _RambleSheetState extends ConsumerState<RambleSheet> {
   _RamblePhase _phase = _RamblePhase.recording;
-  List<BrainDumpTaskProposal> _proposals = [];
-  late final Set<int> _selectedIndices;
-  String _transcription = '';
   bool _canStopListening = false;
   bool _isStoppingListening = false;
+
+  final _transcriptController = TextEditingController();
+  final _transcriptFocusNode = FocusNode();
+
+  // Streaming subscriptions
+  StreamSubscription<String>? _transcriptionSub;
+  StreamSubscription<String>? _finalTranscriptSub;
+  StreamSubscription<String>? _statusSub;
+  StreamSubscription<String>? _errorSub;
+  StreamSubscription<List<int>>? _audioStreamSub;
 
   @override
   void initState() {
     super.initState();
-    _selectedIndices = {};
-    // Start recording immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Clear any stale state from previous sessions
+      ref.read(transcriptionTextProvider.notifier).state = '';
+      ref.read(waveformDataProvider.notifier).state = [];
       _startRecording();
     });
   }
 
   @override
   void dispose() {
-    // Ensure speech is stopped if sheet is dismissed
+    _cancelSubscriptions();
+    _transcriptController.dispose();
+    _transcriptFocusNode.dispose();
     try {
-      final speechService = ref.read(speechServiceProvider);
-      speechService.stopListening();
+      final recordingNotifier = ref.read(recordingStateProvider.notifier);
+      final waveformNotifier = ref.read(waveformDataProvider.notifier);
+      final transcriptionNotifier = ref.read(transcriptionTextProvider.notifier);
+      recordingNotifier.state = RecordingState.idle;
+      waveformNotifier.state = [];
+      transcriptionNotifier.state = '';
     } catch (_) {}
-    // Reset recording state
-    ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
-    ref.read(waveformDataProvider.notifier).state = [];
-    ref.read(transcriptionTextProvider.notifier).state = '';
     super.dispose();
   }
 
-  // ────────── Recording ──────────
+  void _cancelSubscriptions() {
+    _transcriptionSub?.cancel();
+    _finalTranscriptSub?.cancel();
+    _statusSub?.cancel();
+    _errorSub?.cancel();
+    _audioStreamSub?.cancel();
+    _transcriptionSub = null;
+    _finalTranscriptSub = null;
+    _statusSub = null;
+    _errorSub = null;
+    _audioStreamSub = null;
+  }
+
+  // ────────── Recording (WebSocket streaming) ──────────
 
   Future<void> _startRecording() async {
+    debugPrint('[Ramble] _startRecording called');
     _canStopListening = false;
     setState(() => _phase = _RamblePhase.recording);
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) _canStopListening = true;
     });
 
     try {
-      final speechService = ref.read(speechServiceProvider);
+      final audioService = ref.read(audioServiceProvider);
+      final rambleWs = ref.read(rambleWebSocketProvider);
 
-      speechService.onResult = (text, isFinal) {
-        if (mounted) {
-          setState(() => _transcription = text);
+      // 1. Connect WebSocket to backend
+      debugPrint('[Ramble] Connecting WebSocket...');
+      await rambleWs.connect(
+        userId: AppConstants.defaultUserId,
+      );
+
+      // 2. Subscribe to server events
+      _transcriptionSub = rambleWs.transcriptionStream.listen((text) {
+        if (mounted && _phase == _RamblePhase.recording) {
           ref.read(transcriptionTextProvider.notifier).state = text;
         }
-      };
+      });
 
-      speechService.onSoundLevelChange = (level) {
+      _finalTranscriptSub = rambleWs.finalTranscriptStream.listen((text) {
         if (mounted) {
-          final current = List<double>.from(ref.read(waveformDataProvider));
-          current.add(level);
-          if (current.length > 50) current.removeAt(0);
-          ref.read(waveformDataProvider.notifier).state = current;
+          debugPrint('[Ramble] Final transcript received: ${text.length} chars');
+          _transcriptController.text = text;
         }
-      };
+      });
 
-      speechService.onError = (error) {
-        if (mounted) {
-          setState(() => _phase = _RamblePhase.recording);
+      _errorSub = rambleWs.errorStream.listen((error) {
+        debugPrint('[Ramble] Server error: $error');
+        if (mounted && _phase == _RamblePhase.recording) {
           showStyledSnackbar(context,
-            message: 'Speech error: $error',
+            message: 'Stream error: $error',
             style: SnackbarStyle.error,
           );
         }
-      };
+      });
 
-      await speechService.initialize();
-      await speechService.startListening();
+      _statusSub = rambleWs.statusStream.listen((status) {
+        debugPrint('[Ramble] Status: $status');
+      });
+
+      // 3. Start audio streaming (PCM 16kHz mono)
+      debugPrint('[Ramble] Starting audio stream...');
+      final audioStream = await audioService.startStream();
+
+      // 4. Pipe audio chunks to WebSocket as base64
+      _audioStreamSub = audioStream.listen((pcmChunk) {
+        final base64Data = base64Encode(Uint8List.fromList(pcmChunk));
+        rambleWs.sendAudioChunk(base64Data);
+      });
+
       ref.read(recordingStateProvider.notifier).state = RecordingState.listening;
+      debugPrint('[Ramble] Recording started');
     } catch (e) {
+      debugPrint('[Ramble] _startRecording FAILED: $e');
       if (mounted) {
         Navigator.pop(context);
         showStyledSnackbar(context,
-          message: 'Failed to start listening: $e',
+          message: 'Failed to start: $e',
           style: SnackbarStyle.error,
         );
       }
     }
   }
 
-  Future<void> _stopAndProcess() async {
+  Future<void> _stopAndEdit() async {
+    debugPrint('[Ramble] _stopAndEdit called');
     if (_isStoppingListening || !_canStopListening) return;
+    if (_phase != _RamblePhase.recording) return;
     _isStoppingListening = true;
     HapticService.light();
 
     try {
-      final speechService = ref.read(speechServiceProvider);
-      await speechService.stopListening();
+      // Stop audio stream
+      await _audioStreamSub?.cancel();
+      _audioStreamSub = null;
+
+      final audioService = ref.read(audioServiceProvider);
+      await audioService.stopStream();
+      debugPrint('[Ramble] Audio stream stopped');
+
+      // Stop WebSocket session — waits for final_transcript
+      final rambleWs = ref.read(rambleWebSocketProvider);
+      final finalTranscript = await rambleWs.stop();
+      debugPrint('[Ramble] WebSocket stopped, transcript: ${finalTranscript?.length ?? 0} chars');
+
+      // Cancel event subscriptions
+      _cancelSubscriptions();
+
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
 
-      final transcription = _transcription.trim();
-      if (transcription.isEmpty) {
+      // Use returned transcript, fall back to controller text (from streaming chunks)
+      final transcript = (finalTranscript ?? _transcriptController.text).trim();
+      if (transcript.isEmpty) {
         if (mounted) {
           Navigator.pop(context);
           showStyledSnackbar(context,
@@ -136,40 +196,14 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
         return;
       }
 
-      // Move to processing phase
-      setState(() => _phase = _RamblePhase.processing);
-
-      final apiService = ref.read(apiServiceProvider);
-      final response = await apiService.processBrainDump(
-        transcription: transcription,
-        userId: AppConstants.defaultUserId,
-        category: widget.prefilledCategory,
-      );
-
-      if (!mounted) return;
-
-      if (!response.success || response.tasks.isEmpty) {
-        Navigator.pop(context);
-        showStyledSnackbar(context,
-          message: response.message ?? 'No tasks found. Try again.',
-          style: SnackbarStyle.info,
-        );
-        return;
-      }
-
-      // Move to review phase — all tasks pre-selected
-      setState(() {
-        _proposals = response.tasks;
-        _selectedIndices = Set<int>.from(
-          List.generate(response.tasks.length, (i) => i),
-        );
-        _phase = _RamblePhase.reviewing;
-      });
+      debugPrint('[Ramble] → editing phase, ${transcript.length} chars');
+      setState(() => _phase = _RamblePhase.editing);
     } catch (e) {
+      debugPrint('[Ramble] _stopAndEdit FAILED: $e');
       if (mounted) {
         Navigator.pop(context);
         showStyledSnackbar(context,
-          message: 'Failed to process: $e',
+          message: 'Failed to stop: $e',
           style: SnackbarStyle.error,
         );
       }
@@ -178,69 +212,33 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     }
   }
 
-  // ────────── Review actions ──────────
+  // ────────── Processing ──────────
 
-  void _toggleTask(int index) {
-    HapticService.light();
-    setState(() {
-      if (_selectedIndices.contains(index)) {
-        _selectedIndices.remove(index);
-      } else {
-        _selectedIndices.add(index);
-      }
-    });
-  }
+  Future<void> _sendTranscript() async {
+    final text = _transcriptController.text.trim();
+    if (text.isEmpty) return;
 
-  void _removeTask(int index) {
-    HapticService.light();
-    setState(() {
-      _proposals.removeAt(index);
-      // Rebuild selected indices
-      _selectedIndices = _selectedIndices
-          .where((i) => i < _proposals.length)
-          .map((i) => i >= index ? i : i)
-          .toSet();
-      // Re-select all remaining
-      _selectedIndices = Set<int>.from(
-        List.generate(_proposals.length, (i) => i),
-      );
-    });
-  }
-
-  Future<void> _submitTasks() async {
-    if (_selectedIndices.isEmpty) return;
     HapticService.medium();
-    setState(() => _phase = _RamblePhase.submitting);
+    _transcriptFocusNode.unfocus();
+    setState(() => _phase = _RamblePhase.processing);
 
-    final selectedTasks = _selectedIndices
-        .map((i) => _proposals[i])
-        .toList();
+    await processAndHandleAgentResponse(
+      context: context,
+      ref: ref,
+      text: text,
+    );
 
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final result = await apiService.submitBrainDump(
-        userId: AppConstants.defaultUserId,
-        tasks: selectedTasks,
-      );
-
-      await ref.read(taskStoreProvider.notifier).fetchAll();
-
-      if (!mounted) return;
+    if (mounted) {
       Navigator.pop(context);
-
-      showStyledSnackbar(context,
-        message: result.message,
-        style: SnackbarStyle.success,
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _phase = _RamblePhase.reviewing);
-        showStyledSnackbar(context,
-          message: 'Failed to create tasks: $e',
-          style: SnackbarStyle.error,
-        );
-      }
     }
+  }
+
+  void _reRecord() {
+    HapticService.light();
+    _transcriptController.clear();
+    ref.read(transcriptionTextProvider.notifier).state = '';
+    ref.read(waveformDataProvider.notifier).state = [];
+    _startRecording();
   }
 
   // ────────── Build ──────────
@@ -252,33 +250,25 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
       widget.prefilledCategory ?? 'work', true, paletteMap,
     );
 
-    return PopScope(
-      canPop: _phase != _RamblePhase.reviewing || _proposals.isEmpty,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _proposals.isNotEmpty) {
-          _showDiscardDialog(domain);
-        }
-      },
-      child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.darkBg,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(AppSpacing.radiusLg),
+          topRight: Radius.circular(AppSpacing.radiusLg),
         ),
-        decoration: const BoxDecoration(
-          color: AppColors.darkBg,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(AppSpacing.radiusLg),
-            topRight: Radius.circular(AppSpacing.radiusLg),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDragHandle(),
-            _buildHeader(domain),
-            Flexible(child: _buildBody(domain)),
-            _buildFooter(domain),
-          ],
-        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildDragHandle(),
+          _buildHeader(domain),
+          Flexible(child: _buildBody(domain)),
+          _buildFooter(domain),
+        ],
       ),
     );
   }
@@ -305,15 +295,12 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
       case _RamblePhase.recording:
         title = 'Listening...';
         subtitle = 'Say everything you need to get done.';
+      case _RamblePhase.editing:
+        title = 'Edit transcript';
+        subtitle = 'Review and correct before sending.';
       case _RamblePhase.processing:
         title = 'Processing...';
-        subtitle = 'Extracting tasks from your voice.';
-      case _RamblePhase.reviewing:
-        title = '${_proposals.length} tasks found';
-        subtitle = 'Review and select which tasks to create.';
-      case _RamblePhase.submitting:
-        title = 'Creating tasks...';
-        subtitle = 'Saving ${_selectedIndices.length} tasks.';
+        subtitle = 'Detecting intents and executing.';
     }
 
     return Container(
@@ -359,17 +346,16 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     switch (_phase) {
       case _RamblePhase.recording:
         return _buildRecordingBody(domain);
+      case _RamblePhase.editing:
+        return _buildEditingBody(domain);
       case _RamblePhase.processing:
-      case _RamblePhase.submitting:
         return _buildLoadingBody(domain);
-      case _RamblePhase.reviewing:
-        return _buildReviewBody(domain);
     }
   }
 
   Widget _buildRecordingBody(DomainPalette domain) {
-    final waveformData = ref.watch(waveformDataProvider);
     final transcription = ref.watch(transcriptionTextProvider);
+    final audioService = ref.read(audioServiceProvider);
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -377,13 +363,11 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: AppSpacing.xl),
-          // Waveform
-          CustomPaint(
-            painter: WaveformPainter(
-              amplitudes: waveformData,
-              color: domain.primary,
-            ),
-            child: const SizedBox(width: double.infinity, height: 48),
+          // Waveform — self-contained 60fps, no provider rebuilds
+          AnimatedWaveform(
+            amplitudeSource: () => audioService.waveformData,
+            color: domain.primary,
+            height: 48,
           ),
           const SizedBox(height: AppSpacing.md),
           // Live transcription
@@ -401,7 +385,7 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
           const SizedBox(height: AppSpacing.xl),
           // Stop button
           GestureDetector(
-            onTap: _canStopListening ? _stopAndProcess : null,
+            onTap: _canStopListening ? _stopAndEdit : null,
             child: Container(
               width: 64,
               height: 64,
@@ -431,6 +415,47 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     );
   }
 
+  Widget _buildEditingBody(DomainPalette domain) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: TextField(
+        controller: _transcriptController,
+        focusNode: _transcriptFocusNode,
+        maxLines: null,
+        minLines: 4,
+        style: AppTypography.metadataText(color: AppColors.darkText)
+            .copyWith(fontSize: 15, height: 1.5),
+        decoration: InputDecoration(
+          hintText: 'Your transcript will appear here...',
+          hintStyle: AppTypography.metadataText(
+            color: AppColors.darkText.withValues(alpha: 0.3),
+          ).copyWith(fontSize: 15),
+          filled: true,
+          fillColor: AppColors.darkText.withValues(alpha: 0.05),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            borderSide: BorderSide(
+              color: domain.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            borderSide: BorderSide(
+              color: domain.primary.withValues(alpha: 0.2),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            borderSide: BorderSide(
+              color: domain.primary.withValues(alpha: 0.6),
+            ),
+          ),
+          contentPadding: const EdgeInsets.all(AppSpacing.md),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoadingBody(DomainPalette domain) {
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -447,156 +472,13 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     );
   }
 
-  Widget _buildReviewBody(DomainPalette domain) {
-    final paletteMap = ref.watch(domainPalettesProvider);
-
-    return ListView.builder(
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.sm,
-      ),
-      itemCount: _proposals.length,
-      itemBuilder: (context, index) {
-        final proposal = _proposals[index];
-        final isSelected = _selectedIndices.contains(index);
-        final taskDomain = DomainColors.getDomain(
-          proposal.category, true, paletteMap,
-        );
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: GestureDetector(
-            onTap: () => _toggleTask(index),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? taskDomain.surface
-                    : AppColors.darkBg,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                border: Border.all(
-                  color: isSelected
-                      ? taskDomain.primary.withValues(alpha: 0.4)
-                      : AppColors.darkText.withValues(alpha: 0.1),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Checkbox
-                  Container(
-                    width: 22,
-                    height: 22,
-                    margin: const EdgeInsets.only(top: 1),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? taskDomain.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isSelected
-                            ? taskDomain.primary
-                            : AppColors.darkText.withValues(alpha: 0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: isSelected
-                        ? Icon(Icons.check, size: 14,
-                            color: taskDomain.textOnPrimary)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  // Task content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _sentenceCase(proposal.content),
-                          style: AppTypography.metadataText(
-                            color: AppColors.darkText,
-                          ).copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            decoration: isSelected
-                                ? null
-                                : TextDecoration.lineThrough,
-                            decorationColor: AppColors.darkText.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Metadata chips
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            _buildChip(
-                              _sentenceCase(proposal.category),
-                              taskDomain.primary,
-                            ),
-                            if (proposal.dueDate != null)
-                              _buildChip(
-                                _formatDate(proposal.dueDate!),
-                                AppColors.dueSoon,
-                              ),
-                            if (proposal.priority != null)
-                              _buildChip(
-                                _sentenceCase(proposal.priority!),
-                                _priorityColor(proposal.priority!),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Delete button
-                  GestureDetector(
-                    onTap: () => _removeTask(index),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 18,
-                        color: AppColors.darkText.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.metadataText(color: color)
-            .copyWith(fontSize: 11, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
   Widget _buildFooter(DomainPalette domain) {
     if (_phase == _RamblePhase.recording ||
-        _phase == _RamblePhase.processing ||
-        _phase == _RamblePhase.submitting) {
+        _phase == _RamblePhase.processing) {
       return const SizedBox(height: AppSpacing.md);
     }
 
-    final selectedCount = _selectedIndices.length;
-
+    // Editing phase footer
     return Padding(
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg, AppSpacing.sm, AppSpacing.lg,
@@ -604,16 +486,10 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
       ),
       child: Row(
         children: [
-          // Record more button
+          // Re-record button
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                HapticService.light();
-                _transcription = '';
-                ref.read(transcriptionTextProvider.notifier).state = '';
-                ref.read(waveformDataProvider.notifier).state = [];
-                _startRecording();
-              },
+              onTap: _reRecord,
               child: Container(
                 height: 48,
                 decoration: BoxDecoration(
@@ -629,7 +505,7 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
                     Icon(Icons.mic_none_rounded, size: 18, color: domain.primary),
                     const SizedBox(width: 6),
                     Text(
-                      'Add more',
+                      'Re-record',
                       style: AppTypography.metadataText(color: domain.primary)
                           .copyWith(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
@@ -639,19 +515,17 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
             ),
           ),
           const SizedBox(width: 12),
-          // Submit button
+          // Send button
           Expanded(
             flex: 2,
             child: GestureDetector(
-              onTap: selectedCount > 0 ? _submitTasks : null,
+              onTap: _sendTranscript,
               child: Container(
                 height: 48,
                 decoration: BoxDecoration(
-                  color: selectedCount > 0
-                      ? domain.primary
-                      : domain.primary.withValues(alpha: 0.3),
+                  color: domain.primary,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  boxShadow: selectedCount > 0 && domain.glow != null
+                  boxShadow: domain.glow != null
                       ? [BoxShadow(
                           color: domain.glow!,
                           blurRadius: 12,
@@ -661,11 +535,9 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
                 ),
                 child: Center(
                   child: Text(
-                    'Create $selectedCount Task${selectedCount == 1 ? '' : 's'}',
+                    'Send',
                     style: AppTypography.metadataText(
-                      color: selectedCount > 0
-                          ? domain.textOnPrimary
-                          : domain.textOnPrimary.withValues(alpha: 0.5),
+                      color: domain.textOnPrimary,
                     ).copyWith(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -675,74 +547,5 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
         ],
       ),
     );
-  }
-
-  // ────────── Helpers ──────────
-
-  void _showDiscardDialog(DomainPalette domain) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.darkBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        title: Text(
-          'Unsaved tasks',
-          style: AppTypography.metadataText(color: AppColors.darkText)
-              .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'You have ${_proposals.length} tasks that haven\'t been saved yet.',
-          style: AppTypography.metadataText(
-            color: AppColors.darkText.withValues(alpha: 0.7),
-          ).copyWith(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);  // Close dialog
-              Navigator.pop(context);  // Close sheet
-            },
-            child: Text(
-              'Discard',
-              style: TextStyle(color: AppColors.deleteAction),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Keep editing',
-              style: TextStyle(color: domain.primary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = date.difference(DateTime(now.year, now.month, now.day)).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Tomorrow';
-    if (diff < 7) {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      return days[date.weekday - 1];
-    }
-    return '${date.month}/${date.day}';
-  }
-
-  Color _priorityColor(String priority) {
-    switch (priority.toLowerCase()) {
-      case 'high':
-        return AppColors.overdue;
-      case 'medium':
-        return AppColors.dueSoon;
-      case 'low':
-        return AppColors.completed;
-      default:
-        return AppColors.darkText;
-    }
   }
 }

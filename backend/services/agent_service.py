@@ -151,7 +151,9 @@ class AgentService:
         task_service = TaskService(db)
 
         # Check if agent suggests creating new branch
-        if params.get('needsNewBranch'):
+        valid_domains = {"work", "personal", "health", "learning", "projects"}
+        suggested = (params.get('suggestedBranchName') or '').lower().strip()
+        if params.get('needsNewBranch') and suggested not in valid_domains:
             # Get current categories
             current_categories = await task_service.get_categories(user_id)
             category_count = len(current_categories)
@@ -186,11 +188,36 @@ class AgentService:
             )
 
         # Normal task creation (agent determined category + parent)
+        # Use suggestedBranchName as category if it's a valid domain and category isn't
+        category = (params.get('category') or '').lower().strip()
+        if category not in valid_domains and suggested in valid_domains:
+            category = suggested
+
+        # If category is still empty/invalid after all fallbacks, ask user to pick
+        if category not in valid_domains:
+            current_categories = await task_service.get_categories(user_id)
+            return AgentResponse(
+                success=False,
+                message=f"Which category should '{params['title']}' go in?",
+                type="question",
+                data={
+                    "intent": "ADD",
+                    "action": "select_category",
+                    "suggested_title": params['title'],
+                    "description": params.get('description'),
+                    "priority": params.get('priority'),
+                    "dueDate": params.get('dueDate'),
+                    "suggestedParent": params.get('suggestedParent'),
+                    "reasoning": params.get('reasoning', ''),
+                    "current_categories": current_categories,
+                }
+            )
+
         parsed_due_date = parse_flexible_date(params.get('dueDate'))
         task = await task_service.create_task(
             user_id=user_id,
             title=params['title'],
-            category=params['category'],
+            category=category or params['category'],
             parent_id=params.get('suggestedParent'),
             transcription=params['title'],
             ai_placement={
@@ -631,6 +658,35 @@ class AgentService:
                     "created_count": len(created_ids),
                     "created_ids": created_ids,
                 }
+            )
+
+        elif action == "select_category":
+            title = data.get('suggested_title', '')
+            category = data.get('selected_category', '')
+            if not title or not category:
+                return AgentResponse(success=False, message="Missing title or category", type="error")
+
+            parsed_due_date = parse_flexible_date(data.get('dueDate'))
+            task = await task_service.create_task(
+                user_id=user_id,
+                title=title,
+                category=category.lower().strip(),
+                parent_id=data.get('suggestedParent'),
+                transcription=title,
+                description=data.get('description'),
+                priority=data.get('priority'),
+                due_date=parsed_due_date,
+                ai_placement={
+                    "suggested_parent": data.get('suggestedParent'),
+                    "confidence": 0.9,
+                    "reasoning": data.get('reasoning', ''),
+                },
+            )
+            return AgentResponse(
+                success=True,
+                message=f"Created '{task.title}' in {task.category.title()}",
+                type="confirmation",
+                data={"task_id": task.id, "title": task.title, "category": task.category}
             )
 
         elif action == "create_category":
