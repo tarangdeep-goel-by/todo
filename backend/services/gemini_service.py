@@ -229,34 +229,43 @@ Your job: Extract ALL individual actions from the transcription. Actions can be:
 - ADD: Create a NEW task (user wants to do something new, "I need to...", "add...", "remember to...")
 - COMPLETE: Mark an EXISTING task as done (keywords: "completed", "finished", "done with", "I have completed")
 - EDIT: Modify an EXISTING task (keywords: "change priority", "is low/high priority", "reschedule", "rename")
+- DELETE: Remove an existing task (keywords: "delete", "remove", "get rid of", "cancel")
+- MOVE: Move task under a different parent (keywords: "move X under Y", "put X in Y", "relocate")
+- BREAKDOWN: Break task into subtasks (keywords: "break down", "split", "decompose", "break into steps")
 
 CRITICAL INTENT DETECTION (same rules as single-command pipeline):
 - "I have completed X" / "finished X" / "X is done" → COMPLETE (NOT add)
 - "X is low/high/medium priority" / "set X to low priority" → EDIT (priority change)
 - "reschedule X to tomorrow" → EDIT (date change)
+- "delete X" / "remove X" / "get rid of X" → DELETE
+- "move X under Y" / "put X in Y" → MOVE (content = search query for task to move, targetParentQuery = search query for destination)
+- "break down X" / "split X into subtasks" → BREAKDOWN
+- QUERY/retrieval requests ("show me", "what are my", "list") → IGNORE (brain dump is for mutations only)
 - Only use ADD when user is describing a genuinely NEW task to create
 
 Available categories from the task tree above. Pick the best match for each task.
 If no category fits, use "personal" as default.
 
 For EACH action, return an object with:
-- action (required): "add", "complete", or "edit"
-- content (required): For ADD: concise task title (2-8 words). For COMPLETE/EDIT: search query to find the existing task.
+- action (required): "add", "complete", "edit", "delete", "move", or "breakdown"
+- content (required): For ADD: use the user's EXACT words as the task title. For COMPLETE/EDIT/DELETE/BREAKDOWN: search query to find the existing task. For MOVE: search query for the task to move.
 - description (optional): Additional context, or null if speech was brief.
-- category (required): Best matching category from the task tree (for ADD; for COMPLETE/EDIT use the task's existing category or "work" as fallback).
+- category (required): Best matching category from the task tree (for ADD; for others use the task's existing category or "work" as fallback).
 - dueDate (optional): Date string if mentioned ("tomorrow", "next friday", "march 15", etc.)
 - priority (optional): "high", "medium", or "low" if mentioned/implied
-- parentQuery (optional): Search query for parent task if hierarchy implied
+- parentQuery (optional): Search query for parent task if hierarchy implied (ADD only)
 - labels (optional): Array of label/tag strings if mentioned
 - changes (optional, EDIT only): Object with fields to change, e.g. {{"priority": "low"}}, {{"dueDate": "tomorrow"}}
+- targetParentQuery (optional, MOVE only): Search query for the destination parent task. Omit or null to move to top-level.
 
 Rules:
 1. Each distinct action becomes its own entry
-2. Ignore filler/meta-speech: "um", "let me think", "oh yeah", "what else"
-3. If user corrects themselves ("no wait, I mean..."), use the correction only
-4. Preserve proper nouns and multi-word task names exactly (e.g. "safe drop" stays "safe drop")
-5. Do NOT join separate words into one (e.g. "safe drop" ≠ "SafeDrop")
-6. Match task names against the task tree — if a task exists, the user likely means COMPLETE or EDIT, not ADD
+2. NEVER return duplicate entries — if two phrases refer to the same task/action, merge them into ONE entry
+3. Ignore filler/meta-speech: "um", "let me think", "oh yeah", "what else"
+4. If user corrects themselves ("no wait, I mean..."), use the correction only
+5. Preserve proper nouns and multi-word task names exactly (e.g. "safe drop" stays "safe drop")
+6. Do NOT join separate words into one (e.g. "safe drop" ≠ "SafeDrop")
+7. Match task names against the task tree — if a task exists, the user likely means COMPLETE or EDIT, not ADD
 
 Examples:
 
@@ -279,6 +288,13 @@ Input: "completed the PR review, need to deploy staging, set database migration 
   {{"action": "complete", "content": "PR review", "category": "work"}},
   {{"action": "add", "content": "Deploy staging", "category": "work"}},
   {{"action": "edit", "content": "database migration", "category": "work", "changes": {{"priority": "high"}}}}
+]
+
+Input: "delete the grocery list, move check flights under plan a trip to thailand, break down the launch plan"
+[
+  {{"action": "delete", "content": "grocery list", "category": "personal"}},
+  {{"action": "move", "content": "check flights", "category": "personal", "targetParentQuery": "plan a trip to thailand"}},
+  {{"action": "breakdown", "content": "launch plan", "category": "work"}}
 ]
 
 Respond ONLY with a valid JSON array. No markdown, no explanation."""
