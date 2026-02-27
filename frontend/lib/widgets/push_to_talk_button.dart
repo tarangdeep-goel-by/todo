@@ -4,6 +4,7 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
+import '../models/api_response.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
 import '../utils/agent_response_handler.dart';
@@ -205,15 +206,19 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     ref.read(recordingStateProvider.notifier).state = RecordingState.typing;
   }
 
-  void _launchRamble() {
+  Future<void> _launchRamble() async {
     HapticService.medium();
-    showModalBottomSheet(
+    final result = await showModalBottomSheet<AgentResponse>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: false,
       builder: (_) => const RambleSheet(),
     );
+
+    if (result != null && mounted) {
+      handleAgentResponse(context: context, response: result);
+    }
   }
 
   Future<void> _submitText() async {

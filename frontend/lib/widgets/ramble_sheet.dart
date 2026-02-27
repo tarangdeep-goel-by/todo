@@ -7,11 +7,11 @@ import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
+import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
-import '../utils/agent_response_handler.dart';
 import 'waveform_painter.dart';
 import 'styled_snackbar.dart';
 
@@ -60,15 +60,15 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     _cancelSubscriptions();
     _transcriptController.dispose();
     _transcriptFocusNode.dispose();
-    try {
-      final recordingNotifier = ref.read(recordingStateProvider.notifier);
-      final waveformNotifier = ref.read(waveformDataProvider.notifier);
-      final transcriptionNotifier = ref.read(transcriptionTextProvider.notifier);
-      recordingNotifier.state = RecordingState.idle;
-      waveformNotifier.state = [];
-      transcriptionNotifier.state = '';
-    } catch (_) {}
     super.dispose();
+  }
+
+  /// Reset shared provider state before closing the sheet.
+  /// Must be called while the widget is still mounted (before Navigator.pop).
+  void _resetProviders() {
+    ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
+    ref.read(waveformDataProvider.notifier).state = [];
+    ref.read(transcriptionTextProvider.notifier).state = '';
   }
 
   void _cancelSubscriptions() {
@@ -148,6 +148,7 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     } catch (e) {
       debugPrint('[Ramble] _startRecording FAILED: $e');
       if (mounted) {
+        _resetProviders();
         Navigator.pop(context);
         showStyledSnackbar(context,
           message: 'Failed to start: $e',
@@ -187,6 +188,7 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
       final transcript = (finalTranscript ?? _transcriptController.text).trim();
       if (transcript.isEmpty) {
         if (mounted) {
+          _resetProviders();
           Navigator.pop(context);
           showStyledSnackbar(context,
             message: 'Nothing heard. Try again.',
@@ -201,6 +203,7 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     } catch (e) {
       debugPrint('[Ramble] _stopAndEdit FAILED: $e');
       if (mounted) {
+        _resetProviders();
         Navigator.pop(context);
         showStyledSnackbar(context,
           message: 'Failed to stop: $e',
@@ -222,14 +225,28 @@ class _RambleSheetState extends ConsumerState<RambleSheet> {
     _transcriptFocusNode.unfocus();
     setState(() => _phase = _RamblePhase.processing);
 
-    await processAndHandleAgentResponse(
-      context: context,
-      ref: ref,
-      text: text,
-    );
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      final response = await apiService.processVoiceCommand(
+        text,
+        AppConstants.defaultUserId,
+      );
+      await ref.read(taskStoreProvider.notifier).fetchAll();
 
-    if (mounted) {
-      Navigator.pop(context);
+      if (mounted) {
+        _resetProviders();
+        Navigator.pop(context, response); // Return response to caller
+      }
+    } catch (e) {
+      if (mounted) {
+        _resetProviders();
+        // Pop with error response so caller can show snackbar
+        Navigator.pop(context, AgentResponse(
+          success: false,
+          message: 'Failed to process: $e',
+          type: 'error',
+        ));
+      }
     }
   }
 

@@ -12,6 +12,9 @@ class RambleWebSocketService {
   final _statusController = StreamController<String>.broadcast();
   final _errorController = StreamController<String>.broadcast();
 
+  /// Completer for the final transcript — set in _handleMessage, awaited in stop().
+  Completer<String>? _finalTranscriptCompleter;
+
   Stream<String> get transcriptionStream => _transcriptionController.stream;
   Stream<String> get finalTranscriptStream => _finalTranscriptController.stream;
   Stream<String> get statusStream => _statusController.stream;
@@ -68,19 +71,24 @@ class RambleWebSocketService {
 
   /// Stop the session. Returns the final transcript (or null on timeout).
   Future<String?> stop() async {
-    final completer = Completer<String?>();
-    _finalTranscriptController.stream.first
-        .then((text) { if (!completer.isCompleted) completer.complete(text); })
-        .catchError((_) { if (!completer.isCompleted) completer.complete(null); });
+    // Set up completer BEFORE sending stop — _handleMessage will complete it.
+    _finalTranscriptCompleter = Completer<String>();
 
     _send({'type': 'stop'});
 
     // Wait up to 10s for final_transcript (transliteration can be slow)
-    final result = await completer.future.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => null,
-    );
+    String? result;
+    try {
+      result = await _finalTranscriptCompleter!.future.timeout(
+        const Duration(seconds: 10),
+      );
+    } on TimeoutException {
+      result = null;
+    } catch (_) {
+      result = null;
+    }
 
+    _finalTranscriptCompleter = null;
     await _channel?.sink.close();
     _channel = null;
     return result;
@@ -114,6 +122,9 @@ class RambleWebSocketService {
           final text = msg['text'] as String;
           debugPrint('[RambleWS] Final transcript: ${text.length} chars');
           _finalTranscriptController.add(text);
+          if (_finalTranscriptCompleter != null && !_finalTranscriptCompleter!.isCompleted) {
+            _finalTranscriptCompleter!.complete(text);
+          }
         case 'status':
           _statusController.add(msg['status'] as String);
         case 'error':

@@ -73,12 +73,21 @@ await apiService.updateTask(taskId, payload);  // Backend sync
 
 ### Voice Command Flow
 
-1. `PushToTalkButton` → `AudioService` records .m4a
+**Single Command** (tap mic):
+1. `PushToTalkButton` tap → keyboard input or `processAndHandleAgentResponse()` utility
 2. Audio uploaded via `ApiService.processAgent()` → backend `/api/agent/process`
 3. Backend uses Gemini to transcribe, detect intent (ADD/COMPLETE/EDIT/DELETE/QUERY/BREAKDOWN)
-4. If ambiguous, backend returns `type: "question"` → `QuestionBottomSheet` shown
+4. If ambiguous, backend returns `type: "question"` → `QuestionBottomSheet` shown (also handles `select_category` and `create_category` actions)
 5. User answers → `ApiService.resolveAgent()` → backend `/api/agent/resolve`
 6. On success, `store.upsertTask()` updates UI immediately
+
+**Brain Dump / Ramble** (long-press mic):
+1. `PushToTalkButton` long-press → opens `RambleSheet` (full-screen bottom sheet)
+2. `AudioService.startStream()` streams PCM 16kHz mono → `RambleWebSocketService` → backend `/ws/ramble`
+3. Gemini Live transcribes in real-time, displayed with animated waveform
+4. User stops → edits transcript → sends to `/api/agent/braindump`
+5. Backend returns `BrainDumpTaskProposal` cards — user reviews, deselects, edits
+6. Submit → `/api/agent/braindump/submit` → batch task creation
 
 ### Key Providers
 
@@ -89,6 +98,8 @@ await apiService.updateTask(taskId, payload);  // Backend sync
 | `taskFilterProvider` | StateNotifierProvider | Active filter state for flat view |
 | `recordingProvider` | StateNotifierProvider | Recording state machine |
 | `viewModeProvider` | StateProvider | Node / Flat / Calendar toggle |
+| `audioServiceProvider` | Provider | Native audio recording + amplitude |
+| `rambleWebSocketProvider` | Provider | WebSocket client for `/ws/ramble` |
 
 ## Testing Patterns
 
@@ -116,6 +127,8 @@ expect(result, hasLength(1));
 - **5 domains**: Work, Personal, Health, Learning, Projects — defined in `AppConstants.domainNames`, must match backend
 - **Task statuses**: Only `active` and `completed` stored; `overdue` is computed client-side
 - **User ID**: Hardcoded `default-user` (MVP, no auth)
+- **Key widgets**: `RambleSheet` (brain dump UI), `AnimatedWaveform` (60fps ticker-driven), `QuestionBottomSheet` (disambiguation + category picker)
+- **Shared utility**: `agent_response_handler.dart` — `processAndHandleAgentResponse()` handles both keyboard and voice input routing
 - **Animations**: Custom curves in `AppAnimations` (constants.dart) — `easeOutQuint`, `easeOutCubic`
 - **Theme**: OKLCH color system with 5 domain palettes in `lib/config/theme.dart` (dark mode only, no theme provider)
 - **Typography**: Google Fonts (Bricolage Grotesque, DM Sans, Space Mono) via `google_fonts` package
