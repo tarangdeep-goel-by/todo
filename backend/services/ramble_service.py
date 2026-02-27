@@ -25,6 +25,13 @@ class RambleSession:
         config = types.LiveConnectConfig(
             responseModalities=[types.Modality.AUDIO],
             input_audio_transcription=types.AudioTranscriptionConfig(),
+            realtime_input_config=types.RealtimeInputConfig(
+                automatic_activity_detection=types.AutomaticActivityDetection(
+                    start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_HIGH,
+                    end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_LOW,
+                    silence_duration_ms=10000,
+                ),
+            ),
             systemInstruction=types.Content(
                 parts=[types.Part(text="You are a silent listener. Do not respond.")]
             ),
@@ -63,11 +70,11 @@ class RambleSession:
                 if event.server_content.input_transcription:
                     text = event.server_content.input_transcription.text
                     if text:
-                        print(f"[Ramble] Input transcription chunk: {text[:200]}")
                         self._accumulated_transcription += text
+                        print(f"[Ramble] Input transcription chunk: {text[:200]}")
                         await on_message({
                             "type": "transcription",
-                            "text": text,
+                            "text": self._accumulated_transcription,
                         })
 
             print("[Ramble] Receive loop ended normally")

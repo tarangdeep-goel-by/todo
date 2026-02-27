@@ -27,6 +27,7 @@ class AgentResponse {
 /// A proposed task from brain dump (not yet created)
 class BrainDumpTaskProposal {
   String id;
+  String action; // "add", "complete", or "edit"
   String content;
   String? description;
   String category;
@@ -34,9 +35,12 @@ class BrainDumpTaskProposal {
   String? priority;
   String? parentId;
   List<String> labels;
+  Map<String, dynamic>? changes; // For edit actions
+  String? matchedTaskId; // Resolved existing task ID for complete/edit
 
   BrainDumpTaskProposal({
     required this.id,
+    this.action = 'add',
     required this.content,
     this.description,
     required this.category,
@@ -44,11 +48,14 @@ class BrainDumpTaskProposal {
     this.priority,
     this.parentId,
     this.labels = const [],
+    this.changes,
+    this.matchedTaskId,
   });
 
   factory BrainDumpTaskProposal.fromJson(Map<String, dynamic> json) {
     return BrainDumpTaskProposal(
       id: json['id'] as String,
+      action: json['action'] as String? ?? 'add',
       content: json['content'] as String,
       description: json['description'] as String?,
       category: json['category'] as String,
@@ -58,12 +65,15 @@ class BrainDumpTaskProposal {
       priority: json['priority'] as String?,
       parentId: json['parent_id'] as String?,
       labels: (json['labels'] as List?)?.cast<String>() ?? [],
+      changes: json['changes'] as Map<String, dynamic>?,
+      matchedTaskId: json['matched_task_id'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'action': action,
       'content': content,
       'description': description,
       'category': category,
@@ -71,6 +81,8 @@ class BrainDumpTaskProposal {
       'priority': priority,
       'parent_id': parentId,
       'labels': labels,
+      'changes': changes,
+      'matched_task_id': matchedTaskId,
     };
   }
 }

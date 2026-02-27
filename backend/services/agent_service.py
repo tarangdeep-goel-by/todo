@@ -772,21 +772,37 @@ class AgentService:
             if not content:
                 continue
 
+            action = raw.get("action", "add").lower()
+
             task_category = category or raw.get("category", "personal")
             # Validate category exists; fall back to "personal"
             if task_category.lower() not in available_categories:
                 task_category = "personal"
 
-            # Resolve parent if parentQuery provided
+            # For complete/edit actions, resolve the existing task via fuzzy search
+            matched_task_id = None
+            if action in ("complete", "edit"):
+                matched = await task_service.search_tasks(user_id, content)
+                if matched:
+                    matched_task_id = str(matched[0].id)
+                    task_category = matched[0].category or task_category
+                    print(f"[Agent] brain dump resolved '{content}' → task '{matched[0].title}' ({matched_task_id})")
+                else:
+                    print(f"[Agent] brain dump could not resolve '{content}' for {action}, skipping")
+                    continue
+
+            # Resolve parent if parentQuery provided (ADD only)
             parent_id = None
-            parent_query = raw.get("parentQuery")
-            if parent_query:
-                parent_tasks = await task_service.search_tasks(user_id, parent_query)
-                if parent_tasks:
-                    parent_id = parent_tasks[0].id
+            if action == "add":
+                parent_query = raw.get("parentQuery")
+                if parent_query:
+                    parent_tasks = await task_service.search_tasks(user_id, parent_query)
+                    if parent_tasks:
+                        parent_id = str(parent_tasks[0].id)
 
             proposals.append(BrainDumpTaskProposal(
                 id=str(uuid.uuid4()),
+                action=action,
                 content=content,
                 description=raw.get("description"),
                 category=task_category.lower(),
@@ -794,6 +810,8 @@ class AgentService:
                 priority=raw.get("priority"),
                 parent_id=parent_id,
                 labels=raw.get("labels", []),
+                changes=raw.get("changes"),
+                matched_task_id=matched_task_id,
             ))
 
         print(f"[Agent] brain dump produced {len(proposals)} task proposals")
@@ -827,41 +845,80 @@ class AgentService:
 
         task_service = TaskService(db)
         created_ids: List[str] = []
+        completed_count = 0
+        edited_count = 0
 
         for proposal in tasks:
             try:
-                task = await task_service.create_task(
-                    user_id=user_id,
-                    title=proposal.content,
-                    category=proposal.category,
-                    parent_id=proposal.parent_id,
-                    transcription=proposal.content,
-                    description=proposal.description,
-                    due_date=proposal.due_date,
-                    priority=proposal.priority,
-                    ai_placement={
-                        "confidence": 0.9,
-                        "reasoning": "Brain dump voice input",
-                    },
-                )
-                created_ids.append(task.id)
-                print(f"[Agent] created task '{task.title}' ({task.id})")
-            except Exception as e:
-                print(f"[Agent] failed to create task '{proposal.content}': {e}")
+                action = proposal.action or "add"
 
-        if not created_ids:
+                if action == "complete" and proposal.matched_task_id:
+                    await task_service.complete_task(proposal.matched_task_id)
+                    completed_count += 1
+                    print(f"[Agent] completed task '{proposal.content}' ({proposal.matched_task_id})")
+
+                elif action == "edit" and proposal.matched_task_id:
+                    changes = proposal.changes or {}
+                    update_data = {}
+                    if "priority" in changes:
+                        update_data["priority"] = changes["priority"]
+                    if "dueDate" in changes:
+                        update_data["due_date"] = parse_flexible_date(changes["dueDate"])
+                    if "category" in changes:
+                        update_data["category"] = changes["category"]
+                    if "title" in changes:
+                        update_data["title"] = changes["title"]
+                    if update_data:
+                        await task_service.update_task(proposal.matched_task_id, **update_data)
+                    edited_count += 1
+                    print(f"[Agent] edited task '{proposal.content}' ({proposal.matched_task_id}): {changes}")
+
+                else:
+                    # Default: ADD
+                    task = await task_service.create_task(
+                        user_id=user_id,
+                        title=proposal.content,
+                        category=proposal.category,
+                        parent_id=proposal.parent_id,
+                        transcription=proposal.content,
+                        description=proposal.description,
+                        due_date=proposal.due_date,
+                        priority=proposal.priority,
+                        ai_placement={
+                            "confidence": 0.9,
+                            "reasoning": "Brain dump voice input",
+                        },
+                    )
+                    created_ids.append(task.id)
+                    print(f"[Agent] created task '{task.title}' ({task.id})")
+
+            except Exception as e:
+                print(f"[Agent] failed to process '{proposal.content}' ({proposal.action}): {e}")
+
+        total = len(created_ids) + completed_count + edited_count
+        if total == 0:
             return BrainDumpSubmitResponse(
                 success=False,
                 created_count=0,
                 created_task_ids=[],
-                message="Failed to create any tasks",
+                message="Failed to process any tasks",
             )
+
+        # Build summary message
+        parts = []
+        if created_ids:
+            parts.append(f"Created {len(created_ids)}")
+        if completed_count:
+            parts.append(f"completed {completed_count}")
+        if edited_count:
+            parts.append(f"edited {edited_count}")
+        message = ", ".join(parts) + f" task{'s' if total != 1 else ''}"
 
         return BrainDumpSubmitResponse(
             success=True,
             created_count=len(created_ids),
             created_task_ids=created_ids,
-            message=f"Created {len(created_ids)} tasks",
+            message=message,
         )
 
     async def _handle_breakdown(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:

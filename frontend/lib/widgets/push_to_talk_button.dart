@@ -4,11 +4,11 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
-import '../models/api_response.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
 import '../utils/agent_response_handler.dart';
-import 'ramble_sheet.dart';
+import '../screens/ramble_screen.dart';
+import 'styled_snackbar.dart';
 
 /// Dual-mode input pill: tap for keyboard, long-press for ramble voice
 class PushToTalkButton extends ConsumerStatefulWidget {
@@ -208,16 +208,16 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
 
   Future<void> _launchRamble() async {
     HapticService.medium();
-    final result = await showModalBottomSheet<AgentResponse>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: false,
-      builder: (_) => const RambleSheet(),
+    final result = await Navigator.push<({bool success, String message})>(
+      context,
+      MaterialPageRoute(builder: (_) => const RambleScreen()),
     );
 
     if (result != null && mounted) {
-      handleAgentResponse(context: context, response: result);
+      showStyledSnackbar(context,
+        message: result.message,
+        style: result.success ? SnackbarStyle.success : SnackbarStyle.error,
+      );
     }
   }
 
