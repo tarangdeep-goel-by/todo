@@ -92,7 +92,7 @@ class TestProcessBrainDump:
 
 
 class TestSubmitBrainDump:
-    """Tests for AgentService.submit_brain_dump()."""
+    """Tests for AgentService.submit_brain_dump() via _execute_action()."""
 
     async def test_submit_creates_tasks(self, agent_service, task_service, db_session):
         await make_task_tree(task_service)
@@ -134,6 +134,117 @@ class TestSubmitBrainDump:
         result = await agent_service.submit_brain_dump("test-user", [], db_session)
         assert result.success is False
         assert result.created_count == 0
+
+    async def test_submit_complete_counts_children(self, agent_service, task_service, db_session):
+        """COMPLETE summary should reflect cascaded child count."""
+        tree = await make_task_tree(task_service)
+        proposals = [
+            BrainDumpTaskProposal(
+                id="temp-1", action="complete", content="Project Alpha",
+                category="work", matched_task_id=tree["project_alpha"].id,
+            ),
+        ]
+        result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
+        assert result.success is True
+        # Project Alpha has child Backend API → count should be 2
+        assert "2" in result.message
+
+    async def test_submit_edit_generic_changes(self, agent_service, task_service, db_session):
+        """EDIT should pass through arbitrary changes via **changes."""
+        tree = await make_task_tree(task_service)
+        proposals = [
+            BrainDumpTaskProposal(
+                id="temp-1", action="edit", content="Backend API",
+                category="work", matched_task_id=tree["backend_api"].id,
+                changes={"priority": "high", "dueDate": "2026-04-01"},
+            ),
+        ]
+        result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
+        assert result.success is True
+        task = await task_service.get_task(tree["backend_api"].id)
+        assert task.priority == "high"
+        assert task.due_date is not None
+
+    async def test_submit_move_validates_target(self, agent_service, task_service, db_session):
+        """MOVE should fail gracefully if target no longer exists."""
+        tree = await make_task_tree(task_service)
+        proposals = [
+            BrainDumpTaskProposal(
+                id="temp-1", action="move", content="Groceries",
+                category="personal", matched_task_id=tree["groceries"].id,
+                target_parent_id="00000000-0000-0000-0000-000000000099",
+            ),
+        ]
+        result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
+        # Move should fail (target doesn't exist), but not crash
+        assert result.success is False
+
+    async def test_submit_add_with_tags_and_estimated_hours(self, agent_service, task_service, db_session):
+        """ADD should pass through tags and estimated_hours."""
+        await make_task_tree(task_service)
+        proposals = [
+            BrainDumpTaskProposal(
+                id="temp-1", content="Research APIs", category="work",
+                tags=["backend", "research"], estimated_hours=3.5,
+                confidence=0.85,
+            ),
+        ]
+        result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
+        assert result.success is True
+        task = await task_service.get_task(result.created_task_ids[0])
+        assert task.tags == ["backend", "research"]
+        assert task.estimated_hours == 3.5
+
+    async def test_submit_add_uses_proposal_confidence(self, agent_service, task_service, db_session):
+        """ADD should use proposal.confidence in ai_placement, not hardcoded 0.9."""
+        await make_task_tree(task_service)
+        proposals = [
+            BrainDumpTaskProposal(
+                id="temp-1", content="Stretch goal", category="personal",
+                confidence=0.75,
+            ),
+        ]
+        result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
+        assert result.success is True
+        task = await task_service.get_task(result.created_task_ids[0])
+        assert task.ai_placement_json["confidence"] == 0.75
+
+
+class TestProcessBrainDumpDisambiguation:
+    """Tests for alternate_matches in process_brain_dump()."""
+
+    async def test_alternate_matches_attached(self, agent_service, mock_gemini, task_service, db_session):
+        """When fuzzy search returns multiple matches, alternates should be attached."""
+        await make_task_tree(task_service)
+        # Create a second task with similar name so fuzzy search returns >1
+        await task_service.create_task(
+            user_id="test-user", title="Backend API v2", category="work",
+            transcription="backend api v2",
+            ai_placement={"confidence": 0.9, "reasoning": "test"},
+        )
+        mock_gemini.detect_brain_dump = AsyncMock(return_value=[
+            {"action": "complete", "content": "Backend API", "category": "work", "confidence": 0.9},
+        ])
+        result = await agent_service.process_brain_dump("completed backend api", "test-user", db_session)
+        assert result.success is True
+        assert len(result.tasks) == 1
+        proposal = result.tasks[0]
+        assert proposal.matched_task_id is not None
+        assert proposal.alternate_matches is not None
+        assert len(proposal.alternate_matches) >= 1
+
+    async def test_tags_and_estimated_hours_passthrough(self, agent_service, mock_gemini, task_service, db_session):
+        """Tags and estimatedHours from Gemini should appear in proposals."""
+        await make_task_tree(task_service)
+        mock_gemini.detect_brain_dump = AsyncMock(return_value=[
+            {"content": "Design mockups", "category": "work", "confidence": 0.9,
+             "tags": ["design", "ui"], "estimatedHours": 4.0},
+        ])
+        result = await agent_service.process_brain_dump("design mockups", "test-user", db_session)
+        assert result.success is True
+        proposal = result.tasks[0]
+        assert proposal.tags == ["design", "ui"]
+        assert proposal.estimated_hours == 4.0
 
 
 # ──────────────── API-level tests ────────────────

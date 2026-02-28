@@ -54,6 +54,9 @@ class BrainDumpTaskProposal(BaseModel):
     target_parent_id: Optional[str] = None  # MOVE: resolved destination parent UUID
     target_content: Optional[str] = None  # MOVE: display name of target parent
     confidence: Optional[float] = None  # Gemini's confidence in this proposal
+    tags: Optional[List[str]] = None
+    estimated_hours: Optional[float] = None
+    alternate_matches: Optional[List[Dict[str, str]]] = None  # [{id, title, category}, ...]
 
 
 class BrainDumpResponse(BaseModel):
