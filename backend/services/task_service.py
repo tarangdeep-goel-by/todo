@@ -119,6 +119,16 @@ class TaskService:
         if not task:
             return None
 
+        # Guard against circular parent moves
+        new_parent_id = updates.get('parent_id')
+        if new_parent_id is not None:
+            if new_parent_id == task_id:
+                raise ValueError(f"Cannot move task under itself")
+            descendants = await self._get_all_descendants(task_id)
+            descendant_ids = {d.id for d in descendants}
+            if new_parent_id in descendant_ids:
+                raise ValueError(f"Cannot move task under its own descendant")
+
         for key, value in updates.items():
             if hasattr(task, key):
                 if key == 'title' and isinstance(value, str):

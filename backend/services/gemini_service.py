@@ -257,6 +257,7 @@ For EACH action, return an object with:
 - labels (optional): Array of label/tag strings if mentioned
 - changes (optional, EDIT only): Object with fields to change, e.g. {{"priority": "low"}}, {{"dueDate": "tomorrow"}}
 - targetParentQuery (optional, MOVE only): Search query for the destination parent task. Omit or null to move to top-level.
+- confidence (required): 0.0-1.0 how confident you are this is a real action (not filler/noise)
 
 Rules:
 1. Each distinct action becomes its own entry

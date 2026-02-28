@@ -15,7 +15,7 @@ class TestProcessBrainDump:
     async def test_single_task(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Buy groceries", "category": "personal", "dueDate": "tomorrow"},
+            {"content": "Buy groceries", "category": "personal", "dueDate": "tomorrow", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump("buy groceries tomorrow", "test-user", db_session)
         assert result.success is True
@@ -27,9 +27,9 @@ class TestProcessBrainDump:
     async def test_multiple_tasks(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Buy milk", "category": "personal"},
-            {"content": "Call dentist", "category": "personal", "dueDate": "tomorrow"},
-            {"content": "Finish report", "category": "work", "priority": "high"},
+            {"content": "Buy milk", "category": "personal", "confidence": 0.9},
+            {"content": "Call dentist", "category": "personal", "dueDate": "tomorrow", "confidence": 0.9},
+            {"content": "Finish report", "category": "work", "priority": "high", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump(
             "buy milk, call dentist tomorrow, finish the report it's urgent",
@@ -50,17 +50,17 @@ class TestProcessBrainDump:
     async def test_invalid_category_falls_back(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Learn guitar", "category": "hobbies"},
+            {"content": "Learn guitar", "category": "hobbies", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump("learn guitar", "test-user", db_session)
         assert result.success is True
-        assert result.tasks[0].category == "personal"  # Fallback
+        assert result.tasks[0].category == "hobbies"  # Kept as-is; category created at submit time
 
     async def test_category_override(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Task A", "category": "personal"},
-            {"content": "Task B", "category": "personal"},
+            {"content": "Task A", "category": "personal", "confidence": 0.9},
+            {"content": "Task B", "category": "personal", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump(
             "task a and task b", "test-user", db_session, category="work",
@@ -71,7 +71,7 @@ class TestProcessBrainDump:
     async def test_parent_query_resolved(self, agent_service, mock_gemini, task_service, db_session):
         tree = await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Write unit tests", "category": "work", "parentQuery": "Project Alpha"},
+            {"content": "Write unit tests", "category": "work", "parentQuery": "Project Alpha", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump(
             "write unit tests under project alpha", "test-user", db_session,
@@ -82,9 +82,9 @@ class TestProcessBrainDump:
     async def test_skips_empty_content(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Real task", "category": "work"},
-            {"content": "", "category": "work"},
-            {"content": "  ", "category": "work"},
+            {"content": "Real task", "category": "work", "confidence": 0.9},
+            {"content": "", "category": "work", "confidence": 0.9},
+            {"content": "  ", "category": "work", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump("real task", "test-user", db_session)
         assert result.success is True
