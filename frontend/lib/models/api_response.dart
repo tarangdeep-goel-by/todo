@@ -40,6 +40,9 @@ class BrainDumpTaskProposal {
   String? targetParentId; // MOVE: resolved destination parent UUID
   String? targetContent; // MOVE: display name of target parent
   double? confidence; // Gemini's confidence in this proposal
+  List<String>? tags;
+  double? estimatedHours;
+  List<Map<String, dynamic>>? alternateMatches; // [{id, title, category}, ...]
 
   BrainDumpTaskProposal({
     required this.id,
@@ -56,6 +59,9 @@ class BrainDumpTaskProposal {
     this.targetParentId,
     this.targetContent,
     this.confidence,
+    this.tags,
+    this.estimatedHours,
+    this.alternateMatches,
   });
 
   factory BrainDumpTaskProposal.fromJson(Map<String, dynamic> json) {
@@ -76,6 +82,11 @@ class BrainDumpTaskProposal {
       targetParentId: json['target_parent_id'] as String?,
       targetContent: json['target_content'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),
+      tags: (json['tags'] as List?)?.cast<String>(),
+      estimatedHours: (json['estimated_hours'] as num?)?.toDouble(),
+      alternateMatches: (json['alternate_matches'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
     );
   }
 
@@ -95,6 +106,9 @@ class BrainDumpTaskProposal {
       'target_parent_id': targetParentId,
       'target_content': targetContent,
       'confidence': confidence,
+      'tags': tags,
+      'estimated_hours': estimatedHours,
+      'alternate_matches': alternateMatches,
     };
   }
 }

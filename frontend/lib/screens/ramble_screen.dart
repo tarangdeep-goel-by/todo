@@ -351,6 +351,22 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
   void _editProposal(BrainDumpTaskProposal proposal) async {
     HapticService.medium();
+
+    // If alternates exist, show disambiguation picker first
+    if (proposal.alternateMatches != null &&
+        proposal.alternateMatches!.isNotEmpty) {
+      final picked = await _showDisambiguationPicker(proposal);
+      if (picked != null) {
+        setState(() {
+          final idx = _proposals.indexWhere((p) => p.id == proposal.id);
+          if (idx != -1) _proposals[idx] = picked;
+        });
+        return;
+      }
+      // User dismissed picker — fall through to normal edit sheet
+    }
+
+    if (!mounted) return;
     final paletteMap = ref.read(domainPalettesProvider);
     final edited = await showModalBottomSheet<BrainDumpTaskProposal>(
       context: context,
@@ -367,6 +383,110 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         if (idx != -1) _proposals[idx] = edited;
       });
     }
+  }
+
+  Future<BrainDumpTaskProposal?> _showDisambiguationPicker(
+    BrainDumpTaskProposal proposal,
+  ) async {
+    // Build list: current match + alternatives
+    final currentMatch = {
+      'id': proposal.matchedTaskId ?? '',
+      'title': proposal.content,
+      'category': proposal.category,
+    };
+    final allMatches = [currentMatch, ...proposal.alternateMatches!];
+
+    final paletteMap = ref.read(domainPalettesProvider);
+
+    return showModalBottomSheet<BrainDumpTaskProposal>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.darkBg,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm,
+                ),
+                child: Text(
+                  'Which task did you mean?',
+                  style: AppTypography.metadataText(color: AppColors.darkText)
+                      .copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              ...allMatches.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final match = entry.value;
+                final matchDomain = DomainColors.getDomain(
+                  match['category'] ?? 'work', true, paletteMap,
+                );
+                final isCurrent = idx == 0;
+                return ListTile(
+                  leading: Container(
+                    width: 4,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: matchDomain.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  title: Text(
+                    match['title'] ?? '',
+                    style: AppTypography.metadataText(
+                      color: isCurrent
+                          ? matchDomain.primary
+                          : AppColors.darkText,
+                    ).copyWith(
+                      fontSize: 14,
+                      fontWeight:
+                          isCurrent ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    (match['category'] ?? '').toString().toUpperCase() +
+                        (isCurrent ? '  (current)' : ''),
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 11),
+                  ),
+                  onTap: () {
+                    final updated = BrainDumpTaskProposal(
+                      id: proposal.id,
+                      action: proposal.action,
+                      content: match['title'] ?? proposal.content,
+                      description: proposal.description,
+                      category: match['category'] ?? proposal.category,
+                      dueDate: proposal.dueDate,
+                      priority: proposal.priority,
+                      parentId: proposal.parentId,
+                      labels: proposal.labels,
+                      changes: proposal.changes,
+                      matchedTaskId: match['id'],
+                      targetParentId: proposal.targetParentId,
+                      targetContent: proposal.targetContent,
+                      confidence: proposal.confidence,
+                      tags: proposal.tags,
+                      estimatedHours: proposal.estimatedHours,
+                      alternateMatches: null, // Clear after selection
+                    );
+                    Navigator.pop(ctx, updated);
+                  },
+                );
+              }),
+              const SizedBox(height: AppSpacing.md),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _reRecord() {
@@ -740,6 +860,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                           _buildChip(
                             '${(proposal.confidence! * 100).round()}%',
                             AppColors.darkText.withValues(alpha: 0.4),
+                          ),
+                        if (proposal.alternateMatches != null &&
+                            proposal.alternateMatches!.isNotEmpty)
+                          _buildChip(
+                            '\u26A0 ${proposal.alternateMatches!.length + 1} matches',
+                            AppColors.dueSoon,
                           ),
                       ],
                     ),

@@ -795,12 +795,18 @@ class AgentService:
 
             # For actions on existing tasks, resolve via fuzzy search
             matched_task_id = None
+            alternate_matches = None
             if action in ("complete", "edit", "delete", "move", "breakdown"):
                 matched = await task_service.search_tasks(user_id, content)
                 if matched:
                     matched_task_id = str(matched[0].id)
                     task_category = matched[0].category or task_category
                     print(f"[Agent] brain dump resolved '{content}' → task '{matched[0].title}' ({matched_task_id})")
+                    if len(matched) > 1:
+                        alternate_matches = [
+                            {"id": str(m.id), "title": m.title, "category": m.category}
+                            for m in matched[1:4]  # top 3 alternatives
+                        ]
 
                     # For COMPLETE: check active children and note in description
                     if action == "complete":
@@ -866,6 +872,9 @@ class AgentService:
                 target_parent_id=target_parent_id,
                 target_content=target_content,
                 confidence=confidence,
+                tags=raw.get("tags"),
+                estimated_hours=raw.get("estimatedHours"),
+                alternate_matches=alternate_matches,
             ))
 
         print(f"[Agent] brain dump produced {len(proposals)} task proposals")
@@ -876,6 +885,74 @@ class AgentService:
             transcription=transcription,
             message=f"Found {len(proposals)} tasks",
         )
+
+    async def _execute_action(
+        self,
+        proposal: BrainDumpTaskProposal,
+        user_id: str,
+        task_service: TaskService,
+    ) -> dict:
+        """Execute a single proposal action. Shared by submit_brain_dump().
+
+        Returns:
+            dict with {type, count, task_id?} describing what happened.
+        """
+        action = proposal.action or "add"
+
+        if action == "complete" and proposal.matched_task_id:
+            count = await task_service.complete_task_with_children(proposal.matched_task_id)
+            print(f"[Agent] completed task '{proposal.content}' ({proposal.matched_task_id}) + {count - 1} children")
+            return {"type": "completed", "count": count}
+
+        if action == "edit" and proposal.matched_task_id:
+            changes = dict(proposal.changes or {})
+            if 'dueDate' in changes:
+                changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
+            if changes:
+                await task_service.update_task(proposal.matched_task_id, **changes)
+            print(f"[Agent] edited task '{proposal.content}' ({proposal.matched_task_id}): {changes}")
+            return {"type": "edited", "count": 1}
+
+        if action == "delete" and proposal.matched_task_id:
+            count = await task_service.delete_task_with_children(proposal.matched_task_id)
+            print(f"[Agent] deleted task '{proposal.content}' ({proposal.matched_task_id}) + {count - 1} children")
+            return {"type": "deleted", "count": count}
+
+        if action == "move" and proposal.matched_task_id:
+            if proposal.target_parent_id:
+                target = await task_service.get_task(proposal.target_parent_id)
+                if not target:
+                    raise ValueError(f"Move target '{proposal.target_parent_id}' no longer exists")
+            await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
+            print(f"[Agent] moved task '{proposal.content}' ({proposal.matched_task_id}) → {proposal.target_parent_id}")
+            return {"type": "moved", "count": 1}
+
+        # Default: ADD — auto-create category if needed
+        available_categories = await task_service.get_categories(user_id)
+        cat = proposal.category.lower()
+        if cat not in available_categories:
+            if len(available_categories) < 5:
+                await task_service.create_category(user_id, cat)
+            else:
+                cat = "personal"  # at limit, fall back
+        task = await task_service.create_task(
+            user_id=user_id,
+            title=proposal.content,
+            category=cat,
+            parent_id=proposal.parent_id,
+            transcription=proposal.content,
+            description=proposal.description,
+            due_date=proposal.due_date,
+            priority=proposal.priority,
+            tags=proposal.tags,
+            estimated_hours=proposal.estimated_hours,
+            ai_placement={
+                "confidence": proposal.confidence or 0.9,
+                "reasoning": "Brain dump voice input",
+            },
+        )
+        print(f"[Agent] created task '{task.title}' ({task.id})")
+        return {"type": "created", "count": 1, "task_id": task.id}
 
     async def submit_brain_dump(
         self,
@@ -899,76 +976,19 @@ class AgentService:
 
         task_service = TaskService(db)
         created_ids: List[str] = []
-        completed_count = 0
-        edited_count = 0
-        deleted_count = 0
-        moved_count = 0
+        counts: Dict[str, int] = {}
 
         for proposal in tasks:
             try:
-                action = proposal.action or "add"
-
-                if action == "complete" and proposal.matched_task_id:
-                    count = await task_service.complete_task_with_children(proposal.matched_task_id)
-                    completed_count += 1
-                    print(f"[Agent] completed task '{proposal.content}' ({proposal.matched_task_id}) + {count - 1} children")
-
-                elif action == "edit" and proposal.matched_task_id:
-                    changes = proposal.changes or {}
-                    update_data = {}
-                    if "priority" in changes:
-                        update_data["priority"] = changes["priority"]
-                    if "dueDate" in changes:
-                        update_data["due_date"] = parse_flexible_date(changes["dueDate"])
-                    if "category" in changes:
-                        update_data["category"] = changes["category"]
-                    if "title" in changes:
-                        update_data["title"] = changes["title"]
-                    if update_data:
-                        await task_service.update_task(proposal.matched_task_id, **update_data)
-                    edited_count += 1
-                    print(f"[Agent] edited task '{proposal.content}' ({proposal.matched_task_id}): {changes}")
-
-                elif action == "delete" and proposal.matched_task_id:
-                    await task_service.delete_task_with_children(proposal.matched_task_id)
-                    deleted_count += 1
-                    print(f"[Agent] deleted task '{proposal.content}' ({proposal.matched_task_id})")
-
-                elif action == "move" and proposal.matched_task_id:
-                    await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
-                    moved_count += 1
-                    print(f"[Agent] moved task '{proposal.content}' ({proposal.matched_task_id}) → {proposal.target_parent_id}")
-
-                else:
-                    # Default: ADD — auto-create category if needed
-                    available_categories = await task_service.get_categories(user_id)
-                    cat = proposal.category.lower()
-                    if cat not in available_categories:
-                        if len(available_categories) < 5:
-                            await task_service.create_category(user_id, cat)
-                        else:
-                            cat = "personal"  # at limit, fall back
-                    task = await task_service.create_task(
-                        user_id=user_id,
-                        title=proposal.content,
-                        category=cat,
-                        parent_id=proposal.parent_id,
-                        transcription=proposal.content,
-                        description=proposal.description,
-                        due_date=proposal.due_date,
-                        priority=proposal.priority,
-                        ai_placement={
-                            "confidence": 0.9,
-                            "reasoning": "Brain dump voice input",
-                        },
-                    )
-                    created_ids.append(task.id)
-                    print(f"[Agent] created task '{task.title}' ({task.id})")
-
+                result = await self._execute_action(proposal, user_id, task_service)
+                rtype = result["type"]
+                counts[rtype] = counts.get(rtype, 0) + result["count"]
+                if result.get("task_id"):
+                    created_ids.append(result["task_id"])
             except Exception as e:
                 print(f"[Agent] failed to process '{proposal.content}' ({proposal.action}): {e}")
 
-        total = len(created_ids) + completed_count + edited_count + deleted_count + moved_count
+        total = sum(counts.values())
         if total == 0:
             return BrainDumpSubmitResponse(
                 success=False,
@@ -977,18 +997,9 @@ class AgentService:
                 message="Failed to process any tasks",
             )
 
-        # Build summary message
-        parts = []
-        if created_ids:
-            parts.append(f"Created {len(created_ids)}")
-        if completed_count:
-            parts.append(f"completed {completed_count}")
-        if edited_count:
-            parts.append(f"edited {edited_count}")
-        if deleted_count:
-            parts.append(f"deleted {deleted_count}")
-        if moved_count:
-            parts.append(f"moved {moved_count}")
+        # Build summary message with actual counts (including cascaded children)
+        label_map = {"created": "Created", "completed": "completed", "edited": "edited", "deleted": "deleted", "moved": "moved"}
+        parts = [f"{label_map.get(k, k)} {v}" for k, v in counts.items()]
         message = ", ".join(parts) + f" task{'s' if total != 1 else ''}"
 
         return BrainDumpSubmitResponse(
