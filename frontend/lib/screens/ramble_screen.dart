@@ -735,6 +735,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                               '${entry.key}: ${entry.value}',
                               AppColors.darkText.withValues(alpha: 0.6),
                             ),
+                        if (proposal.confidence != null &&
+                            proposal.confidence! < 0.8)
+                          _buildChip(
+                            '${(proposal.confidence! * 100).round()}%',
+                            AppColors.darkText.withValues(alpha: 0.4),
+                          ),
                       ],
                     ),
                   ],

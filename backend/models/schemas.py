@@ -53,6 +53,7 @@ class BrainDumpTaskProposal(BaseModel):
     matched_task_id: Optional[str] = None  # Resolved existing task ID for complete/edit/delete/move
     target_parent_id: Optional[str] = None  # MOVE: resolved destination parent UUID
     target_content: Optional[str] = None  # MOVE: display name of target parent
+    confidence: Optional[float] = None  # Gemini's confidence in this proposal
 
 
 class BrainDumpResponse(BaseModel):

@@ -39,6 +39,7 @@ class BrainDumpTaskProposal {
   String? matchedTaskId; // Resolved existing task ID for complete/edit/delete/move
   String? targetParentId; // MOVE: resolved destination parent UUID
   String? targetContent; // MOVE: display name of target parent
+  double? confidence; // Gemini's confidence in this proposal
 
   BrainDumpTaskProposal({
     required this.id,
@@ -54,6 +55,7 @@ class BrainDumpTaskProposal {
     this.matchedTaskId,
     this.targetParentId,
     this.targetContent,
+    this.confidence,
   });
 
   factory BrainDumpTaskProposal.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,7 @@ class BrainDumpTaskProposal {
       matchedTaskId: json['matched_task_id'] as String?,
       targetParentId: json['target_parent_id'] as String?,
       targetContent: json['target_content'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble(),
     );
   }
 
@@ -91,6 +94,7 @@ class BrainDumpTaskProposal {
       'matched_task_id': matchedTaskId,
       'target_parent_id': targetParentId,
       'target_content': targetContent,
+      'confidence': confidence,
     };
   }
 }

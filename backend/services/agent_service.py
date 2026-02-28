@@ -786,10 +786,12 @@ class AgentService:
 
             action = raw.get("action", "add").lower()
 
+            confidence = raw.get("confidence", 0.5)
+            if confidence < 0.6:
+                print(f"[Agent] brain dump skipping low-confidence ({confidence}): '{content}'")
+                continue
+
             task_category = category or raw.get("category", "personal")
-            # Validate category exists; fall back to "personal"
-            if task_category.lower() not in available_categories:
-                task_category = "personal"
 
             # For actions on existing tasks, resolve via fuzzy search
             matched_task_id = None
@@ -799,6 +801,15 @@ class AgentService:
                     matched_task_id = str(matched[0].id)
                     task_category = matched[0].category or task_category
                     print(f"[Agent] brain dump resolved '{content}' → task '{matched[0].title}' ({matched_task_id})")
+
+                    # For COMPLETE: check active children and note in description
+                    if action == "complete":
+                        children = await task_service.get_tasks(user_id, parent_id=matched_task_id)
+                        active_children = [c for c in children if c.status == "active"]
+                        if active_children:
+                            child_note = f"Will also complete {len(active_children)} sub-task{'s' if len(active_children) != 1 else ''}"
+                            existing_desc = raw.get("description") or ""
+                            raw["description"] = f"{child_note}. {existing_desc}".strip().rstrip(".")
                 else:
                     print(f"[Agent] brain dump could not resolve '{content}' for {action}, skipping")
                     continue
@@ -854,6 +865,7 @@ class AgentService:
                 matched_task_id=matched_task_id,
                 target_parent_id=target_parent_id,
                 target_content=target_content,
+                confidence=confidence,
             ))
 
         print(f"[Agent] brain dump produced {len(proposals)} task proposals")
@@ -897,9 +909,9 @@ class AgentService:
                 action = proposal.action or "add"
 
                 if action == "complete" and proposal.matched_task_id:
-                    await task_service.complete_task(proposal.matched_task_id)
+                    count = await task_service.complete_task_with_children(proposal.matched_task_id)
                     completed_count += 1
-                    print(f"[Agent] completed task '{proposal.content}' ({proposal.matched_task_id})")
+                    print(f"[Agent] completed task '{proposal.content}' ({proposal.matched_task_id}) + {count - 1} children")
 
                 elif action == "edit" and proposal.matched_task_id:
                     changes = proposal.changes or {}
@@ -928,11 +940,18 @@ class AgentService:
                     print(f"[Agent] moved task '{proposal.content}' ({proposal.matched_task_id}) → {proposal.target_parent_id}")
 
                 else:
-                    # Default: ADD
+                    # Default: ADD — auto-create category if needed
+                    available_categories = await task_service.get_categories(user_id)
+                    cat = proposal.category.lower()
+                    if cat not in available_categories:
+                        if len(available_categories) < 5:
+                            await task_service.create_category(user_id, cat)
+                        else:
+                            cat = "personal"  # at limit, fall back
                     task = await task_service.create_task(
                         user_id=user_id,
                         title=proposal.content,
-                        category=proposal.category,
+                        category=cat,
                         parent_id=proposal.parent_id,
                         transcription=proposal.content,
                         description=proposal.description,
