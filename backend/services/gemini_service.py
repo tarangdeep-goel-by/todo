@@ -1,17 +1,53 @@
 """Gemini AI service for transcription and intent detection."""
-import google.generativeai as genai
-from typing import Dict, Any, List, Union
+from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field
+from typing import Dict, Any, List, Optional, Union
 import json
 import re
+
+
+# ──────────────────────────────────────────────
+# Schema models for structured output
+# ──────────────────────────────────────────────
+
+class EditChanges(BaseModel):
+    """Fields to change on an existing task (for edit actions only)."""
+    title: Optional[str] = Field(default=None, description="New title if renaming the task")
+    priority: Optional[str] = Field(default=None, description="New priority: high, medium, or low")
+    dueDate: Optional[str] = Field(default=None, description="New due date string, e.g. 'tomorrow', 'next monday'")
+    category: Optional[str] = Field(default=None, description="New category if changing category")
+
+
+class BrainDumpAction(BaseModel):
+    """A single action extracted from a brain dump transcription."""
+    action: str = Field(description="One of: add, complete, edit, delete, move, breakdown")
+    content: str = Field(description="For add: task title using user's words. For complete/edit/delete/move/breakdown: search query to find the existing task")
+    category: str = Field(description="Lowercase category from the task tree, or a sensible default like work, personal, health, learning, finance, hobbies, family, home")
+    confidence: float = Field(description="0.0-1.0 confidence this is a real action, not filler/noise")
+    description: Optional[str] = Field(default=None, description="Additional context, or null if speech was brief")
+    dueDate: Optional[str] = Field(default=None, description="Date string if mentioned (add only)")
+    priority: Optional[str] = Field(default=None, description="high/medium/low if mentioned (add only)")
+    parentQuery: Optional[str] = Field(default=None, description="Search query for parent task if hierarchy implied (add only)")
+    estimatedHours: Optional[float] = Field(default=None, description="Time estimate in hours if mentioned")
+    tags: Optional[List[str]] = Field(default=None, description="Tag strings if mentioned")
+    changes: Optional[EditChanges] = Field(default=None, description="REQUIRED for edit action — the fields being changed")
+    targetParentQuery: Optional[str] = Field(default=None, description="For move: search query for destination parent. Omit or null for top-level")
 
 
 class GeminiService:
     """Service for Gemini API integration."""
 
+    MODEL = 'gemini-2.5-flash-lite'
+
     def __init__(self, api_key: str):
         """Initialize Gemini service with API key."""
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        self.client = genai.Client(api_key=api_key)
+
+        # Keep legacy model for detect_intent/generate_subtasks until they're migrated
+        import google.generativeai as genai_legacy
+        genai_legacy.configure(api_key=api_key)
+        self._legacy_model = genai_legacy.GenerativeModel(self.MODEL)
 
     async def detect_intent(
         self,
@@ -171,7 +207,7 @@ More examples:
 """
 
         try:
-            response = self.model.generate_content(prompt)
+            response = self._legacy_model.generate_content(prompt)
 
             if not response.text:
                 raise ValueError("Empty response from Gemini")
@@ -206,115 +242,92 @@ More examples:
         """
         Parse a voice brain dump into structured task proposals.
 
-        Unlike detect_intent() which returns intents for immediate execution,
-        this returns addTask tool calls for user review before committing.
+        Uses the new google-genai SDK with schema-enforced JSON output.
 
         Args:
             transcription: Raw voice transcription (may contain multiple tasks)
             task_tree_context: String representation of user's current task tree
 
         Returns:
-            List of task proposal dicts, each with content, category, dueDate, priority, etc.
+            List of task proposal dicts, each with action, content, category, etc.
         """
-        prompt = f"""Current task tree:
+        prompt = f"""<context>
+The task tree below shows the user's current tasks organized by category.
+Each category header (e.g. "WORK TASKS:") represents a top-level domain — use the lowercase
+form (e.g. "work") as the category value. Tasks are nested with "├──" showing parent-child
+relationships. Task IDs are shown in parentheses.
+
 {task_tree_context}
+</context>
 
-User said: "{transcription}"
+<input>
+{transcription}
+</input>
 
-IMPORTANT: The input is a raw voice transcription — a "brain dump" where the user is dictating
-multiple things at once. It may contain filler words (um, uh, like), pauses, corrections,
-and multiple actions run together.
+<instructions>
+The input is a raw voice brain dump — messy, multi-action, with possible filler words and corrections.
 
-Your job: Extract ALL individual actions from the transcription. Actions can be:
-- ADD: Create a NEW task (user wants to do something new, "I need to...", "add...", "remember to...")
-- COMPLETE: Mark an EXISTING task as done (keywords: "completed", "finished", "done with", "I have completed")
-- EDIT: Modify an EXISTING task (keywords: "change priority", "is low/high priority", "reschedule", "rename")
-- DELETE: Remove an existing task (keywords: "delete", "remove", "get rid of", "cancel")
-- MOVE: Move task under a different parent (keywords: "move X under Y", "put X in Y", "relocate")
-- BREAKDOWN: Break task into subtasks (keywords: "break down", "split", "decompose", "break into steps")
-
-CRITICAL INTENT DETECTION (same rules as single-command pipeline):
-- "I have completed X" / "finished X" / "X is done" → COMPLETE (NOT add)
-- "X is low/high/medium priority" / "set X to low priority" → EDIT (priority change)
-- "reschedule X to tomorrow" → EDIT (date change)
-- "delete X" / "remove X" / "get rid of X" → DELETE
-- "move X under Y" / "put X in Y" → MOVE (content = search query for task to move, targetParentQuery = search query for destination)
-- "break down X" / "split X into subtasks" → BREAKDOWN
-- QUERY/retrieval requests ("show me", "what are my", "list") → IGNORE (brain dump is for mutations only)
-- Only use ADD when user is describing a genuinely NEW task to create
-
-Available categories from the task tree above. Pick the best match for each task.
-If no category fits, use "personal" as default.
-
-For EACH action, return an object with:
-- action (required): "add", "complete", "edit", "delete", "move", or "breakdown"
-- content (required): For ADD: use the user's EXACT words as the task title. For COMPLETE/EDIT/DELETE/BREAKDOWN: search query to find the existing task. For MOVE: search query for the task to move.
-- description (optional): Additional context, or null if speech was brief.
-- category (required): Best matching category from the task tree (for ADD; for others use the task's existing category or "work" as fallback).
-- dueDate (optional): Date string if mentioned ("tomorrow", "next friday", "march 15", etc.)
-- priority (optional): "high", "medium", or "low" if mentioned/implied
-- parentQuery (optional): Search query for parent task if hierarchy implied (ADD only)
-- labels (optional): Array of label/tag strings if mentioned
-- changes (optional, EDIT only): Object with fields to change, e.g. {{"priority": "low"}}, {{"dueDate": "tomorrow"}}
-- targetParentQuery (optional, MOVE only): Search query for the destination parent task. Omit or null to move to top-level.
-- confidence (required): 0.0-1.0 how confident you are this is a real action (not filler/noise)
+Extract each distinct action. Action types:
+- add: new task to create
+- complete: existing task the user finished
+- edit: change to an existing task (priority, due date, category, title)
+- delete: existing task to remove
+- move: reparent a task under a different parent
+- breakdown: split a task into subtasks
 
 Rules:
-1. Each distinct action becomes its own entry
-2. NEVER return duplicate entries — if two phrases refer to the same task/action, merge them into ONE entry
-3. Ignore filler/meta-speech: "um", "let me think", "oh yeah", "what else"
-4. If user corrects themselves ("no wait, I mean..."), use the correction only
-5. Preserve proper nouns and multi-word task names exactly (e.g. "safe drop" stays "safe drop")
-6. Do NOT join separate words into one (e.g. "safe drop" ≠ "SafeDrop")
-7. Match task names against the task tree — if a task exists, the user likely means COMPLETE or EDIT, not ADD
+- If a task name matches something in the tree, it's likely complete/edit/delete, not add
+- "finished X" / "done with X" / "completed X" → complete
+- "X is high/low priority" → edit with changes
+- "X belongs in Y category" → edit with changes.category (not move)
+- "move X under Y" → move (reparenting, not category change)
+- Query requests ("show me", "list") → skip (brain dump is mutations only)
+- Filler speech ("um", "let me think") → skip
+- Self-corrections ("no wait, I mean...") → use the correction only
+- Near-duplicates ("buy milk", "get milk", "purchase milk") → merge into one
+- If the tree is empty, pick categories from: work, personal, health, learning, finance, hobbies, family, home
+- Return [] for pure filler or nonsense with no actionable content
 
-Examples:
-
-Input: "I have completed save drop spec. I have completed after hours. Going to the gym is low priority."
-[
-  {{"action": "complete", "content": "save drop spec", "category": "work"}},
-  {{"action": "complete", "content": "after hours", "category": "work"}},
-  {{"action": "edit", "content": "going to the gym", "category": "personal", "changes": {{"priority": "low"}}}}
-]
-
-Input: "buy milk and call dentist tomorrow and finish the report"
-[
-  {{"action": "add", "content": "Buy milk", "category": "personal"}},
-  {{"action": "add", "content": "Call dentist", "category": "personal", "dueDate": "tomorrow"}},
-  {{"action": "add", "content": "Finish the report", "category": "work"}}
-]
-
-Input: "completed the PR review, need to deploy staging, set database migration to high priority"
-[
-  {{"action": "complete", "content": "PR review", "category": "work"}},
-  {{"action": "add", "content": "Deploy staging", "category": "work"}},
-  {{"action": "edit", "content": "database migration", "category": "work", "changes": {{"priority": "high"}}}}
-]
-
-Input: "delete the grocery list, move check flights under plan a trip to thailand, break down the launch plan"
-[
-  {{"action": "delete", "content": "grocery list", "category": "personal"}},
-  {{"action": "move", "content": "check flights", "category": "personal", "targetParentQuery": "plan a trip to thailand"}},
-  {{"action": "breakdown", "content": "launch plan", "category": "work"}}
-]
-
-Respond ONLY with a valid JSON array. No markdown, no explanation."""
+For edit actions, always populate the `changes` object with the modified field:
+- "change X priority to low" → action: edit, changes: {{priority: "low"}}
+- "reschedule X to next monday" → action: edit, changes: {{dueDate: "next monday"}}
+- "X belongs in personal" → action: edit, changes: {{category: "personal"}}
+- "rename X to Y" → action: edit, changes: {{title: "Y"}}
+</instructions>"""
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type='application/json',
+                    response_schema=list[BrainDumpAction],
+                ),
+            )
 
-            if not response.text:
-                raise ValueError("Empty response from Gemini")
-
-            json_text = self._extract_json(response.text)
-            result = json.loads(json_text)
+            result = json.loads(response.text)
 
             # Normalize: always return a list
             if isinstance(result, dict):
                 result = [result]
-
             if not isinstance(result, list):
                 raise ValueError(f"Expected JSON array, got {type(result)}")
+
+            for task in result:
+                # Normalize category: strip tree header artifacts, lowercase
+                cat = (task.get("category") or "personal").lower()
+                cat = cat.replace(" tasks", "").rstrip(":").strip()
+                task["category"] = cat
+
+                # For edit actions: ensure changes dict is populated from top-level fields
+                if task.get("action") == "edit":
+                    changes = task.get("changes") or {}
+                    if not changes.get("priority") and task.get("priority"):
+                        changes["priority"] = task["priority"]
+                    if not changes.get("dueDate") and task.get("dueDate"):
+                        changes["dueDate"] = task["dueDate"]
+                    if changes:
+                        task["changes"] = changes
 
             for i, task in enumerate(result):
                 print(f"[Gemini] brain_dump[{i}]: content='{task.get('content')}' | category='{task.get('category')}' | due='{task.get('dueDate')}'")
@@ -352,7 +365,7 @@ Respond ONLY with a valid JSON array of strings. Example:
 ["Research options", "Create outline", "Draft first version", "Review and revise", "Submit final"]
 """
         try:
-            response = self.model.generate_content(prompt)
+            response = self._legacy_model.generate_content(prompt)
             if not response.text:
                 raise ValueError("Empty response from Gemini")
 

@@ -1,0 +1,3297 @@
+{
+  "timestamp": "2026-02-28T11:45:30.917159",
+  "model": "gemini-2.5-flash-lite",
+  "task_tree_size": 167,
+  "case_count": 69,
+  "cases": [
+    {
+      "id": "add_01",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "add a code review task under Backend services",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "code review",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-work-010",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('code review'): \u2717  actual=None; category_exact('work'): \u2717  actual=None; suggestedParent_exact('eval-work-010'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_02",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "create a new task called groceries",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "groceries",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "null",
+          "expected": true,
+          "actual": null,
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('groceries'): \u2717  actual=None; category_exact('personal'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_03",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "remember to buy birthday gift for mom",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "birthday gift",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('birthday gift'): \u2717  actual=None; category_exact('personal'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_04",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "add a high priority task to fix the login bug under auth service refactor",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "login bug",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-work-011",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('login bug'): \u2717  actual=None; priority_exact('high'): \u2717  actual=None; suggestedParent_exact('eval-work-011'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_05",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "um add a task to uh practice meditation under mental wellness",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "meditation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "health",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-health-026",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('meditation'): \u2717  actual=None; category_exact('health'): \u2717  actual=None; suggestedParent_exact('eval-health-026'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_06",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "add yoga classes to my fitness routine",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "yoga",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "health",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-health-001",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('yoga'): \u2717  actual=None; category_exact('health'): \u2717  actual=None; suggestedParent_exact('eval-health-001'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_07",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "create a task to learn GraphQL under software engineering",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "GraphQL",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "learning",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-learning-001",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('GraphQL'): \u2717  actual=None; category_exact('learning'): \u2717  actual=None; suggestedParent_exact('eval-learning-001'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_08",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "add a music practice task",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "music practice",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "needsNewBranch",
+          "operator": "not_null",
+          "expected": true,
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('music practice'): \u2717  actual=None; needsNewBranch_not_null(True): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_09",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "add tech spec and program plan under ACME Corp API rebuild",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "tech spec",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-work-036",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('tech spec'): \u2717  actual=None; category_exact('work'): \u2717  actual=None; suggestedParent_exact('eval-work-036'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('ADD'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "add_10",
+      "category": "ADD",
+      "difficulty": "hard",
+      "transcription": "add unit tests, integration tests, and load tests under infrastructure",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 3,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "unit tests",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-work-019",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "MISSING",
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 3, got 1; intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('unit tests'): \u2717  actual=None; suggestedParent_exact('eval-work-019'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('ADD'): \u2717  actual='MISSING'; intent_exact('ADD'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "add_11",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "add meal planning task due next friday with medium priority",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "meal planning",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "medium",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('meal planning'): \u2717  actual=None; priority_exact('medium'): \u2717  actual=None; dueDate_not_null(True): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_12",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "create deploy monitoring dashboard under infrastructure",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "monitoring dashboard",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-work-019",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('monitoring dashboard'): \u2717  actual=None; suggestedParent_exact('eval-work-019'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_13",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "add a task called weekly standup notes",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "standup notes",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('standup notes'): \u2717  actual=None; category_exact('work'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_14",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "note to self pick up dry cleaning tomorrow",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "dry cleaning",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('dry cleaning'): \u2717  actual=None; category_exact('personal'): \u2717  actual=None; dueDate_not_null(True): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_15",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "add research Kubernetes under system design mastery",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "Kubernetes",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-learning-002",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('Kubernetes'): \u2717  actual=None; suggestedParent_exact('eval-learning-002'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_16",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "add a task to Hobbies category called learn guitar",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "guitar",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "category",
+          "operator": "contains",
+          "expected": "hobbies",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('guitar'): \u2717  actual=None; category_contains('hobbies'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_17",
+      "category": "ADD",
+      "difficulty": "easy",
+      "transcription": "create a reading list task under AI and Machine Learning",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "reading list",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-learning-019",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('reading list'): \u2717  actual=None; suggestedParent_exact('eval-learning-019'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "add_18",
+      "category": "ADD",
+      "difficulty": "medium",
+      "transcription": "add order new coffee table and find a rug for living room",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "coffee table",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('coffee table'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('ADD'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "complete_01",
+      "category": "COMPLETE",
+      "difficulty": "easy",
+      "transcription": "complete the payment integration v2 task",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "payment integration",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('payment integration'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_02",
+      "category": "COMPLETE",
+      "difficulty": "medium",
+      "transcription": "I finished the marathon training base building phase",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "base building",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('base building'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_03",
+      "category": "COMPLETE",
+      "difficulty": "easy",
+      "transcription": "mark the wireframe review as done",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "wireframe review",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('wireframe review'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_04",
+      "category": "COMPLETE",
+      "difficulty": "medium",
+      "transcription": "done with Genki II textbook chapters",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "Genki",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('Genki'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_05",
+      "category": "COMPLETE",
+      "difficulty": "medium",
+      "transcription": "completed the demo video preparation",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "demo video",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('demo video'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_06",
+      "category": "COMPLETE",
+      "difficulty": "medium",
+      "transcription": "finished reviewing senior dev applications",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "senior dev",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('senior dev'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_07",
+      "category": "COMPLETE",
+      "difficulty": "medium",
+      "transcription": "mark morning meditation and journal gratitudes as complete",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "morning meditation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('morning meditation'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('COMPLETE'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "complete_08",
+      "category": "COMPLETE",
+      "difficulty": "easy",
+      "transcription": "I'm done with the competitor analysis spreadsheet",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "competitor analysis",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('competitor analysis'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "complete_09",
+      "category": "COMPLETE",
+      "difficulty": "medium",
+      "transcription": "complete tempo runs and hill repeats",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "tempo runs",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('tempo runs'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('COMPLETE'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "complete_10",
+      "category": "COMPLETE",
+      "difficulty": "easy",
+      "transcription": "finished the Riverpod advanced patterns task",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "Riverpod",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('Riverpod'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "delete_01",
+      "category": "DELETE",
+      "difficulty": "easy",
+      "transcription": "delete the social media campaign task",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "social media",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('DELETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('social media'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "delete_02",
+      "category": "DELETE",
+      "difficulty": "easy",
+      "transcription": "remove load testing setup from infrastructure",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "load testing",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('DELETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('load testing'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "delete_03",
+      "category": "DELETE",
+      "difficulty": "medium",
+      "transcription": "cancel the team offsite planning",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "offsite",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('DELETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('offsite'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "delete_04",
+      "category": "DELETE",
+      "difficulty": "medium",
+      "transcription": "delete the YouTube channel tasks",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "YouTube",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('DELETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('YouTube'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "delete_05",
+      "category": "DELETE",
+      "difficulty": "medium",
+      "transcription": "remove shoulder mobility routine and core work daily",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "shoulder mobility",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('DELETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('shoulder mobility'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('DELETE'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "delete_06",
+      "category": "DELETE",
+      "difficulty": "hard",
+      "transcription": "uh yeah so like remove that um Google Ads experiment thing",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "Google Ads",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('DELETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('Google Ads'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_01",
+      "category": "EDIT",
+      "difficulty": "easy",
+      "transcription": "change the priority of auth service refactor to medium",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "auth service",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "medium",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('auth service'): \u2717  actual=None; changes.priority_exact('medium'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_02",
+      "category": "EDIT",
+      "difficulty": "medium",
+      "transcription": "the marathon training task is a personal task",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "marathon training",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('marathon training'): \u2717  actual=None; changes.category_exact('personal'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_03",
+      "category": "EDIT",
+      "difficulty": "medium",
+      "transcription": "marathon training belongs in personal",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "marathon training",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('marathon training'): \u2717  actual=None; changes.category_exact('personal'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_04",
+      "category": "EDIT",
+      "difficulty": "hard",
+      "transcription": "move marathon training to personal category",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "marathon training",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('marathon training'): \u2717  actual=None; changes.category_exact('personal'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_05",
+      "category": "EDIT",
+      "difficulty": "medium",
+      "transcription": "rename the Globex dashboard MVP to Globex Analytics Dashboard",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "Globex",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.title",
+          "operator": "contains",
+          "expected": "Analytics Dashboard",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('Globex'): \u2717  actual=None; changes.title_contains('Analytics Dashboard'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_06",
+      "category": "EDIT",
+      "difficulty": "easy",
+      "transcription": "set the due date for CPA appointment to next Monday",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "CPA",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('CPA'): \u2717  actual=None; changes.dueDate_not_null(True): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_07",
+      "category": "EDIT",
+      "difficulty": "easy",
+      "transcription": "update priority of buy new running shoes to high",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "running shoes",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('running shoes'): \u2717  actual=None; changes.priority_exact('high'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_08",
+      "category": "EDIT",
+      "difficulty": "hard",
+      "transcription": "change auth service refactor priority to low and rename it to JWT migration",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "auth service",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "low",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.title",
+          "operator": "contains",
+          "expected": "JWT",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('auth service'): \u2717  actual=None; changes.priority_exact('low'): \u2717  actual=None; changes.title_contains('JWT'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_09",
+      "category": "EDIT",
+      "difficulty": "easy",
+      "transcription": "the meal prep system should be high priority",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "meal prep",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('meal prep'): \u2717  actual=None; changes.priority_exact('high'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_10",
+      "category": "EDIT",
+      "difficulty": "medium",
+      "transcription": "reschedule tax preparation to April",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "tax preparation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('tax preparation'): \u2717  actual=None; changes.dueDate_not_null(True): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_11",
+      "category": "EDIT",
+      "difficulty": "hard",
+      "transcription": "kitchen renovation is a projects task",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "kitchen renovation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "changes.category",
+          "operator": "exact",
+          "expected": "projects",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('kitchen renovation'): \u2717  actual=None; changes.category_exact('projects'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edit_12",
+      "category": "EDIT",
+      "difficulty": "medium",
+      "transcription": "update the description of ACME Corp API rebuild to include GraphQL migration",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "ACME Corp",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('EDIT'): \u2717  actual='UNKNOWN'; taskQuery_contains('ACME Corp'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_01",
+      "category": "MOVE",
+      "difficulty": "easy",
+      "transcription": "move rate limiting middleware under frontend features",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "rate limiting",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "frontend",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('rate limiting'): \u2717  actual=None; targetParentQuery_contains('frontend'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_02",
+      "category": "MOVE",
+      "difficulty": "medium",
+      "transcription": "put the buy running shoes task under procurement",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "running shoes",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "procurement",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('running shoes'): \u2717  actual=None; targetParentQuery_contains('procurement'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_03",
+      "category": "MOVE",
+      "difficulty": "medium",
+      "transcription": "move the Riverpod advanced patterns to top level",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "Riverpod",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentId",
+          "operator": "null",
+          "expected": true,
+          "actual": null,
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('Riverpod'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_04",
+      "category": "MOVE",
+      "difficulty": "medium",
+      "transcription": "relocate complete fast.ai course under LLM engineering",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "fast.ai",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "LLM engineering",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('fast.ai'): \u2717  actual=None; targetParentQuery_contains('LLM engineering'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_05",
+      "category": "MOVE",
+      "difficulty": "easy",
+      "transcription": "move design channel branding under content creation",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "channel branding",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "content creation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('channel branding'): \u2717  actual=None; targetParentQuery_contains('content creation'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_06",
+      "category": "MOVE",
+      "difficulty": "medium",
+      "transcription": "put interview potential users under startup exploration directly",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "interview",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "startup",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('interview'): \u2717  actual=None; targetParentQuery_contains('startup'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_07",
+      "category": "MOVE",
+      "difficulty": "medium",
+      "transcription": "move the Build landing page task to root level",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "landing page",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentId",
+          "operator": "null",
+          "expected": true,
+          "actual": null,
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('landing page'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "move_08",
+      "category": "MOVE",
+      "difficulty": "hard",
+      "transcription": "move auth service refactor and payment integration under infrastructure",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "auth service",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "infrastructure",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('auth service'): \u2717  actual=None; targetParentQuery_contains('infrastructure'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('MOVE'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "query_01",
+      "category": "QUERY",
+      "difficulty": "easy",
+      "transcription": "show me all my work tasks",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "QUERY",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "filters.category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('QUERY'): \u2717  actual='UNKNOWN'; filters.category_exact('work'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "query_02",
+      "category": "QUERY",
+      "difficulty": "easy",
+      "transcription": "what tasks are completed",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "QUERY",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "filters.status",
+          "operator": "exact",
+          "expected": "completed",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('QUERY'): \u2717  actual='UNKNOWN'; filters.status_exact('completed'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "query_03",
+      "category": "QUERY",
+      "difficulty": "medium",
+      "transcription": "list all high priority health tasks",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "QUERY",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "filters.category",
+          "operator": "exact",
+          "expected": "health",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('QUERY'): \u2717  actual='UNKNOWN'; filters.category_exact('health'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "query_04",
+      "category": "QUERY",
+      "difficulty": "easy",
+      "transcription": "what's on my learning list",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "QUERY",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "filters.category",
+          "operator": "exact",
+          "expected": "learning",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('QUERY'): \u2717  actual='UNKNOWN'; filters.category_exact('learning'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "query_05",
+      "category": "QUERY",
+      "difficulty": "medium",
+      "transcription": "show me active personal tasks",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "QUERY",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "filters.category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "filters.status",
+          "operator": "exact",
+          "expected": "active",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('QUERY'): \u2717  actual='UNKNOWN'; filters.category_exact('personal'): \u2717  actual=None; filters.status_exact('active'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edge_01",
+      "category": "EDGE",
+      "difficulty": "easy",
+      "transcription": "asdfghjkl mumble garble",
+      "passed": true,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "UNKNOWN",
+          "actual": "UNKNOWN",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "lte",
+          "expected": 0.5,
+          "actual": 0.5,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "edge_02",
+      "category": "EDGE",
+      "difficulty": "hard",
+      "transcription": "the kitchen renovation task should go under personal projects",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "MOVE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "kitchen renovation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('MOVE'): \u2717  actual='UNKNOWN'; taskQuery_contains('kitchen renovation'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edge_03",
+      "category": "EDGE",
+      "difficulty": "medium",
+      "transcription": "add a task under analyze survey results",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "suggestedParent",
+          "operator": "exact",
+          "expected": "eval-work-006",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; suggestedParent_exact('eval-work-006'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edge_04",
+      "category": "EDGE",
+      "difficulty": "medium",
+      "transcription": "complete groceries and add laundry",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "COMPLETE",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "groceries",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('COMPLETE'): \u2717  actual='UNKNOWN'; taskQuery_contains('groceries'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5; intent_exact('ADD'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "edge_05",
+      "category": "EDGE",
+      "difficulty": "hard",
+      "transcription": "so um yeah I was thinking like maybe we should uh add a task to um you know review the uh quarterly budget or something",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "ADD",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "title",
+          "operator": "contains",
+          "expected": "quarterly budget",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('ADD'): \u2717  actual='UNKNOWN'; title_contains('quarterly budget'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "edge_06",
+      "category": "EDGE",
+      "difficulty": "hard",
+      "transcription": "change the priority of the task with the running and also delete that one about the shoulder thing",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 2,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.5,
+          "actual": 0.5,
+          "passed": true
+        },
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "DELETE",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent count: expected 2, got 1; intent_exact('EDIT'): \u2717  actual='UNKNOWN'; intent_exact('DELETE'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "breakdown_01",
+      "category": "BREAKDOWN",
+      "difficulty": "easy",
+      "transcription": "break down the quarterly report",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "BREAKDOWN",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "quarterly report",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('BREAKDOWN'): \u2717  actual='UNKNOWN'; taskQuery_contains('quarterly report'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "breakdown_02",
+      "category": "BREAKDOWN",
+      "difficulty": "easy",
+      "transcription": "split grocery shopping into steps",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "BREAKDOWN",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "grocery",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('BREAKDOWN'): \u2717  actual='UNKNOWN'; taskQuery_contains('grocery'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "breakdown_03",
+      "category": "BREAKDOWN",
+      "difficulty": "medium",
+      "transcription": "decompose the ACME Corp API rebuild into subtasks",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "BREAKDOWN",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "ACME",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('BREAKDOWN'): \u2717  actual='UNKNOWN'; taskQuery_contains('ACME'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    },
+    {
+      "id": "breakdown_04",
+      "category": "BREAKDOWN",
+      "difficulty": "medium",
+      "transcription": "break the marathon training into smaller tasks",
+      "passed": false,
+      "latency_ms": 0,
+      "expected_intent_count": 1,
+      "actual_intent_count": 1,
+      "actual_intents": [
+        {
+          "intent": "UNKNOWN",
+          "confidence": 0.5,
+          "parameters": {}
+        }
+      ],
+      "checks": [
+        {
+          "field": "intent",
+          "operator": "exact",
+          "expected": "BREAKDOWN",
+          "actual": "UNKNOWN",
+          "passed": false
+        },
+        {
+          "field": "taskQuery",
+          "operator": "contains",
+          "expected": "marathon",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.5,
+          "passed": false
+        }
+      ],
+      "failure_reason": "intent_exact('BREAKDOWN'): \u2717  actual='UNKNOWN'; taskQuery_contains('marathon'): \u2717  actual=None; confidence_gte(0.7): \u2717  actual=0.5"
+    }
+  ],
+  "summary": {
+    "overall": {
+      "passed": 1,
+      "total": 69,
+      "accuracy": 0.0145
+    },
+    "by_category": {
+      "ADD": {
+        "passed": 0,
+        "total": 18,
+        "accuracy": 0.0
+      },
+      "COMPLETE": {
+        "passed": 0,
+        "total": 10,
+        "accuracy": 0.0
+      },
+      "DELETE": {
+        "passed": 0,
+        "total": 6,
+        "accuracy": 0.0
+      },
+      "EDIT": {
+        "passed": 0,
+        "total": 12,
+        "accuracy": 0.0
+      },
+      "MOVE": {
+        "passed": 0,
+        "total": 8,
+        "accuracy": 0.0
+      },
+      "QUERY": {
+        "passed": 0,
+        "total": 5,
+        "accuracy": 0.0
+      },
+      "EDGE": {
+        "passed": 1,
+        "total": 6,
+        "accuracy": 0.1667
+      },
+      "BREAKDOWN": {
+        "passed": 0,
+        "total": 4,
+        "accuracy": 0.0
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "passed": 1,
+        "total": 27,
+        "accuracy": 0.037
+      },
+      "medium": {
+        "passed": 0,
+        "total": 33,
+        "accuracy": 0.0
+      },
+      "hard": {
+        "passed": 0,
+        "total": 9,
+        "accuracy": 0.0
+      }
+    },
+    "performance": {
+      "latency_ms": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      }
+    }
+  }
+}
