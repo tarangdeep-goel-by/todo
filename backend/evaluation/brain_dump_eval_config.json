@@ -1,0 +1,1017 @@
+{
+  "dataset_name": "Todo Agent Brain Dump Eval v1",
+  "cases": [
+    {
+      "id": "bd_add_01",
+      "transcription": "buy milk and call dentist tomorrow and finish the report",
+      "difficulty": "easy",
+      "category": "ADD_ONLY",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "milk",
+            "category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "dentist",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "report",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_add_02",
+      "transcription": "I need to schedule a dentist appointment and also pick up groceries",
+      "difficulty": "easy",
+      "category": "ADD_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "dentist",
+            "category_in": ["personal", "health"],
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "groceries",
+            "category_in": ["personal", "home"],
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_add_03",
+      "transcription": "add a task to review the quarterly budget and also create a task for updating the team wiki and one more thing write integration tests",
+      "difficulty": "medium",
+      "category": "ADD_ONLY",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "quarterly budget",
+            "category_in": ["work", "finance", "personal"],
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "team wiki",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "integration tests",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_add_04",
+      "transcription": "remember to book a yoga class and also sign up for the cooking workshop next saturday",
+      "difficulty": "easy",
+      "category": "ADD_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "yoga",
+            "category_exact": "health",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "cooking workshop",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_add_05",
+      "transcription": "I want to learn Docker compose and also study for the AWS certification exam",
+      "difficulty": "easy",
+      "category": "ADD_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "Docker",
+            "category_exact": "learning",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "AWS",
+            "category_exact": "learning",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_add_06",
+      "transcription": "need to set up the blog newsletter and write a post about flutter animations and design a logo for the channel",
+      "difficulty": "medium",
+      "category": "ADD_ONLY",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "newsletter",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "animation",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "branding",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_complete_01",
+      "transcription": "I finished the competitor analysis spreadsheet and also completed the wireframe review with client",
+      "difficulty": "easy",
+      "category": "COMPLETE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "competitor analysis",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "wireframe review",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_complete_02",
+      "transcription": "done with the base building phase and the tempo runs and also the hill repeats",
+      "difficulty": "medium",
+      "category": "COMPLETE_ONLY",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "base building",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "tempo runs",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "hill repeats",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_complete_03",
+      "transcription": "I have completed the Genki II textbook chapters and the morning meditation",
+      "difficulty": "easy",
+      "category": "COMPLETE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "Genki",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "morning meditation",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_complete_04",
+      "transcription": "mark the demo video preparation as done and also the press release is finished",
+      "difficulty": "easy",
+      "category": "COMPLETE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "demo video",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "press release",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edit_01",
+      "transcription": "change the priority of auth service refactor to low and set the meal prep system to high priority",
+      "difficulty": "easy",
+      "category": "EDIT_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "auth service",
+            "changes.priority_exact": "low",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "meal prep",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edit_02",
+      "transcription": "reschedule the CPA appointment to next monday and set the buy running shoes priority to high",
+      "difficulty": "medium",
+      "category": "EDIT_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "CPA",
+            "changes.dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "running shoes",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edit_03",
+      "transcription": "the marathon training should be personal category and kitchen renovation belongs in projects",
+      "difficulty": "medium",
+      "category": "EDIT_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "marathon training",
+            "changes.category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "kitchen renovation",
+            "changes.category_exact": "projects",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edit_04",
+      "transcription": "rename Globex Dashboard MVP to Globex Analytics Platform and make it high priority",
+      "difficulty": "hard",
+      "category": "EDIT_ONLY",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "Globex",
+            "changes.title_contains": "Analytics",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_delete_01",
+      "transcription": "delete the social media campaign and remove the YouTube channel tasks",
+      "difficulty": "easy",
+      "category": "DELETE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "social media",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "YouTube",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_delete_02",
+      "transcription": "remove the load testing setup and the Google Ads experiment and also cancel team offsite planning",
+      "difficulty": "medium",
+      "category": "DELETE_ONLY",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "load testing",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "Google Ads",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "offsite",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_delete_03",
+      "transcription": "get rid of the shoulder mobility routine and the core work daily tasks",
+      "difficulty": "easy",
+      "category": "DELETE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "shoulder mobility",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "core work",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_move_01",
+      "transcription": "move rate limiting middleware under frontend features and put the Riverpod advanced patterns to top level",
+      "difficulty": "medium",
+      "category": "MOVE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "rate limiting",
+            "targetParentQuery_contains": "frontend",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "Riverpod",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_move_02",
+      "transcription": "move the fast.ai course under LLM engineering and relocate the channel branding under content creation",
+      "difficulty": "medium",
+      "category": "MOVE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "fast.ai",
+            "targetParentQuery_contains": "LLM engineering",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "channel branding",
+            "targetParentQuery_contains": "content creation",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_move_03",
+      "transcription": "put the auth service refactor and payment integration under infrastructure",
+      "difficulty": "hard",
+      "category": "MOVE_ONLY",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "auth service",
+            "targetParentQuery_contains": "infrastructure",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "payment integration",
+            "targetParentQuery_contains": "infrastructure",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_01",
+      "transcription": "completed the PR review need to deploy staging set database migration to high priority",
+      "difficulty": "medium",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "deploy staging",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "database migration",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_02",
+      "transcription": "I finished the competitor analysis spreadsheet and I need to add a task for writing the Q1 report and also delete the social media campaign",
+      "difficulty": "medium",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "competitor analysis",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "Q1 report",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "social media",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_03",
+      "transcription": "I have completed save drop spec. I have completed after hours. Going to the gym is low priority.",
+      "difficulty": "medium",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "save drop",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "after hours",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "gym",
+            "changes.priority_exact": "low",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_04",
+      "transcription": "add a new task to review pull requests and complete the payment integration v2 and move the landing page to root level",
+      "difficulty": "hard",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "pull requests",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "payment integration",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "landing page",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_05",
+      "transcription": "delete the Google Ads experiment and add a Facebook Ads test under idea validation and mark the user survey design as done",
+      "difficulty": "hard",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "Google Ads",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "Facebook Ads",
+            "parentQuery_contains": "idea validation",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "user survey",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_06",
+      "transcription": "need to buy new running shoes tomorrow with high priority and also the Riverpod advanced patterns is done and break down the ACME Corp API rebuild",
+      "difficulty": "hard",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "running shoes",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "Riverpod",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "breakdown",
+          "checks": {
+            "content_contains": "ACME",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_07",
+      "transcription": "ok so I finished reviewing the senior dev applications, need to schedule the technical interviews, and also set the team offsite planning to high priority",
+      "difficulty": "medium",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "senior dev",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "technical interviews",
+            "confidence_gte": 0.5
+          }
+        },
+        {
+          "action": "edit",
+          "checks": {
+            "content_contains": "offsite",
+            "changes.priority_exact": "high",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_08",
+      "transcription": "completed the drip irrigation setup, add mulching the garden beds, and move the garden spring prep under the home tasks",
+      "difficulty": "hard",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "drip irrigation",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "mulch",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "move",
+          "checks": {
+            "content_contains": "garden",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_09",
+      "transcription": "add task to prepare interview questions and delete the onboarding docs task and complete the KPI targets",
+      "difficulty": "medium",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "interview questions",
+            "category_exact": "work",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "onboarding docs",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "KPI",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_mixed_10",
+      "transcription": "I finished the Rust book and also delete the Advent of Code task and add a task to build a web server in Rust",
+      "difficulty": "medium",
+      "category": "MIXED",
+      "expected_action_count": 3,
+      "expected_actions": [
+        {
+          "action": "complete",
+          "checks": {
+            "content_contains": "Rust",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "delete",
+          "checks": {
+            "content_contains": "Advent of Code",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "web server",
+            "category_exact": "learning",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edge_01",
+      "transcription": "um so like yeah I was thinking about um maybe doing something with the uh you know the thing at work but actually never mind",
+      "difficulty": "hard",
+      "category": "EDGE",
+      "expected_action_count": 0,
+      "expected_actions": []
+    },
+    {
+      "id": "bd_edge_02",
+      "transcription": "ok so add buy groceries no wait I mean buy organic vegetables and also um pick up dry cleaning tomorrow",
+      "difficulty": "medium",
+      "category": "EDGE",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "vegetables",
+            "category_in": ["personal", "health", "home"],
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "dry cleaning",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edge_03",
+      "transcription": "asdfghjkl the blarga flurp mumble jumble wabba",
+      "difficulty": "easy",
+      "category": "EDGE",
+      "expected_action_count": 0,
+      "expected_actions": []
+    },
+    {
+      "id": "bd_edge_04",
+      "transcription": "add buy milk and also add purchase milk and oh yeah get milk from the store",
+      "difficulty": "hard",
+      "category": "EDGE",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "milk",
+            "category_exact": "personal",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_edge_05",
+      "transcription": "show me all my work tasks and list the completed ones",
+      "difficulty": "medium",
+      "category": "EDGE",
+      "expected_action_count": 0,
+      "expected_actions": []
+    },
+    {
+      "id": "bd_field_01",
+      "transcription": "add a high priority task to fix the login bug due next friday and a medium priority task to update documentation due next monday",
+      "difficulty": "medium",
+      "category": "FIELD_EXTRACTION",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "login bug",
+            "priority_exact": "high",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "documentation",
+            "priority_exact": "medium",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_field_02",
+      "transcription": "add a task to prepare the sprint retro it should take about 2 hours and also add a task for writing test cases that will take about 4 hours",
+      "difficulty": "medium",
+      "category": "FIELD_EXTRACTION",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "sprint retro",
+            "estimatedHours_exact": 2.0,
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "test cases",
+            "estimatedHours_exact": 4.0,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_field_03",
+      "transcription": "add workout routine under fitness with high priority and also add meal planning under nutrition with medium priority",
+      "difficulty": "medium",
+      "category": "FIELD_EXTRACTION",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "workout routine",
+            "category_exact": "health",
+            "priority_exact": "high",
+            "parentQuery_contains": "fitness",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "meal planning",
+            "category_exact": "health",
+            "priority_exact": "medium",
+            "parentQuery_contains": "nutrition",
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_field_04",
+      "transcription": "add a task called weekly code review due every friday and tag it as recurring and urgent",
+      "difficulty": "hard",
+      "category": "FIELD_EXTRACTION",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "code review",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "bd_field_05",
+      "transcription": "add read the pragmatic programmer book to learning with low priority and add review architecture patterns to work with high priority due tomorrow",
+      "difficulty": "medium",
+      "category": "FIELD_EXTRACTION",
+      "expected_action_count": 2,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "pragmatic programmer",
+            "category_exact": "learning",
+            "priority_exact": "low",
+            "confidence_gte": 0.7
+          }
+        },
+        {
+          "action": "add",
+          "checks": {
+            "content_contains": "architecture patterns",
+            "category_exact": "work",
+            "priority_exact": "high",
+            "dueDate_not_null": true,
+            "confidence_gte": 0.7
+          }
+        }
+      ]
+    }
+  ]
+}
