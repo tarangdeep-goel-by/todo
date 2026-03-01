@@ -166,7 +166,7 @@
         {
           "action": "add",
           "checks": {
-            "content_contains": "branding",
+            "content_contains": "logo",
             "confidence_gte": 0.7
           }
         }

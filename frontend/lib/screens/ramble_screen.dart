@@ -13,6 +13,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/ramble_websocket_service.dart';
 import '../widgets/waveform_painter.dart';
 import '../widgets/styled_snackbar.dart';
 
@@ -23,8 +24,15 @@ enum _RamblePhase { recording, editing, processing, reviewing }
 /// Streams audio -> Gemini transcribes -> user edits -> brain dump extracts proposals -> user reviews -> submit.
 class RambleScreen extends ConsumerStatefulWidget {
   final String? prefilledCategory;
+  final String? prefilledParentId;
+  final String? prefilledParentTitle;
 
-  const RambleScreen({super.key, this.prefilledCategory});
+  const RambleScreen({
+    super.key,
+    this.prefilledCategory,
+    this.prefilledParentId,
+    this.prefilledParentTitle,
+  });
 
   @override
   ConsumerState<RambleScreen> createState() => _RambleScreenState();
@@ -34,6 +42,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   _RamblePhase _phase = _RamblePhase.recording;
   bool _canStopListening = false;
   bool _isStoppingListening = false;
+  bool _isPaused = false;
 
   final _transcriptController = TextEditingController();
   final _transcriptFocusNode = FocusNode();
@@ -44,9 +53,14 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   StreamSubscription<String>? _statusSub;
   StreamSubscription<String>? _errorSub;
   StreamSubscription<List<int>>? _audioStreamSub;
+  StreamSubscription<int>? _timerSub;
+  StreamSubscription<RambleConnectionState>? _connectionSub;
+  int? _timeRemaining; // null = no timer shown, seconds when < 120
+  RambleConnectionState _connectionState = RambleConnectionState.disconnected;
 
   // Reviewing state
   List<BrainDumpTaskProposal> _proposals = [];
+  List<BrainDumpTaskProposal> _existingProposals = [];
   final Set<String> _deselectedIds = {};
   bool _isSubmitting = false;
 
@@ -80,11 +94,15 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     _statusSub?.cancel();
     _errorSub?.cancel();
     _audioStreamSub?.cancel();
+    _timerSub?.cancel();
+    _connectionSub?.cancel();
     _transcriptionSub = null;
     _finalTranscriptSub = null;
     _statusSub = null;
     _errorSub = null;
     _audioStreamSub = null;
+    _timerSub = null;
+    _connectionSub = null;
   }
 
   // ────────── Close handling ──────────
@@ -186,6 +204,39 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
       _statusSub = rambleWs.statusStream.listen((status) {
         debugPrint('[Ramble] Status: $status');
+        if (status == 'timeout' && mounted && _phase == _RamblePhase.recording) {
+          // Session timed out — auto-transition to editing
+          _stopAndEdit();
+        }
+      });
+
+      _timerSub = rambleWs.timeRemainingStream.listen((seconds) {
+        if (mounted) {
+          setState(() {
+            _timeRemaining = seconds <= 120 ? seconds : null;
+          });
+        }
+      });
+
+      _connectionSub = rambleWs.connectionStateStream.listen((state) {
+        if (mounted) {
+          setState(() => _connectionState = state);
+          // If reconnect failed, auto-transition to editing with accumulated transcript
+          if (state == RambleConnectionState.disconnected &&
+              _phase == _RamblePhase.recording) {
+            final transcript = ref.read(transcriptionTextProvider);
+            if (transcript.isNotEmpty) {
+              _transcriptController.text = transcript;
+              _cancelSubscriptions();
+              ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
+              setState(() => _phase = _RamblePhase.editing);
+              showStyledSnackbar(context,
+                message: 'Connection lost — edit your transcript below.',
+                style: SnackbarStyle.info,
+              );
+            }
+          }
+        }
       });
 
       debugPrint('[Ramble] Starting audio stream...');
@@ -219,11 +270,14 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     HapticService.light();
 
     try {
-      await _audioStreamSub?.cancel();
-      _audioStreamSub = null;
+      if (!_isPaused) {
+        await _audioStreamSub?.cancel();
+        _audioStreamSub = null;
 
-      final audioService = ref.read(audioServiceProvider);
-      await audioService.stopStream();
+        final audioService = ref.read(audioServiceProvider);
+        await audioService.stopStream();
+      }
+      _isPaused = false;
       debugPrint('[Ramble] Audio stream stopped');
 
       final rambleWs = ref.read(rambleWebSocketProvider);
@@ -263,6 +317,62 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     }
   }
 
+  // ────────── Pause / Resume ──────────
+
+  Future<void> _pauseRecording() async {
+    if (_isPaused || _phase != _RamblePhase.recording) return;
+    debugPrint('[Ramble] Pausing...');
+    HapticService.light();
+
+    // Stop sending audio but keep WebSocket open
+    await _audioStreamSub?.cancel();
+    _audioStreamSub = null;
+
+    final audioService = ref.read(audioServiceProvider);
+    await audioService.stopStream();
+
+    setState(() => _isPaused = true);
+    ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
+    debugPrint('[Ramble] Paused');
+  }
+
+  Future<void> _resumeRecording() async {
+    if (!_isPaused || _phase != _RamblePhase.recording) return;
+    debugPrint('[Ramble] Resuming...');
+    HapticService.light();
+
+    try {
+      final audioService = ref.read(audioServiceProvider);
+      final rambleWs = ref.read(rambleWebSocketProvider);
+
+      final audioStream = await audioService.startStream();
+      _audioStreamSub = audioStream.listen((pcmChunk) {
+        final base64Data = base64Encode(Uint8List.fromList(pcmChunk));
+        rambleWs.sendAudioChunk(base64Data);
+      });
+
+      setState(() => _isPaused = false);
+      ref.read(recordingStateProvider.notifier).state = RecordingState.listening;
+      debugPrint('[Ramble] Resumed');
+    } catch (e) {
+      debugPrint('[Ramble] Resume FAILED: $e');
+      if (mounted) {
+        showStyledSnackbar(context,
+          message: 'Failed to resume: $e',
+          style: SnackbarStyle.error,
+        );
+      }
+    }
+  }
+
+  void _togglePause() {
+    if (_isPaused) {
+      _resumeRecording();
+    } else {
+      _pauseRecording();
+    }
+  }
+
   // ────────── Processing (Brain Dump) ──────────
 
   Future<void> _processBrainDump() async {
@@ -275,15 +385,27 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
     try {
       final apiService = ref.read(apiServiceProvider);
+      debugPrint('[Ramble] _processBrainDump transcript: "$text"');
       final response = await apiService.processBrainDump(
         transcription: text,
         userId: AppConstants.defaultUserId,
         category: widget.prefilledCategory,
+        parentId: widget.prefilledParentId,
       );
+
+      debugPrint('[Ramble] _processBrainDump got ${response.tasks.length} proposals:');
+      for (final t in response.tasks) {
+        debugPrint('[Ramble]   → action=${t.action} content="${t.content}" category=${t.category} matched=${t.matchedTaskId} changes=${t.changes}');
+      }
 
       if (mounted) {
         setState(() {
-          _proposals = response.tasks;
+          if (_existingProposals.isNotEmpty) {
+            _proposals = [..._existingProposals, ...response.tasks];
+            _existingProposals = [];
+          } else {
+            _proposals = response.tasks;
+          }
           _deselectedIds.clear();
           _phase = _RamblePhase.reviewing;
         });
@@ -308,17 +430,27 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         .toList();
     if (selected.isEmpty) return;
 
+    debugPrint('[Ramble] _submitProposals START: ${selected.length} tasks');
+    for (final t in selected) {
+      debugPrint('[Ramble]   → action=${t.action} content="${t.content}" matchedId=${t.matchedTaskId}');
+    }
+
     HapticService.medium();
     setState(() => _isSubmitting = true);
 
     try {
       final apiService = ref.read(apiServiceProvider);
+      debugPrint('[Ramble] _submitProposals calling API...');
+      final stopwatch = Stopwatch()..start();
       final response = await apiService.submitBrainDump(
         userId: AppConstants.defaultUserId,
         tasks: selected,
       );
+      debugPrint('[Ramble] _submitProposals API returned in ${stopwatch.elapsedMilliseconds}ms: ${response.message}');
 
+      debugPrint('[Ramble] _submitProposals fetching tasks...');
       await ref.read(taskStoreProvider.notifier).fetchAll();
+      debugPrint('[Ramble] _submitProposals fetchAll done in ${stopwatch.elapsedMilliseconds}ms');
 
       if (mounted) {
         _resetProviders();
@@ -327,8 +459,9 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
           message: response.message,
         ));
       }
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('[Ramble] _submitProposals FAILED: $e');
+      debugPrint('[Ramble] _submitProposals stack: $stack');
       if (mounted) {
         setState(() => _isSubmitting = false);
         showStyledSnackbar(context,
@@ -489,11 +622,34 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     );
   }
 
+  void _recordMore() {
+    HapticService.light();
+    // Save current proposals so they can be merged with new ones
+    _existingProposals = [..._proposals];
+    _transcriptController.clear();
+    _deselectedIds.clear();
+    _isPaused = false;
+    _timeRemaining = null;
+    ref.read(transcriptionTextProvider.notifier).state = '';
+    ref.read(waveformDataProvider.notifier).state = [];
+    setState(() => _phase = _RamblePhase.recording);
+    _startRecording();
+  }
+
+  void _goBackToEditing() {
+    HapticService.light();
+    // Transcript is preserved in _transcriptController — user can edit and re-extract
+    setState(() => _phase = _RamblePhase.editing);
+  }
+
   void _reRecord() {
     HapticService.light();
     _transcriptController.clear();
     _proposals = [];
+    _existingProposals = [];
     _deselectedIds.clear();
+    _isPaused = false;
+    _timeRemaining = null;
     ref.read(transcriptionTextProvider.notifier).state = '';
     ref.read(waveformDataProvider.notifier).state = [];
     _startRecording();
@@ -553,6 +709,54 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               color: domain.primary.withValues(alpha: 0.8),
             ).copyWith(fontSize: 14, fontWeight: FontWeight.w600),
           ),
+          if (_phase == _RamblePhase.recording) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: switch (_connectionState) {
+                  RambleConnectionState.connected => Colors.green,
+                  RambleConnectionState.reconnecting => Colors.orange,
+                  _ => AppColors.darkText.withValues(alpha: 0.3),
+                },
+              ),
+            ),
+            if (_connectionState == RambleConnectionState.reconnecting)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  'Reconnecting...',
+                  style: AppTypography.metadataText(
+                    color: Colors.orange.withValues(alpha: 0.8),
+                  ).copyWith(fontSize: 11),
+                ),
+              ),
+          ],
+          const Spacer(),
+          if (_timeRemaining != null && _phase == _RamblePhase.recording)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _timeRemaining! <= 30
+                    ? AppColors.deleteAction.withValues(alpha: 0.15)
+                    : AppColors.darkText.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              child: Text(
+                '${(_timeRemaining! ~/ 60).toString().padLeft(1, '0')}:${(_timeRemaining! % 60).toString().padLeft(2, '0')}',
+                style: AppTypography.metadataText(
+                  color: _timeRemaining! <= 30
+                      ? AppColors.deleteAction
+                      : AppColors.darkText.withValues(alpha: 0.5),
+                ).copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: [const FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -564,8 +768,10 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
     switch (_phase) {
       case _RamblePhase.recording:
-        title = 'Listening...';
-        subtitle = 'Say everything you need to get done.';
+        title = _isPaused ? 'Paused' : 'Listening...';
+        subtitle = _isPaused
+            ? 'Tap resume to continue speaking.'
+            : 'Say everything you need to get done.';
       case _RamblePhase.editing:
         title = 'Edit transcript';
         subtitle = 'Review and correct before sending.';
@@ -604,6 +810,17 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               color: AppColors.darkText.withValues(alpha: 0.5),
             ).copyWith(fontSize: 13),
           ),
+          if (widget.prefilledParentTitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Adding subtasks to: ${widget.prefilledParentTitle}',
+              style: AppTypography.metadataText(
+                color: domain.primary.withValues(alpha: 0.6),
+              ).copyWith(fontSize: 12, fontStyle: FontStyle.italic),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
@@ -975,28 +1192,57 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            onTap: _canStopListening ? _stopAndEdit : null,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: domain.primary,
-                shape: BoxShape.circle,
-                boxShadow: domain.glow != null
-                    ? [BoxShadow(color: domain.glow!, blurRadius: 16, spreadRadius: 4)]
-                    : null,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pause / Resume button
+              GestureDetector(
+                onTap: _canStopListening ? _togglePause : null,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _isPaused
+                        ? domain.primary.withValues(alpha: 0.15)
+                        : AppColors.darkText.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: domain.primary.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Icon(
+                    _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    size: 24,
+                    color: domain.primary,
+                  ),
+                ),
               ),
-              child: Icon(
-                Icons.stop_rounded,
-                size: 32,
-                color: domain.textOnPrimary,
+              const SizedBox(width: 24),
+              // Stop button
+              GestureDetector(
+                onTap: _canStopListening ? _stopAndEdit : null,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: domain.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: domain.glow != null
+                        ? [BoxShadow(color: domain.glow!, blurRadius: 16, spreadRadius: 4)]
+                        : null,
+                  ),
+                  child: Icon(
+                    Icons.stop_rounded,
+                    size: 32,
+                    color: domain.textOnPrimary,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Tap to stop',
+            _isPaused ? 'Paused — tap play to resume' : 'Tap to stop',
             style: AppTypography.metadataText(
               color: AppColors.darkText.withValues(alpha: 0.4),
             ).copyWith(fontSize: 12),
@@ -1086,36 +1332,40 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: _reRecord,
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  border: Border.all(
-                    color: domain.primary.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.mic_none_rounded, size: 18, color: domain.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Re-record',
-                      style: AppTypography.metadataText(color: domain.primary)
-                          .copyWith(fontSize: 14, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+          // Re-extract button (pencil icon, circle)
+          GestureDetector(
+            onTap: _goBackToEditing,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: domain.primary.withValues(alpha: 0.4),
                 ),
               ),
+              child: Icon(Icons.edit_rounded, size: 20, color: domain.primary),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          // Record more button (mic icon, circle)
+          GestureDetector(
+            onTap: _recordMore,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: domain.primary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Icon(Icons.mic_none_rounded, size: 20, color: domain.primary),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Confirm button (expanded)
           Expanded(
-            flex: 2,
             child: GestureDetector(
               onTap: canSubmit ? _submitProposals : null,
               child: AnimatedOpacity(
@@ -1178,6 +1428,7 @@ class _ProposalEditSheet extends StatefulWidget {
 
 class _ProposalEditSheetState extends State<_ProposalEditSheet> {
   late final TextEditingController _titleController;
+  late String _action;
   late String _category;
   late String _priority;
   DateTime? _dueDate;
@@ -1186,6 +1437,7 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.proposal.content);
+    _action = widget.proposal.action;
     _category = widget.proposal.category;
     _priority = widget.proposal.priority ?? 'none';
     _dueDate = widget.proposal.dueDate;
@@ -1201,20 +1453,24 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
+    // Clear irrelevant fields when action changes
+    final isAdd = _action == 'add';
+    final isMove = _action == 'move';
+
     final edited = BrainDumpTaskProposal(
       id: widget.proposal.id,
-      action: widget.proposal.action,
+      action: _action,
       content: title,
       description: widget.proposal.description,
       category: _category,
       dueDate: _dueDate,
       priority: _priority == 'none' ? null : _priority,
-      parentId: widget.proposal.parentId,
+      parentId: isAdd ? widget.proposal.parentId : null,
       labels: widget.proposal.labels,
-      changes: widget.proposal.changes,
-      matchedTaskId: widget.proposal.matchedTaskId,
-      targetParentId: widget.proposal.targetParentId,
-      targetContent: widget.proposal.targetContent,
+      changes: isAdd ? null : widget.proposal.changes,
+      matchedTaskId: isAdd ? null : widget.proposal.matchedTaskId,
+      targetParentId: isMove ? widget.proposal.targetParentId : null,
+      targetContent: isMove ? widget.proposal.targetContent : null,
     );
     Navigator.pop(context, edited);
   }
@@ -1287,6 +1543,61 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
                     .copyWith(fontSize: 17, fontWeight: FontWeight.w700),
               ),
             ),
+
+            // Action type chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Action',
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['add', 'complete', 'edit', 'delete', 'move'].map((a) {
+                      final selected = a == _action;
+                      final color = _actionChipColor(a);
+                      return GestureDetector(
+                        onTap: () => setState(() => _action = a),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? color
+                                : color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: color.withValues(
+                                alpha: selected ? 1.0 : 0.3,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            a[0].toUpperCase() + a.substring(1),
+                            style: AppTypography.metadataText(
+                              color: selected ? Colors.white : color,
+                            ).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
 
             // Title field
             Padding(
@@ -1586,6 +1897,16 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
       'medium' => AppColors.priorityMedium,
       'low' => AppColors.priorityLow,
       _ => AppColors.darkText.withValues(alpha: 0.5),
+    };
+  }
+
+  Color _actionChipColor(String action) {
+    return switch (action) {
+      'complete' => AppColors.completed,
+      'edit' => AppColors.dueSoon,
+      'delete' => AppColors.deleteAction,
+      'move' => AppColors.dueSoon,
+      _ => AppColors.darkText.withValues(alpha: 0.7),
     };
   }
 }

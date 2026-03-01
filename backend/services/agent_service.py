@@ -728,6 +728,7 @@ class AgentService:
         user_id: str,
         db: AsyncSession,
         category: str | None = None,
+        parent_id: str | None = None,
     ) -> BrainDumpResponse:
         """
         Process a voice brain dump into task proposals for user review.
@@ -741,15 +742,24 @@ class AgentService:
             user_id: User ID
             db: Database session
             category: Optional pre-fill category for all tasks
+            parent_id: Optional parent task ID for subtask mode
 
         Returns:
             BrainDumpResponse with list of proposed tasks
         """
         print(f"\n{'='*60}")
-        print(f"[Agent] BRAIN DUMP: transcription='{transcription}', user_id='{user_id}'")
+        print(f"[Agent] BRAIN DUMP: transcription='{transcription}', user_id='{user_id}', parent_id={parent_id}")
 
         task_service = TaskService(db)
         tree_context = await task_service.build_full_tree_context(user_id)
+
+        # If parent_id provided (subtask mode), look up parent for default category
+        parent_category = None
+        if parent_id:
+            parent_task = await task_service.get_task(parent_id)
+            if parent_task:
+                parent_category = parent_task.category
+                print(f"[Agent] subtask mode: parent='{parent_task.title}', category='{parent_category}'")
 
         # Get task proposals from Gemini
         raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context)
@@ -791,7 +801,7 @@ class AgentService:
                 print(f"[Agent] brain dump skipping low-confidence ({confidence}): '{content}'")
                 continue
 
-            task_category = category or raw.get("category", "personal")
+            task_category = category or parent_category or raw.get("category", "personal")
 
             # For actions on existing tasks, resolve via fuzzy search
             matched_task_id = None
@@ -848,14 +858,18 @@ class AgentService:
                 else:
                     target_content = "top-level"  # move to root
 
-            # Resolve parent if parentQuery provided (ADD only)
-            parent_id = None
+            # Resolve parent for ADD proposals
+            resolved_parent_id = None
             if action == "add":
+                if parent_id:
+                    # Subtask mode: default to the pre-filled parent
+                    resolved_parent_id = parent_id
+                # Gemini's parentQuery can still override for relative nesting
                 parent_query = raw.get("parentQuery")
                 if parent_query:
                     parent_tasks = await task_service.search_tasks(user_id, parent_query)
                     if parent_tasks:
-                        parent_id = str(parent_tasks[0].id)
+                        resolved_parent_id = str(parent_tasks[0].id)
 
             proposals.append(BrainDumpTaskProposal(
                 id=str(uuid.uuid4()),
@@ -865,7 +879,7 @@ class AgentService:
                 category=task_category.lower(),
                 due_date=parse_flexible_date(raw.get("dueDate")),
                 priority=raw.get("priority"),
-                parent_id=parent_id,
+                parent_id=resolved_parent_id,
                 labels=raw.get("labels", []),
                 changes=raw.get("changes"),
                 matched_task_id=matched_task_id,
@@ -897,11 +911,14 @@ class AgentService:
         Returns:
             dict with {type, count, task_id?} describing what happened.
         """
+        import time as _time
         action = proposal.action or "add"
+        _t0 = _time.monotonic()
+        print(f"[Agent] _execute_action START: action={action} content='{proposal.content}' matched={proposal.matched_task_id}")
 
         if action == "complete" and proposal.matched_task_id:
             count = await task_service.complete_task_with_children(proposal.matched_task_id)
-            print(f"[Agent] completed task '{proposal.content}' ({proposal.matched_task_id}) + {count - 1} children")
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: completed '{proposal.content}' + {count - 1} children")
             return {"type": "completed", "count": count}
 
         if action == "edit" and proposal.matched_task_id:
@@ -910,12 +927,12 @@ class AgentService:
                 changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
             if changes:
                 await task_service.update_task(proposal.matched_task_id, **changes)
-            print(f"[Agent] edited task '{proposal.content}' ({proposal.matched_task_id}): {changes}")
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: edited '{proposal.content}': {changes}")
             return {"type": "edited", "count": 1}
 
         if action == "delete" and proposal.matched_task_id:
             count = await task_service.delete_task_with_children(proposal.matched_task_id)
-            print(f"[Agent] deleted task '{proposal.content}' ({proposal.matched_task_id}) + {count - 1} children")
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: deleted '{proposal.content}' + {count - 1} children")
             return {"type": "deleted", "count": count}
 
         if action == "move" and proposal.matched_task_id:
@@ -924,7 +941,7 @@ class AgentService:
                 if not target:
                     raise ValueError(f"Move target '{proposal.target_parent_id}' no longer exists")
             await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
-            print(f"[Agent] moved task '{proposal.content}' ({proposal.matched_task_id}) → {proposal.target_parent_id}")
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: moved '{proposal.content}' → {proposal.target_parent_id}")
             return {"type": "moved", "count": 1}
 
         # Default: ADD — auto-create category if needed
@@ -951,7 +968,7 @@ class AgentService:
                 "reasoning": "Brain dump voice input",
             },
         )
-        print(f"[Agent] created task '{task.title}' ({task.id})")
+        print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: created '{task.title}' ({task.id})")
         return {"type": "created", "count": 1, "task_id": task.id}
 
     async def submit_brain_dump(

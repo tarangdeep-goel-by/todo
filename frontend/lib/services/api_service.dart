@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import '../models/task.dart';
 import '../models/api_response.dart';
 import '../models/category.dart';
@@ -12,8 +13,9 @@ class ApiService {
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: baseUrl ?? AppConstants.apiBaseUrl,
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 10),
+              connectTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 30),
+              sendTimeout: const Duration(seconds: 15),
             ));
 
   /// Get all tasks for user
@@ -134,6 +136,7 @@ class ApiService {
     required String transcription,
     required String userId,
     String? category,
+    String? parentId,
   }) async {
     try {
       final data = <String, dynamic>{
@@ -141,6 +144,7 @@ class ApiService {
         'user_id': userId,
       };
       if (category != null) data['category'] = category;
+      if (parentId != null) data['parent_id'] = parentId;
       final response = await _dio.post('/agent/braindump', data: data);
       return BrainDumpResponse.fromJson(response.data);
     } on DioException catch (e) {
@@ -154,12 +158,18 @@ class ApiService {
     required List<BrainDumpTaskProposal> tasks,
   }) async {
     try {
-      final response = await _dio.post('/agent/braindump/submit', data: {
+      final payload = {
         'user_id': userId,
         'tasks': tasks.map((t) => t.toJson()).toList(),
-      });
+      };
+      debugPrint('[API] submitBrainDump POST /agent/braindump/submit payload=${tasks.length} tasks');
+      debugPrint('[API] submitBrainDump baseUrl=${_dio.options.baseUrl}');
+      final response = await _dio.post('/agent/braindump/submit', data: payload);
+      debugPrint('[API] submitBrainDump response status=${response.statusCode}');
       return BrainDumpSubmitResponse.fromJson(response.data);
     } on DioException catch (e) {
+      debugPrint('[API] submitBrainDump DioException type=${e.type} message=${e.message}');
+      debugPrint('[API] submitBrainDump response=${e.response?.statusCode} data=${e.response?.data}');
       throw _handleError(e);
     }
   }

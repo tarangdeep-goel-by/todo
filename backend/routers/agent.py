@@ -95,6 +95,7 @@ async def process_brain_dump(
         user_id=request.user_id,
         db=db,
         category=request.category,
+        parent_id=request.parent_id,
     )
 
 
@@ -116,12 +117,20 @@ async def submit_brain_dump(
     Returns:
         BrainDumpSubmitResponse with created task IDs
     """
+    import time
+    t0 = time.monotonic()
+    print(f"[Submit] REQUEST received: {len(request.tasks)} tasks for user '{request.user_id}'")
+    for i, t in enumerate(request.tasks):
+        print(f"[Submit]   task[{i}]: action={t.action} content='{t.content}' matched={t.matched_task_id}")
+
     settings = get_settings()
     gemini_service = GeminiService(settings.gemini_api_key)
     agent_service = AgentService(gemini_service)
 
-    return await agent_service.submit_brain_dump(
+    result = await agent_service.submit_brain_dump(
         user_id=request.user_id,
         tasks=request.tasks,
         db=db,
     )
+    print(f"[Submit] RESPONSE in {(time.monotonic() - t0) * 1000:.1f}ms: success={result.success} message='{result.message}'")
+    return result
