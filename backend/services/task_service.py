@@ -188,8 +188,9 @@ class TaskService:
         return len(all_ids)
 
     async def _get_all_descendants(self, task_id: str) -> List[Task]:
-        """Get all descendants recursively."""
+        """Get all descendants recursively (cycle-safe)."""
         all_descendants = []
+        seen = {task_id}
         to_process = [task_id]
 
         while to_process:
@@ -200,8 +201,10 @@ class TaskService:
             children = list(result.scalars().all())
 
             for child in children:
-                all_descendants.append(child)
-                to_process.append(child.id)
+                if child.id not in seen:
+                    seen.add(child.id)
+                    all_descendants.append(child)
+                    to_process.append(child.id)
 
         return all_descendants
 

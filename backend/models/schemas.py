@@ -36,6 +36,7 @@ class BrainDumpRequest(BaseModel):
     transcription: str = Field(..., min_length=1, max_length=5000)
     user_id: str = Field(..., min_length=1)
     category: Optional[str] = None  # Pre-fill category for all tasks
+    parent_id: Optional[str] = None  # Pre-fill parent for subtask mode
 
 
 class BrainDumpTaskProposal(BaseModel):

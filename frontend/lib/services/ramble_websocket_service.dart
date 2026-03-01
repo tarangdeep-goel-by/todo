@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/constants.dart';
 
+/// Connection state for ramble WebSocket.
+enum RambleConnectionState { disconnected, connecting, connected, reconnecting }
+
 /// WebSocket client for streaming ramble audio to backend (transcription-only).
 class RambleWebSocketService {
   WebSocketChannel? _channel;
@@ -11,6 +14,14 @@ class RambleWebSocketService {
   final _finalTranscriptController = StreamController<String>.broadcast();
   final _statusController = StreamController<String>.broadcast();
   final _errorController = StreamController<String>.broadcast();
+  final _timeRemainingController = StreamController<int>.broadcast();
+  final _connectionStateController =
+      StreamController<RambleConnectionState>.broadcast();
+
+  RambleConnectionState _connectionState = RambleConnectionState.disconnected;
+  String? _userId;
+  bool _intentionalClose = false;
+  DateTime? _connectedAt;
 
   /// Completer for the final transcript — set in _handleMessage, awaited in stop().
   Completer<String>? _finalTranscriptCompleter;
@@ -19,32 +30,53 @@ class RambleWebSocketService {
   Stream<String> get finalTranscriptStream => _finalTranscriptController.stream;
   Stream<String> get statusStream => _statusController.stream;
   Stream<String> get errorStream => _errorController.stream;
+  Stream<int> get timeRemainingStream => _timeRemainingController.stream;
+  Stream<RambleConnectionState> get connectionStateStream =>
+      _connectionStateController.stream;
+  RambleConnectionState get connectionState => _connectionState;
 
-  /// Connect and send start message.
-  Future<void> connect({
-    required String userId,
-  }) async {
-    // Derive WS URL from API base URL
-    // e.g. "http://192.168.0.106:8001/api" → "ws://192.168.0.106:8001/ws/ramble"
+  void _setConnectionState(RambleConnectionState state) {
+    _connectionState = state;
+    _connectionStateController.add(state);
+  }
+
+  String get _wsUrl {
     final wsBase = AppConstants.apiBaseUrl
         .replaceFirst('http://', 'ws://')
         .replaceFirst('https://', 'wss://')
         .replaceFirst('/api', '');
-    final wsUrl = '$wsBase/ws/ramble';
+    return '$wsBase/ws/ramble';
+  }
 
-    debugPrint('[RambleWS] Connecting to $wsUrl');
-    _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+  /// Connect and send start message.
+  Future<void> connect({required String userId}) async {
+    _userId = userId;
+    _intentionalClose = false;
+    _connectedAt = null;
+    _setConnectionState(RambleConnectionState.connecting);
 
-    // Wait for WebSocket connection to be established
+    debugPrint('[RambleWS] Connecting to $_wsUrl');
+    _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+
     try {
       await _channel!.ready;
       debugPrint('[RambleWS] WebSocket ready');
     } catch (e) {
       debugPrint('[RambleWS] WebSocket connect failed: $e');
+      _setConnectionState(RambleConnectionState.disconnected);
       _errorController.add('WebSocket connect failed: $e');
       return;
     }
 
+    _listenToChannel();
+    _setConnectionState(RambleConnectionState.connected);
+    _connectedAt = DateTime.now();
+
+    _send({'type': 'start', 'user_id': userId});
+    debugPrint('[RambleWS] Start message sent');
+  }
+
+  void _listenToChannel() {
     _channel!.stream.listen(
       _handleMessage,
       onError: (error) {
@@ -52,16 +84,45 @@ class RambleWebSocketService {
         _errorController.add(error.toString());
       },
       onDone: () {
-        debugPrint('[RambleWS] Connection closed');
+        debugPrint('[RambleWS] Connection closed (intentional=$_intentionalClose)');
+        if (_intentionalClose) return;
+
+        final wasConnected =
+            _connectionState == RambleConnectionState.connected;
+        _setConnectionState(RambleConnectionState.disconnected);
         _statusController.add('disconnected');
+
+        // Only auto-reconnect if connected for >3s (not a setup hiccup)
+        final connectedLongEnough = _connectedAt != null &&
+            DateTime.now().difference(_connectedAt!).inSeconds >= 3;
+
+        if (wasConnected && _userId != null && connectedLongEnough) {
+          _attemptReconnect();
+        } else if (wasConnected) {
+          debugPrint('[RambleWS] Skipping reconnect — connection too brief');
+        }
       },
     );
+  }
 
-    _send({
-      'type': 'start',
-      'user_id': userId,
-    });
-    debugPrint('[RambleWS] Start message sent');
+  Future<void> _attemptReconnect() async {
+    _setConnectionState(RambleConnectionState.reconnecting);
+    debugPrint('[RambleWS] Attempting reconnect in 2s...');
+    await Future.delayed(const Duration(seconds: 2));
+
+    _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+    try {
+      await _channel!.ready;
+      debugPrint('[RambleWS] Reconnected');
+      _listenToChannel();
+      _setConnectionState(RambleConnectionState.connected);
+      _connectedAt = DateTime.now();
+      _send({'type': 'start', 'user_id': _userId!});
+    } catch (e) {
+      debugPrint('[RambleWS] Reconnect failed: $e');
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Reconnect failed — editing with current transcript');
+    }
   }
 
   /// Send base64-encoded PCM audio chunk.
@@ -71,12 +132,11 @@ class RambleWebSocketService {
 
   /// Stop the session. Returns the final transcript (or null on timeout).
   Future<String?> stop() async {
-    // Set up completer BEFORE sending stop — _handleMessage will complete it.
+    _intentionalClose = true;
     _finalTranscriptCompleter = Completer<String>();
 
     _send({'type': 'stop'});
 
-    // Wait up to 10s for final_transcript (transliteration can be slow)
     String? result;
     try {
       result = await _finalTranscriptCompleter!.future.timeout(
@@ -91,16 +151,21 @@ class RambleWebSocketService {
     _finalTranscriptCompleter = null;
     await _channel?.sink.close();
     _channel = null;
+    _setConnectionState(RambleConnectionState.disconnected);
     return result;
   }
 
   void dispose() {
+    _intentionalClose = true;
     _channel?.sink.close();
     _channel = null;
+    _setConnectionState(RambleConnectionState.disconnected);
     _transcriptionController.close();
     _finalTranscriptController.close();
     _statusController.close();
     _errorController.close();
+    _timeRemainingController.close();
+    _connectionStateController.close();
   }
 
   void _send(Map<String, dynamic> msg) {
@@ -122,11 +187,18 @@ class RambleWebSocketService {
           final text = msg['text'] as String;
           debugPrint('[RambleWS] Final transcript: ${text.length} chars');
           _finalTranscriptController.add(text);
-          if (_finalTranscriptCompleter != null && !_finalTranscriptCompleter!.isCompleted) {
+          if (_finalTranscriptCompleter != null &&
+              !_finalTranscriptCompleter!.isCompleted) {
             _finalTranscriptCompleter!.complete(text);
           }
         case 'status':
-          _statusController.add(msg['status'] as String);
+          final status = msg['status'] as String;
+          if (status == 'time_remaining') {
+            final seconds = msg['seconds'] as int;
+            _timeRemainingController.add(seconds);
+          } else {
+            _statusController.add(status);
+          }
         case 'error':
           debugPrint('[RambleWS] Error from server: ${msg['message']}');
           _errorController.add(msg['message'] as String);
