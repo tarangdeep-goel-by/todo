@@ -13,6 +13,7 @@ import '../services/haptic_service.dart';
 import 'domain_root_view.dart';
 import 'task_row_tile.dart';
 import 'styled_snackbar.dart';
+import '../screens/ramble_screen.dart';
 
 /// Sentinel for "field not provided" in _updateField
 const _noChange = Object();
@@ -446,6 +447,22 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     }
 
     if (mounted) setState(() => _savingStatus = false);
+  }
+
+  // --- Ramble subtasks ---
+
+  void _launchRambleSubtasks(Task task) {
+    HapticService.medium();
+    Navigator.of(context).pop(); // close overlay
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RambleScreen(
+          prefilledParentId: task.id,
+          prefilledParentTitle: task.sentenceTitle,
+          prefilledCategory: task.category,
+        ),
+      ),
+    );
   }
 
   // --- Subtask ---
@@ -1012,9 +1029,19 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
               ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
             ),
             if (!_addingSubtask)
-              GestureDetector(
-                onTap: _startAddingSubtask,
-                child: Icon(Icons.add, size: 20, color: domain.primary),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => _launchRambleSubtasks(task),
+                    child: Icon(Icons.mic_none_rounded, size: 20, color: domain.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _startAddingSubtask,
+                    child: Icon(Icons.add, size: 20, color: domain.primary),
+                  ),
+                ],
               ),
           ],
         ),

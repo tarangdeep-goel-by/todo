@@ -1,0 +1,3673 @@
+{
+  "timestamp": "2026-02-28T11:45:17.651210",
+  "model": "gemini-2.5-flash-lite",
+  "task_tree_size": 167,
+  "case_count": 40,
+  "cases": [
+    {
+      "id": "bd_add_01",
+      "category": "ADD_ONLY",
+      "difficulty": "easy",
+      "transcription": "buy milk and call dentist tomorrow and finish the report",
+      "passed": false,
+      "latency_ms": 1924,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "buy milk",
+          "category": "personal",
+          "confidence": 0.8,
+          "description": "buy milk",
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "call dentist",
+          "category": "health",
+          "confidence": 0.9,
+          "description": "call dentist",
+          "dueDate": "tomorrow",
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "complete",
+          "content": "finish the report",
+          "category": "work",
+          "confidence": 0.8,
+          "description": "finish the report",
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "milk",
+          "actual": "buy milk",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": "personal",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "dentist",
+          "actual": "call dentist",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "tomorrow",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "complete",
+          "passed": false
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "report",
+          "actual": "finish the report",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        }
+      ],
+      "failure_reason": "action_exact('add'): \u2717  actual='complete'"
+    },
+    {
+      "id": "bd_add_02",
+      "category": "ADD_ONLY",
+      "difficulty": "easy",
+      "transcription": "I need to schedule a dentist appointment and also pick up groceries",
+      "passed": true,
+      "latency_ms": 1585,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "schedule a dentist appointment",
+          "category": "health",
+          "confidence": 0.95
+        },
+        {
+          "action": "add",
+          "content": "pick up groceries",
+          "category": "home",
+          "confidence": 0.95
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "dentist",
+          "actual": "schedule a dentist appointment",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "in",
+          "expected": [
+            "personal",
+            "health"
+          ],
+          "actual": "health",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "groceries",
+          "actual": "pick up groceries",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "in",
+          "expected": [
+            "personal",
+            "home"
+          ],
+          "actual": "home",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_add_03",
+      "category": "ADD_ONLY",
+      "difficulty": "medium",
+      "transcription": "add a task to review the quarterly budget and also create a task for updating the team wiki and one more thing write integration tests",
+      "passed": true,
+      "latency_ms": 1884,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "review the quarterly budget",
+          "category": "finance",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "update the team wiki",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "write integration tests",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "quarterly budget",
+          "actual": "review the quarterly budget",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "in",
+          "expected": [
+            "work",
+            "finance",
+            "personal"
+          ],
+          "actual": "finance",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "team wiki",
+          "actual": "update the team wiki",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "integration tests",
+          "actual": "write integration tests",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_add_04",
+      "category": "ADD_ONLY",
+      "difficulty": "easy",
+      "transcription": "remember to book a yoga class and also sign up for the cooking workshop next saturday",
+      "passed": true,
+      "latency_ms": 1554,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "book a yoga class",
+          "category": "health",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Fitness",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "sign up for the cooking workshop",
+          "category": "personal",
+          "confidence": 0.8,
+          "description": null,
+          "dueDate": "next saturday",
+          "priority": null,
+          "parentQuery": "Home",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "yoga",
+          "actual": "book a yoga class",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "health",
+          "actual": "health",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "cooking workshop",
+          "actual": "sign up for the cooking workshop",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "next saturday",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_add_05",
+      "category": "ADD_ONLY",
+      "difficulty": "easy",
+      "transcription": "I want to learn Docker compose and also study for the AWS certification exam",
+      "passed": true,
+      "latency_ms": 1150,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "Learn Docker compose",
+          "category": "learning",
+          "confidence": 0.95
+        },
+        {
+          "action": "add",
+          "content": "Study for the AWS certification exam",
+          "category": "learning",
+          "confidence": 0.95
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Docker",
+          "actual": "Learn Docker compose",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "learning",
+          "actual": "learning",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "AWS",
+          "actual": "Study for the AWS certification exam",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "learning",
+          "actual": "learning",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_add_06",
+      "category": "ADD_ONLY",
+      "difficulty": "medium",
+      "transcription": "need to set up the blog newsletter and write a post about flutter animations and design a logo for the channel",
+      "passed": false,
+      "latency_ms": 1780,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "set up the blog newsletter",
+          "category": "projects",
+          "confidence": 0.95,
+          "description": "Set up newsletter for the technical blog.",
+          "parentQuery": "Content Creation (id: eval-projects-017)"
+        },
+        {
+          "action": "add",
+          "content": "write a post about flutter animations",
+          "category": "projects",
+          "confidence": 0.95,
+          "description": "Write a blog post about Flutter animations.",
+          "parentQuery": "Technical blog (id: eval-projects-018)"
+        },
+        {
+          "action": "add",
+          "content": "design a logo for the channel",
+          "category": "projects",
+          "confidence": 0.95,
+          "description": "Design a logo for the YouTube channel.",
+          "parentQuery": "YouTube channel (id: eval-projects-023)"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "newsletter",
+          "actual": "set up the blog newsletter",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "animation",
+          "actual": "write a post about flutter animations",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "branding",
+          "actual": "design a logo for the channel",
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": "content_contains('branding'): \u2717  actual='design a logo for the channel'"
+    },
+    {
+      "id": "bd_complete_01",
+      "category": "COMPLETE_ONLY",
+      "difficulty": "easy",
+      "transcription": "I finished the competitor analysis spreadsheet and also completed the wireframe review with client",
+      "passed": true,
+      "latency_ms": 1556,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Competitor analysis spreadsheet",
+          "category": "work",
+          "confidence": 0.95
+        },
+        {
+          "action": "complete",
+          "content": "Wireframe review with client",
+          "category": "work",
+          "confidence": 0.95
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "competitor analysis",
+          "actual": "Competitor analysis spreadsheet",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "wireframe review",
+          "actual": "Wireframe review with client",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_complete_02",
+      "category": "COMPLETE_ONLY",
+      "difficulty": "medium",
+      "transcription": "done with the base building phase and the tempo runs and also the hill repeats",
+      "passed": true,
+      "latency_ms": 1808,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Base building phase",
+          "category": "health",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Marathon training",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "complete",
+          "content": "Tempo runs Thursdays",
+          "category": "health",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Speed work phase",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "complete",
+          "content": "Hill repeats bi-weekly",
+          "category": "health",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Speed work phase",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "base building",
+          "actual": "Base building phase",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "tempo runs",
+          "actual": "Tempo runs Thursdays",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "hill repeats",
+          "actual": "Hill repeats bi-weekly",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_complete_03",
+      "category": "COMPLETE_ONLY",
+      "difficulty": "easy",
+      "transcription": "I have completed the Genki II textbook chapters and the morning meditation",
+      "passed": true,
+      "latency_ms": 1659,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Genki II textbook chapters",
+          "category": "learning",
+          "confidence": 0.95,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Learn Rust",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "complete",
+          "content": "Morning meditation 10 min daily",
+          "category": "health",
+          "confidence": 0.95,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Mental wellness",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Genki",
+          "actual": "Genki II textbook chapters",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "morning meditation",
+          "actual": "Morning meditation 10 min daily",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_complete_04",
+      "category": "COMPLETE_ONLY",
+      "difficulty": "easy",
+      "transcription": "mark the demo video preparation as done and also the press release is finished",
+      "passed": true,
+      "latency_ms": 1489,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Prepare demo video",
+          "category": "work",
+          "confidence": 0.9
+        },
+        {
+          "action": "complete",
+          "content": "Write press release",
+          "category": "work",
+          "confidence": 0.9
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "demo video",
+          "actual": "Prepare demo video",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "press release",
+          "actual": "Write press release",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edit_01",
+      "category": "EDIT_ONLY",
+      "difficulty": "easy",
+      "transcription": "change the priority of auth service refactor to low and set the meal prep system to high priority",
+      "passed": true,
+      "latency_ms": 1433,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "edit",
+          "content": "Auth service refactor (id: eval-work-011)",
+          "category": "work",
+          "confidence": 1.0,
+          "changes": {
+            "priority": "low"
+          }
+        },
+        {
+          "action": "edit",
+          "content": "Meal prep system (id: eval-health-020)",
+          "category": "health",
+          "confidence": 1.0,
+          "changes": {
+            "priority": "high"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "auth service",
+          "actual": "Auth service refactor (id: eval-work-011)",
+          "passed": true
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "low",
+          "actual": "low",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "meal prep",
+          "actual": "Meal prep system (id: eval-health-020)",
+          "passed": true
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": "high",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edit_02",
+      "category": "EDIT_ONLY",
+      "difficulty": "medium",
+      "transcription": "reschedule the CPA appointment to next monday and set the buy running shoes priority to high",
+      "passed": true,
+      "latency_ms": 1512,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "edit",
+          "content": "Schedule CPA appointment",
+          "category": "finance",
+          "confidence": 1.0,
+          "changes": {
+            "dueDate": "next monday"
+          }
+        },
+        {
+          "action": "edit",
+          "content": "Buy new running shoes",
+          "category": "health",
+          "confidence": 1.0,
+          "changes": {
+            "priority": "high"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "CPA",
+          "actual": "Schedule CPA appointment",
+          "passed": true
+        },
+        {
+          "field": "changes.dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "next monday",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "running shoes",
+          "actual": "Buy new running shoes",
+          "passed": true
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": "high",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edit_03",
+      "category": "EDIT_ONLY",
+      "difficulty": "medium",
+      "transcription": "the marathon training should be personal category and kitchen renovation belongs in projects",
+      "passed": true,
+      "latency_ms": 1613,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "edit",
+          "content": "Marathon training",
+          "category": "personal",
+          "confidence": 1.0,
+          "changes": {
+            "category": "personal"
+          }
+        },
+        {
+          "action": "edit",
+          "content": "Kitchen renovation",
+          "category": "projects",
+          "confidence": 1.0,
+          "changes": {
+            "category": "projects"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "marathon training",
+          "actual": "Marathon training",
+          "passed": true
+        },
+        {
+          "field": "changes.category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": "personal",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "kitchen renovation",
+          "actual": "Kitchen renovation",
+          "passed": true
+        },
+        {
+          "field": "changes.category",
+          "operator": "exact",
+          "expected": "projects",
+          "actual": "projects",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edit_04",
+      "category": "EDIT_ONLY",
+      "difficulty": "hard",
+      "transcription": "rename Globex Dashboard MVP to Globex Analytics Platform and make it high priority",
+      "passed": true,
+      "latency_ms": 1231,
+      "expected_action_count": 1,
+      "actual_action_count": 1,
+      "actual_actions": [
+        {
+          "action": "edit",
+          "content": "Globex Dashboard MVP",
+          "category": "work",
+          "confidence": 0.95,
+          "changes": {
+            "title": "Globex Analytics Platform",
+            "priority": "high"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Globex",
+          "actual": "Globex Dashboard MVP",
+          "passed": true
+        },
+        {
+          "field": "changes.title",
+          "operator": "contains",
+          "expected": "Analytics",
+          "actual": "Globex Analytics Platform",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_delete_01",
+      "category": "DELETE_ONLY",
+      "difficulty": "easy",
+      "transcription": "delete the social media campaign and remove the YouTube channel tasks",
+      "passed": true,
+      "latency_ms": 1232,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "delete",
+          "content": "social media campaign",
+          "category": "work",
+          "confidence": 0.95
+        },
+        {
+          "action": "delete",
+          "content": "YouTube channel",
+          "category": "projects",
+          "confidence": 0.95
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "social media",
+          "actual": "social media campaign",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "YouTube",
+          "actual": "YouTube channel",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_delete_02",
+      "category": "DELETE_ONLY",
+      "difficulty": "medium",
+      "transcription": "remove the load testing setup and the Google Ads experiment and also cancel team offsite planning",
+      "passed": true,
+      "latency_ms": 1663,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "delete",
+          "content": "load testing setup",
+          "category": "work",
+          "confidence": 0.9,
+          "description": "Under Infrastructure for Q1 Product Launch",
+          "changes": null
+        },
+        {
+          "action": "delete",
+          "content": "Google Ads experiment",
+          "category": "projects",
+          "confidence": 0.9,
+          "description": "Under Startup exploration Idea validation",
+          "changes": null
+        },
+        {
+          "action": "delete",
+          "content": "team offsite planning",
+          "category": "work",
+          "confidence": 0.9,
+          "description": "Under Team Management",
+          "changes": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "load testing",
+          "actual": "load testing setup",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Google Ads",
+          "actual": "Google Ads experiment",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "offsite",
+          "actual": "team offsite planning",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_delete_03",
+      "category": "DELETE_ONLY",
+      "difficulty": "easy",
+      "transcription": "get rid of the shoulder mobility routine and the core work daily tasks",
+      "passed": true,
+      "latency_ms": 1683,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "delete",
+          "content": "shoulder mobility routine",
+          "category": "health",
+          "confidence": 0.8
+        },
+        {
+          "action": "delete",
+          "content": "core work daily",
+          "category": "health",
+          "confidence": 0.8
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "shoulder mobility",
+          "actual": "shoulder mobility routine",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "core work",
+          "actual": "core work daily",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_move_01",
+      "category": "MOVE_ONLY",
+      "difficulty": "medium",
+      "transcription": "move rate limiting middleware under frontend features and put the Riverpod advanced patterns to top level",
+      "passed": false,
+      "latency_ms": 1471,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "move",
+          "content": "rate limiting middleware",
+          "category": "work",
+          "confidence": 0.9,
+          "description": "move rate limiting middleware under frontend features",
+          "targetParentQuery": "frontend features"
+        },
+        {
+          "action": "edit",
+          "content": "Riverpod advanced patterns",
+          "category": "learning",
+          "confidence": 0.9,
+          "description": "put Riverpod advanced patterns to top level",
+          "changes": {
+            "category": "learning"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "rate limiting",
+          "actual": "rate limiting middleware",
+          "passed": true
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "frontend",
+          "actual": "frontend features",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "edit",
+          "passed": false
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Riverpod",
+          "actual": "Riverpod advanced patterns",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": "action_exact('move'): \u2717  actual='edit'"
+    },
+    {
+      "id": "bd_move_02",
+      "category": "MOVE_ONLY",
+      "difficulty": "medium",
+      "transcription": "move the fast.ai course under LLM engineering and relocate the channel branding under content creation",
+      "passed": true,
+      "latency_ms": 1351,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "move",
+          "content": "Complete fast.ai course",
+          "category": "learning",
+          "confidence": 0.9,
+          "targetParentQuery": "LLM engineering"
+        },
+        {
+          "action": "move",
+          "content": "Design channel branding",
+          "category": "projects",
+          "confidence": 0.9,
+          "targetParentQuery": "Content creation"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "fast.ai",
+          "actual": "Complete fast.ai course",
+          "passed": true
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "LLM engineering",
+          "actual": "LLM engineering",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "channel branding",
+          "actual": "Design channel branding",
+          "passed": true
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "content creation",
+          "actual": "Content creation",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_move_03",
+      "category": "MOVE_ONLY",
+      "difficulty": "hard",
+      "transcription": "put the auth service refactor and payment integration under infrastructure",
+      "passed": true,
+      "latency_ms": 1461,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "move",
+          "content": "Auth service refactor",
+          "category": "work",
+          "confidence": 0.9,
+          "targetParentQuery": "Infrastructure (id: eval-work-019)"
+        },
+        {
+          "action": "move",
+          "content": "Payment integration v2",
+          "category": "work",
+          "confidence": 0.9,
+          "targetParentQuery": "Infrastructure (id: eval-work-019)"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "auth service",
+          "actual": "Auth service refactor",
+          "passed": true
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "infrastructure",
+          "actual": "Infrastructure (id: eval-work-019)",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "payment integration",
+          "actual": "Payment integration v2",
+          "passed": true
+        },
+        {
+          "field": "targetParentQuery",
+          "operator": "contains",
+          "expected": "infrastructure",
+          "actual": "Infrastructure (id: eval-work-019)",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_01",
+      "category": "MIXED",
+      "difficulty": "medium",
+      "transcription": "completed the PR review need to deploy staging set database migration to high priority",
+      "passed": true,
+      "latency_ms": 1582,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "review senior dev applications",
+          "category": "work",
+          "confidence": 0.8,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "review senior dev applications",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null
+        },
+        {
+          "action": "add",
+          "content": "deploy staging",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null
+        },
+        {
+          "action": "edit",
+          "content": "database migration scripts",
+          "category": "work",
+          "confidence": 0.9,
+          "description": "set database migration to high priority",
+          "dueDate": null,
+          "priority": "high",
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": {
+            "title": null,
+            "priority": "high",
+            "dueDate": null,
+            "category": null
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "deploy staging",
+          "actual": "deploy staging",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "database migration",
+          "actual": "database migration scripts",
+          "passed": true
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": "high",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_02",
+      "category": "MIXED",
+      "difficulty": "medium",
+      "transcription": "I finished the competitor analysis spreadsheet and I need to add a task for writing the Q1 report and also delete the social media campaign",
+      "passed": true,
+      "latency_ms": 1680,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Competitor analysis spreadsheet",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Q1 Product Launch > Planning & Strategy",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "Write the Q1 report",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Q1 Product Launch > Planning & Strategy",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "delete",
+          "content": "Social media campaign",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Q1 Product Launch > Marketing",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "competitor analysis",
+          "actual": "Competitor analysis spreadsheet",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Q1 report",
+          "actual": "Write the Q1 report",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "social media",
+          "actual": "Social media campaign",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_03",
+      "category": "MIXED",
+      "difficulty": "medium",
+      "transcription": "I have completed save drop spec. I have completed after hours. Going to the gym is low priority.",
+      "passed": true,
+      "latency_ms": 1368,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "save drop spec",
+          "category": "work",
+          "confidence": 0.9
+        },
+        {
+          "action": "complete",
+          "content": "after hours",
+          "category": "work",
+          "confidence": 0.9
+        },
+        {
+          "action": "edit",
+          "content": "going to the gym",
+          "category": "health",
+          "confidence": 0.9,
+          "changes": {
+            "priority": "low"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "save drop",
+          "actual": "save drop spec",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "after hours",
+          "actual": "after hours",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "edit",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "gym",
+          "actual": "going to the gym",
+          "passed": true
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "low",
+          "actual": "low",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_04",
+      "category": "MIXED",
+      "difficulty": "hard",
+      "transcription": "add a new task to review pull requests and complete the payment integration v2 and move the landing page to root level",
+      "passed": true,
+      "latency_ms": 1784,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "review pull requests",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Q1 Product Launch -> Engineering",
+          "estimatedHours": null,
+          "tags": null
+        },
+        {
+          "action": "complete",
+          "content": "payment integration v2",
+          "category": "work",
+          "confidence": 1.0,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "estimatedHours": null,
+          "tags": null
+        },
+        {
+          "action": "move",
+          "content": "landing page",
+          "category": "personal",
+          "confidence": 0.9,
+          "description": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "pull requests",
+          "actual": "review pull requests",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "payment integration",
+          "actual": "payment integration v2",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "landing page",
+          "actual": "landing page",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_05",
+      "category": "MIXED",
+      "difficulty": "hard",
+      "transcription": "delete the Google Ads experiment and add a Facebook Ads test under idea validation and mark the user survey design as done",
+      "passed": false,
+      "latency_ms": 1567,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "delete",
+          "content": "Google Ads experiment",
+          "category": "projects",
+          "confidence": 0.9,
+          "description": "under startup exploration"
+        },
+        {
+          "action": "add",
+          "content": "Facebook Ads test",
+          "category": "projects",
+          "confidence": 0.9,
+          "description": "under startup exploration / idea validation"
+        },
+        {
+          "action": "complete",
+          "content": "User survey design",
+          "category": "work",
+          "confidence": 1.0,
+          "description": "under Q1 Product Launch / Planning & Strategy / Market research"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Google Ads",
+          "actual": "Google Ads experiment",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Facebook Ads",
+          "actual": "Facebook Ads test",
+          "passed": true
+        },
+        {
+          "field": "parentQuery",
+          "operator": "contains",
+          "expected": "idea validation",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "user survey",
+          "actual": "User survey design",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 1.0,
+          "passed": true
+        }
+      ],
+      "failure_reason": "parentQuery_contains('idea validation'): \u2717  actual=None"
+    },
+    {
+      "id": "bd_mixed_06",
+      "category": "MIXED",
+      "difficulty": "hard",
+      "transcription": "need to buy new running shoes tomorrow with high priority and also the Riverpod advanced patterns is done and break down the ACME Corp API rebuild",
+      "passed": false,
+      "latency_ms": 1369,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "buy new running shoes",
+          "category": "health",
+          "confidence": 0.8,
+          "description": "Need to buy new running shoes tomorrow with high priority",
+          "dueDate": "tomorrow",
+          "priority": "high"
+        },
+        {
+          "action": "complete",
+          "content": "Riverpod advanced patterns",
+          "category": "learning",
+          "confidence": 0.9
+        },
+        {
+          "action": "breakdown",
+          "content": "ACME Corp - API rebuild",
+          "category": "work",
+          "confidence": 0.9
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "edit",
+          "actual": "add",
+          "passed": false
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "running shoes",
+          "actual": "buy new running shoes",
+          "passed": true
+        },
+        {
+          "field": "changes.priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": null,
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Riverpod",
+          "actual": "Riverpod advanced patterns",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "breakdown",
+          "actual": "breakdown",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "ACME",
+          "actual": "ACME Corp - API rebuild",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": "action_exact('edit'): \u2717  actual='add'; changes.priority_exact('high'): \u2717  actual=None"
+    },
+    {
+      "id": "bd_mixed_07",
+      "category": "MIXED",
+      "difficulty": "medium",
+      "transcription": "ok so I finished reviewing the senior dev applications, need to schedule the technical interviews, and also set the team offsite planning to high priority",
+      "passed": false,
+      "latency_ms": 1788,
+      "expected_action_count": 3,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "edit",
+          "content": "Review senior dev applications",
+          "category": "work",
+          "confidence": 0.9,
+          "changes": {
+            "title": "Schedule technical interviews"
+          }
+        },
+        {
+          "action": "edit",
+          "content": "Team offsite planning",
+          "category": "work",
+          "confidence": 1.0,
+          "changes": {
+            "priority": "high"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "edit",
+          "passed": false
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "senior dev",
+          "actual": "Review senior dev applications",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "edit",
+          "passed": false
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "technical interviews",
+          "actual": "Team offsite planning",
+          "passed": false
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.5,
+          "actual": 1.0,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "EDIT",
+          "actual": "MISSING",
+          "passed": false
+        }
+      ],
+      "failure_reason": "action count: expected 3, got 2; action_exact('complete'): \u2717  actual='edit'; action_exact('add'): \u2717  actual='edit'; content_contains('technical interviews'): \u2717  actual='Team offsite planning'; action_exact('EDIT'): \u2717  actual='MISSING'"
+    },
+    {
+      "id": "bd_mixed_08",
+      "category": "MIXED",
+      "difficulty": "hard",
+      "transcription": "completed the drip irrigation setup, add mulching the garden beds, and move the garden spring prep under the home tasks",
+      "passed": true,
+      "latency_ms": 2007,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Set up drip irrigation",
+          "category": "personal",
+          "confidence": 0.9
+        },
+        {
+          "action": "add",
+          "content": "mulching the garden beds",
+          "category": "personal",
+          "confidence": 0.9,
+          "parentQuery": "Garden spring prep"
+        },
+        {
+          "action": "move",
+          "content": "Garden spring prep",
+          "category": "personal",
+          "confidence": 0.9,
+          "targetParentQuery": "Home"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "drip irrigation",
+          "actual": "Set up drip irrigation",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "mulch",
+          "actual": "mulching the garden beds",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "move",
+          "actual": "move",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "garden",
+          "actual": "Garden spring prep",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_09",
+      "category": "MIXED",
+      "difficulty": "medium",
+      "transcription": "add task to prepare interview questions and delete the onboarding docs task and complete the KPI targets",
+      "passed": true,
+      "latency_ms": 1534,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "prepare interview questions",
+          "category": "work",
+          "confidence": 0.8,
+          "description": "for hiring pipeline",
+          "parentQuery": "work - hiring pipeline"
+        },
+        {
+          "action": "delete",
+          "content": "onboarding docs",
+          "category": "work",
+          "confidence": 0.9
+        },
+        {
+          "action": "complete",
+          "content": "KPI targets",
+          "category": "work",
+          "confidence": 0.9,
+          "parentQuery": "work - Q1 Product Launch - Planning & Strategy"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "interview questions",
+          "actual": "prepare interview questions",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.8,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "onboarding docs",
+          "actual": "onboarding docs",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "KPI",
+          "actual": "KPI targets",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_mixed_10",
+      "category": "MIXED",
+      "difficulty": "medium",
+      "transcription": "I finished the Rust book and also delete the Advent of Code task and add a task to build a web server in Rust",
+      "passed": true,
+      "latency_ms": 1842,
+      "expected_action_count": 3,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Complete The Rust Book",
+          "category": "learning",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Learn Rust",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "delete",
+          "content": "Solve Advent of Code in Rust",
+          "category": "learning",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Learn Rust",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "build a web server in Rust",
+          "category": "learning",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": null,
+          "priority": null,
+          "parentQuery": "Learn Rust",
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "complete",
+          "actual": "complete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Rust",
+          "actual": "Complete The Rust Book",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "delete",
+          "actual": "delete",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "Advent of Code",
+          "actual": "Solve Advent of Code in Rust",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "web server",
+          "actual": "build a web server in Rust",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "learning",
+          "actual": "learning",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edge_01",
+      "category": "EDGE",
+      "difficulty": "hard",
+      "transcription": "um so like yeah I was thinking about um maybe doing something with the uh you know the thing at work but actually never mind",
+      "passed": true,
+      "latency_ms": 1217,
+      "expected_action_count": 0,
+      "actual_action_count": 0,
+      "actual_actions": [],
+      "checks": [],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edge_02",
+      "category": "EDGE",
+      "difficulty": "medium",
+      "transcription": "ok so add buy groceries no wait I mean buy organic vegetables and also um pick up dry cleaning tomorrow",
+      "passed": true,
+      "latency_ms": 1367,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "buy organic vegetables",
+          "category": "personal",
+          "confidence": 0.9
+        },
+        {
+          "action": "add",
+          "content": "pick up dry cleaning",
+          "category": "personal",
+          "confidence": 0.9,
+          "dueDate": "tomorrow"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "vegetables",
+          "actual": "buy organic vegetables",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "in",
+          "expected": [
+            "personal",
+            "health",
+            "home"
+          ],
+          "actual": "personal",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "dry cleaning",
+          "actual": "pick up dry cleaning",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "tomorrow",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edge_03",
+      "category": "EDGE",
+      "difficulty": "easy",
+      "transcription": "asdfghjkl the blarga flurp mumble jumble wabba",
+      "passed": true,
+      "latency_ms": 1263,
+      "expected_action_count": 0,
+      "actual_action_count": 0,
+      "actual_actions": [],
+      "checks": [],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edge_04",
+      "category": "EDGE",
+      "difficulty": "hard",
+      "transcription": "add buy milk and also add purchase milk and oh yeah get milk from the store",
+      "passed": true,
+      "latency_ms": 1257,
+      "expected_action_count": 1,
+      "actual_action_count": 1,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "buy milk",
+          "category": "personal",
+          "confidence": 0.95,
+          "description": "merge of 'buy milk', 'purchase milk', 'get milk' from the store",
+          "tags": [
+            "store"
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "milk",
+          "actual": "buy milk",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "personal",
+          "actual": "personal",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_edge_05",
+      "category": "EDGE",
+      "difficulty": "medium",
+      "transcription": "show me all my work tasks and list the completed ones",
+      "passed": false,
+      "latency_ms": 1475,
+      "expected_action_count": 0,
+      "actual_action_count": 3,
+      "actual_actions": [
+        {
+          "action": "complete",
+          "content": "Competitor analysis spreadsheet",
+          "category": "work",
+          "confidence": 0.9
+        },
+        {
+          "action": "complete",
+          "content": "Analyze survey results",
+          "category": "work",
+          "confidence": 0.9
+        },
+        {
+          "action": "complete",
+          "content": "Migration plan document",
+          "category": "work",
+          "confidence": 0.9
+        }
+      ],
+      "checks": [],
+      "failure_reason": "action count: expected 0, got 3"
+    },
+    {
+      "id": "bd_field_01",
+      "category": "FIELD_EXTRACTION",
+      "difficulty": "medium",
+      "transcription": "add a high priority task to fix the login bug due next friday and a medium priority task to update documentation due next monday",
+      "passed": true,
+      "latency_ms": 1157,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "fix the login bug",
+          "category": "work",
+          "confidence": 0.9,
+          "dueDate": "next friday",
+          "priority": "high"
+        },
+        {
+          "action": "add",
+          "content": "update documentation",
+          "category": "work",
+          "confidence": 0.9,
+          "dueDate": "next monday",
+          "priority": "medium"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "login bug",
+          "actual": "fix the login bug",
+          "passed": true
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": "high",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "next friday",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "documentation",
+          "actual": "update documentation",
+          "passed": true
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "medium",
+          "actual": "medium",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "next monday",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_field_02",
+      "category": "FIELD_EXTRACTION",
+      "difficulty": "medium",
+      "transcription": "add a task to prepare the sprint retro it should take about 2 hours and also add a task for writing test cases that will take about 4 hours",
+      "passed": true,
+      "latency_ms": 1359,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "prepare the sprint retro",
+          "category": "work",
+          "confidence": 0.9,
+          "estimatedHours": 2.0
+        },
+        {
+          "action": "add",
+          "content": "writing test cases",
+          "category": "work",
+          "confidence": 0.9,
+          "estimatedHours": 4.0
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "sprint retro",
+          "actual": "prepare the sprint retro",
+          "passed": true
+        },
+        {
+          "field": "estimatedHours",
+          "operator": "exact",
+          "expected": 2.0,
+          "actual": 2.0,
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "test cases",
+          "actual": "writing test cases",
+          "passed": true
+        },
+        {
+          "field": "estimatedHours",
+          "operator": "exact",
+          "expected": 4.0,
+          "actual": 4.0,
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_field_03",
+      "category": "FIELD_EXTRACTION",
+      "difficulty": "medium",
+      "transcription": "add workout routine under fitness with high priority and also add meal planning under nutrition with medium priority",
+      "passed": true,
+      "latency_ms": 1464,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "workout routine",
+          "category": "health",
+          "confidence": 0.9,
+          "description": "Add workout routine under Fitness",
+          "priority": "high",
+          "parentQuery": "Fitness"
+        },
+        {
+          "action": "add",
+          "content": "meal planning",
+          "category": "health",
+          "confidence": 0.9,
+          "description": "Add meal planning under Nutrition",
+          "priority": "medium",
+          "parentQuery": "Nutrition"
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "workout routine",
+          "actual": "workout routine",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "health",
+          "actual": "health",
+          "passed": true
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": "high",
+          "passed": true
+        },
+        {
+          "field": "parentQuery",
+          "operator": "contains",
+          "expected": "fitness",
+          "actual": "Fitness",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "meal planning",
+          "actual": "meal planning",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "health",
+          "actual": "health",
+          "passed": true
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "medium",
+          "actual": "medium",
+          "passed": true
+        },
+        {
+          "field": "parentQuery",
+          "operator": "contains",
+          "expected": "nutrition",
+          "actual": "Nutrition",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_field_04",
+      "category": "FIELD_EXTRACTION",
+      "difficulty": "hard",
+      "transcription": "add a task called weekly code review due every friday and tag it as recurring and urgent",
+      "passed": true,
+      "latency_ms": 1366,
+      "expected_action_count": 1,
+      "actual_action_count": 1,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "weekly code review",
+          "category": "work",
+          "confidence": 0.95,
+          "description": null,
+          "dueDate": "every friday",
+          "priority": "high",
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": [
+            "recurring",
+            "urgent"
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "code review",
+          "actual": "weekly code review",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "every friday",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.95,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    },
+    {
+      "id": "bd_field_05",
+      "category": "FIELD_EXTRACTION",
+      "difficulty": "medium",
+      "transcription": "add read the pragmatic programmer book to learning with low priority and add review architecture patterns to work with high priority due tomorrow",
+      "passed": true,
+      "latency_ms": 2000,
+      "expected_action_count": 2,
+      "actual_action_count": 2,
+      "actual_actions": [
+        {
+          "action": "add",
+          "content": "read the pragmatic programmer book",
+          "category": "learning",
+          "confidence": 0.85,
+          "description": null,
+          "dueDate": null,
+          "priority": "low",
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        },
+        {
+          "action": "add",
+          "content": "review architecture patterns",
+          "category": "work",
+          "confidence": 0.9,
+          "description": null,
+          "dueDate": "tomorrow",
+          "priority": "high",
+          "parentQuery": null,
+          "estimatedHours": null,
+          "tags": null,
+          "changes": null,
+          "targetParentQuery": null
+        }
+      ],
+      "checks": [
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "pragmatic programmer",
+          "actual": "read the pragmatic programmer book",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "learning",
+          "actual": "learning",
+          "passed": true
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "low",
+          "actual": "low",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.85,
+          "passed": true
+        },
+        {
+          "field": "action",
+          "operator": "exact",
+          "expected": "add",
+          "actual": "add",
+          "passed": true
+        },
+        {
+          "field": "content",
+          "operator": "contains",
+          "expected": "architecture patterns",
+          "actual": "review architecture patterns",
+          "passed": true
+        },
+        {
+          "field": "category",
+          "operator": "exact",
+          "expected": "work",
+          "actual": "work",
+          "passed": true
+        },
+        {
+          "field": "priority",
+          "operator": "exact",
+          "expected": "high",
+          "actual": "high",
+          "passed": true
+        },
+        {
+          "field": "dueDate",
+          "operator": "not_null",
+          "expected": true,
+          "actual": "tomorrow",
+          "passed": true
+        },
+        {
+          "field": "confidence",
+          "operator": "gte",
+          "expected": 0.7,
+          "actual": 0.9,
+          "passed": true
+        }
+      ],
+      "failure_reason": null
+    }
+  ],
+  "summary": {
+    "overall": {
+      "passed": 33,
+      "total": 40,
+      "accuracy": 0.825
+    },
+    "by_category": {
+      "ADD_ONLY": {
+        "passed": 4,
+        "total": 6,
+        "accuracy": 0.6667
+      },
+      "COMPLETE_ONLY": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0
+      },
+      "EDIT_ONLY": {
+        "passed": 4,
+        "total": 4,
+        "accuracy": 1.0
+      },
+      "DELETE_ONLY": {
+        "passed": 3,
+        "total": 3,
+        "accuracy": 1.0
+      },
+      "MOVE_ONLY": {
+        "passed": 2,
+        "total": 3,
+        "accuracy": 0.6667
+      },
+      "MIXED": {
+        "passed": 7,
+        "total": 10,
+        "accuracy": 0.7
+      },
+      "EDGE": {
+        "passed": 4,
+        "total": 5,
+        "accuracy": 0.8
+      },
+      "FIELD_EXTRACTION": {
+        "passed": 5,
+        "total": 5,
+        "accuracy": 1.0
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "passed": 10,
+        "total": 11,
+        "accuracy": 0.9091
+      },
+      "medium": {
+        "passed": 16,
+        "total": 20,
+        "accuracy": 0.8
+      },
+      "hard": {
+        "passed": 7,
+        "total": 9,
+        "accuracy": 0.7778
+      }
+    },
+    "performance": {
+      "latency_ms": {
+        "min": 1150,
+        "max": 2007,
+        "mean": 1537,
+        "p50": 1534,
+        "p95": 2000
+      }
+    }
+  }
+}

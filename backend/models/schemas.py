@@ -19,7 +19,7 @@ class WriteTaskStatus(str, Enum):
 
 class AgentProcessRequest(BaseModel):
     """Request schema for agent processing."""
-    transcription: str = Field(..., min_length=1, max_length=1000)
+    transcription: str = Field(..., min_length=1, max_length=5000)
     user_id: str = Field(..., min_length=1)
 
 
@@ -29,6 +29,57 @@ class AgentResolveRequest(BaseModel):
     selected_task_id: Optional[str] = None
     action: str = Field(..., min_length=1)
     data: Optional[Dict[str, Any]] = None
+
+
+class BrainDumpRequest(BaseModel):
+    """Request schema for brain dump voice processing."""
+    transcription: str = Field(..., min_length=1, max_length=5000)
+    user_id: str = Field(..., min_length=1)
+    category: Optional[str] = None  # Pre-fill category for all tasks
+    parent_id: Optional[str] = None  # Pre-fill parent for subtask mode
+
+
+class BrainDumpTaskProposal(BaseModel):
+    """A single proposed task from brain dump."""
+    id: str  # Client-generated temp ID
+    action: str = "add"  # "add", "complete", "edit", "delete", or "move"
+    content: str
+    description: Optional[str] = None
+    category: str
+    due_date: Optional[datetime] = None
+    priority: Optional[str] = None
+    parent_id: Optional[str] = None
+    labels: List[str] = []
+    changes: Optional[Dict[str, Any]] = None  # For edit actions (e.g. {"priority": "low"})
+    matched_task_id: Optional[str] = None  # Resolved existing task ID for complete/edit/delete/move
+    target_parent_id: Optional[str] = None  # MOVE: resolved destination parent UUID
+    target_content: Optional[str] = None  # MOVE: display name of target parent
+    confidence: Optional[float] = None  # Gemini's confidence in this proposal
+    tags: Optional[List[str]] = None
+    estimated_hours: Optional[float] = None
+    alternate_matches: Optional[List[Dict[str, str]]] = None  # [{id, title, category}, ...]
+
+
+class BrainDumpResponse(BaseModel):
+    """Response schema for brain dump processing."""
+    success: bool
+    tasks: List[BrainDumpTaskProposal] = []
+    transcription: str  # Echo back for display
+    message: Optional[str] = None
+
+
+class BrainDumpSubmitRequest(BaseModel):
+    """Request schema for committing reviewed brain dump tasks."""
+    user_id: str = Field(..., min_length=1)
+    tasks: List[BrainDumpTaskProposal]
+
+
+class BrainDumpSubmitResponse(BaseModel):
+    """Response schema for brain dump submission."""
+    success: bool
+    created_count: int
+    created_task_ids: List[str] = []
+    message: str
 
 
 class CreateTaskRequest(BaseModel):

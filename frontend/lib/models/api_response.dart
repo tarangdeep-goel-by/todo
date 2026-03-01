@@ -24,6 +24,145 @@ class AgentResponse {
   }
 }
 
+/// A proposed task from brain dump (not yet created)
+class BrainDumpTaskProposal {
+  String id;
+  String action; // "add", "complete", "edit", "delete", or "move"
+  String content;
+  String? description;
+  String category;
+  DateTime? dueDate;
+  String? priority;
+  String? parentId;
+  List<String> labels;
+  Map<String, dynamic>? changes; // For edit actions
+  String? matchedTaskId; // Resolved existing task ID for complete/edit/delete/move
+  String? targetParentId; // MOVE: resolved destination parent UUID
+  String? targetContent; // MOVE: display name of target parent
+  double? confidence; // Gemini's confidence in this proposal
+  List<String>? tags;
+  double? estimatedHours;
+  List<Map<String, dynamic>>? alternateMatches; // [{id, title, category}, ...]
+
+  BrainDumpTaskProposal({
+    required this.id,
+    this.action = 'add',
+    required this.content,
+    this.description,
+    required this.category,
+    this.dueDate,
+    this.priority,
+    this.parentId,
+    this.labels = const [],
+    this.changes,
+    this.matchedTaskId,
+    this.targetParentId,
+    this.targetContent,
+    this.confidence,
+    this.tags,
+    this.estimatedHours,
+    this.alternateMatches,
+  });
+
+  factory BrainDumpTaskProposal.fromJson(Map<String, dynamic> json) {
+    return BrainDumpTaskProposal(
+      id: json['id'] as String,
+      action: json['action'] as String? ?? 'add',
+      content: json['content'] as String,
+      description: json['description'] as String?,
+      category: json['category'] as String,
+      dueDate: json['due_date'] != null
+          ? DateTime.parse(json['due_date'] as String)
+          : null,
+      priority: json['priority'] as String?,
+      parentId: json['parent_id'] as String?,
+      labels: (json['labels'] as List?)?.cast<String>() ?? [],
+      changes: json['changes'] as Map<String, dynamic>?,
+      matchedTaskId: json['matched_task_id'] as String?,
+      targetParentId: json['target_parent_id'] as String?,
+      targetContent: json['target_content'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble(),
+      tags: (json['tags'] as List?)?.cast<String>(),
+      estimatedHours: (json['estimated_hours'] as num?)?.toDouble(),
+      alternateMatches: (json['alternate_matches'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'action': action,
+      'content': content,
+      'description': description,
+      'category': category,
+      'due_date': dueDate?.toIso8601String(),
+      'priority': priority,
+      'parent_id': parentId,
+      'labels': labels,
+      'changes': changes,
+      'matched_task_id': matchedTaskId,
+      'target_parent_id': targetParentId,
+      'target_content': targetContent,
+      'confidence': confidence,
+      'tags': tags,
+      'estimated_hours': estimatedHours,
+      'alternate_matches': alternateMatches,
+    };
+  }
+}
+
+/// Response from /api/agent/braindump
+class BrainDumpResponse {
+  final bool success;
+  final List<BrainDumpTaskProposal> tasks;
+  final String transcription;
+  final String? message;
+
+  BrainDumpResponse({
+    required this.success,
+    required this.tasks,
+    required this.transcription,
+    this.message,
+  });
+
+  factory BrainDumpResponse.fromJson(Map<String, dynamic> json) {
+    return BrainDumpResponse(
+      success: json['success'] as bool,
+      tasks: (json['tasks'] as List)
+          .map((t) => BrainDumpTaskProposal.fromJson(t as Map<String, dynamic>))
+          .toList(),
+      transcription: json['transcription'] as String,
+      message: json['message'] as String?,
+    );
+  }
+}
+
+/// Response from /api/agent/braindump/submit
+class BrainDumpSubmitResponse {
+  final bool success;
+  final int createdCount;
+  final List<String> createdTaskIds;
+  final String message;
+
+  BrainDumpSubmitResponse({
+    required this.success,
+    required this.createdCount,
+    required this.createdTaskIds,
+    required this.message,
+  });
+
+  factory BrainDumpSubmitResponse.fromJson(Map<String, dynamic> json) {
+    return BrainDumpSubmitResponse(
+      success: json['success'] as bool,
+      createdCount: json['created_count'] as int,
+      createdTaskIds: (json['created_task_ids'] as List).cast<String>(),
+      message: json['message'] as String,
+    );
+  }
+}
+
 /// Request to create a task
 class CreateTaskRequest {
   final String userId;

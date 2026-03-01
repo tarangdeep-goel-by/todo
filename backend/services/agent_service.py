@@ -1,9 +1,10 @@
 """Agent service for processing voice commands."""
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List
+import uuid
 from .gemini_service import GeminiService
 from .task_service import TaskService
-from models.schemas import AgentResponse
+from models.schemas import AgentResponse, BrainDumpResponse, BrainDumpTaskProposal, BrainDumpSubmitResponse
 from utils.date_parser import parse_flexible_date
 
 
@@ -150,7 +151,9 @@ class AgentService:
         task_service = TaskService(db)
 
         # Check if agent suggests creating new branch
-        if params.get('needsNewBranch'):
+        valid_domains = {"work", "personal", "health", "learning", "projects"}
+        suggested = (params.get('suggestedBranchName') or '').lower().strip()
+        if params.get('needsNewBranch') and suggested not in valid_domains:
             # Get current categories
             current_categories = await task_service.get_categories(user_id)
             category_count = len(current_categories)
@@ -185,11 +188,36 @@ class AgentService:
             )
 
         # Normal task creation (agent determined category + parent)
+        # Use suggestedBranchName as category if it's a valid domain and category isn't
+        category = (params.get('category') or '').lower().strip()
+        if category not in valid_domains and suggested in valid_domains:
+            category = suggested
+
+        # If category is still empty/invalid after all fallbacks, ask user to pick
+        if category not in valid_domains:
+            current_categories = await task_service.get_categories(user_id)
+            return AgentResponse(
+                success=False,
+                message=f"Which category should '{params['title']}' go in?",
+                type="question",
+                data={
+                    "intent": "ADD",
+                    "action": "select_category",
+                    "suggested_title": params['title'],
+                    "description": params.get('description'),
+                    "priority": params.get('priority'),
+                    "dueDate": params.get('dueDate'),
+                    "suggestedParent": params.get('suggestedParent'),
+                    "reasoning": params.get('reasoning', ''),
+                    "current_categories": current_categories,
+                }
+            )
+
         parsed_due_date = parse_flexible_date(params.get('dueDate'))
         task = await task_service.create_task(
             user_id=user_id,
             title=params['title'],
-            category=params['category'],
+            category=category or params['category'],
             parent_id=params.get('suggestedParent'),
             transcription=params['title'],
             ai_placement={
@@ -632,6 +660,35 @@ class AgentService:
                 }
             )
 
+        elif action == "select_category":
+            title = data.get('suggested_title', '')
+            category = data.get('selected_category', '')
+            if not title or not category:
+                return AgentResponse(success=False, message="Missing title or category", type="error")
+
+            parsed_due_date = parse_flexible_date(data.get('dueDate'))
+            task = await task_service.create_task(
+                user_id=user_id,
+                title=title,
+                category=category.lower().strip(),
+                parent_id=data.get('suggestedParent'),
+                transcription=title,
+                description=data.get('description'),
+                priority=data.get('priority'),
+                due_date=parsed_due_date,
+                ai_placement={
+                    "suggested_parent": data.get('suggestedParent'),
+                    "confidence": 0.9,
+                    "reasoning": data.get('reasoning', ''),
+                },
+            )
+            return AgentResponse(
+                success=True,
+                message=f"Created '{task.title}' in {task.category.title()}",
+                type="confirmation",
+                data={"task_id": task.id, "title": task.title, "category": task.category}
+            )
+
         elif action == "create_category":
             title = data.get('suggested_title', '')
             category = data.get('suggested_category', '')
@@ -664,6 +721,310 @@ class AgentService:
             )
 
         return AgentResponse(success=False, message=f"Unknown action: {action}", type="error")
+
+    async def process_brain_dump(
+        self,
+        transcription: str,
+        user_id: str,
+        db: AsyncSession,
+        category: str | None = None,
+        parent_id: str | None = None,
+    ) -> BrainDumpResponse:
+        """
+        Process a voice brain dump into task proposals for user review.
+
+        Unlike process_voice_command() which auto-executes, this returns
+        structured task proposals that the user can review, edit, and
+        submit separately.
+
+        Args:
+            transcription: Raw voice transcription
+            user_id: User ID
+            db: Database session
+            category: Optional pre-fill category for all tasks
+            parent_id: Optional parent task ID for subtask mode
+
+        Returns:
+            BrainDumpResponse with list of proposed tasks
+        """
+        print(f"\n{'='*60}")
+        print(f"[Agent] BRAIN DUMP: transcription='{transcription}', user_id='{user_id}', parent_id={parent_id}")
+
+        task_service = TaskService(db)
+        tree_context = await task_service.build_full_tree_context(user_id)
+
+        # If parent_id provided (subtask mode), look up parent for default category
+        parent_category = None
+        if parent_id:
+            parent_task = await task_service.get_task(parent_id)
+            if parent_task:
+                parent_category = parent_task.category
+                print(f"[Agent] subtask mode: parent='{parent_task.title}', category='{parent_category}'")
+
+        # Get task proposals from Gemini
+        raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context)
+
+        if not raw_tasks:
+            return BrainDumpResponse(
+                success=False,
+                tasks=[],
+                transcription=transcription,
+                message="Could not extract any tasks. Try rephrasing.",
+            )
+
+        # Deduplicate: Gemini sometimes returns identical entries
+        seen = set()
+        deduped = []
+        for raw in raw_tasks:
+            key = (raw.get("action", "add").lower(), raw.get("content", "").strip().lower())
+            if key not in seen:
+                seen.add(key)
+                deduped.append(raw)
+            else:
+                print(f"[Agent] brain dump dedup: dropped duplicate '{key[1]}' ({key[0]})")
+        raw_tasks = deduped
+
+        # Get available categories for validation
+        available_categories = await task_service.get_categories(user_id)
+
+        # Convert raw Gemini output to task proposals
+        proposals: List[BrainDumpTaskProposal] = []
+        for raw in raw_tasks:
+            content = raw.get("content", "").strip()
+            if not content:
+                continue
+
+            action = raw.get("action", "add").lower()
+
+            confidence = raw.get("confidence", 0.5)
+            if confidence < 0.6:
+                print(f"[Agent] brain dump skipping low-confidence ({confidence}): '{content}'")
+                continue
+
+            task_category = category or parent_category or raw.get("category", "personal")
+
+            # For actions on existing tasks, resolve via fuzzy search
+            matched_task_id = None
+            alternate_matches = None
+            if action in ("complete", "edit", "delete", "move", "breakdown"):
+                matched = await task_service.search_tasks(user_id, content)
+                if matched:
+                    matched_task_id = str(matched[0].id)
+                    task_category = matched[0].category or task_category
+                    print(f"[Agent] brain dump resolved '{content}' → task '{matched[0].title}' ({matched_task_id})")
+                    if len(matched) > 1:
+                        alternate_matches = [
+                            {"id": str(m.id), "title": m.title, "category": m.category}
+                            for m in matched[1:4]  # top 3 alternatives
+                        ]
+
+                    # For COMPLETE: check active children and note in description
+                    if action == "complete":
+                        children = await task_service.get_tasks(user_id, parent_id=matched_task_id)
+                        active_children = [c for c in children if c.status == "active"]
+                        if active_children:
+                            child_note = f"Will also complete {len(active_children)} sub-task{'s' if len(active_children) != 1 else ''}"
+                            existing_desc = raw.get("description") or ""
+                            raw["description"] = f"{child_note}. {existing_desc}".strip().rstrip(".")
+                else:
+                    print(f"[Agent] brain dump could not resolve '{content}' for {action}, skipping")
+                    continue
+
+            # BREAKDOWN: expand into ADD subtask proposals inline
+            if action == "breakdown" and matched_task_id:
+                matched_task = await task_service.get_task(matched_task_id)
+                if matched_task:
+                    subtask_titles = await self.gemini.generate_subtasks(
+                        matched_task.title, matched_task.description, tree_context)
+                    for sub in subtask_titles:
+                        proposals.append(BrainDumpTaskProposal(
+                            id=str(uuid.uuid4()), action="add", content=sub,
+                            category=task_category.lower(), parent_id=matched_task_id))
+                continue  # don't append raw breakdown proposal
+
+            # MOVE: resolve target parent
+            target_parent_id = None
+            target_content = None
+            if action == "move":
+                target_query = raw.get("targetParentQuery")
+                if target_query:
+                    targets = await task_service.search_tasks(user_id, target_query)
+                    if targets:
+                        target_parent_id = str(targets[0].id)
+                        target_content = targets[0].title
+                    else:
+                        print(f"[Agent] brain dump could not resolve move target '{target_query}', skipping")
+                        continue
+                else:
+                    target_content = "top-level"  # move to root
+
+            # Resolve parent for ADD proposals
+            resolved_parent_id = None
+            if action == "add":
+                if parent_id:
+                    # Subtask mode: default to the pre-filled parent
+                    resolved_parent_id = parent_id
+                # Gemini's parentQuery can still override for relative nesting
+                parent_query = raw.get("parentQuery")
+                if parent_query:
+                    parent_tasks = await task_service.search_tasks(user_id, parent_query)
+                    if parent_tasks:
+                        resolved_parent_id = str(parent_tasks[0].id)
+
+            proposals.append(BrainDumpTaskProposal(
+                id=str(uuid.uuid4()),
+                action=action,
+                content=content,
+                description=raw.get("description"),
+                category=task_category.lower(),
+                due_date=parse_flexible_date(raw.get("dueDate")),
+                priority=raw.get("priority"),
+                parent_id=resolved_parent_id,
+                labels=raw.get("labels", []),
+                changes=raw.get("changes"),
+                matched_task_id=matched_task_id,
+                target_parent_id=target_parent_id,
+                target_content=target_content,
+                confidence=confidence,
+                tags=raw.get("tags"),
+                estimated_hours=raw.get("estimatedHours"),
+                alternate_matches=alternate_matches,
+            ))
+
+        print(f"[Agent] brain dump produced {len(proposals)} task proposals")
+
+        return BrainDumpResponse(
+            success=True,
+            tasks=proposals,
+            transcription=transcription,
+            message=f"Found {len(proposals)} tasks",
+        )
+
+    async def _execute_action(
+        self,
+        proposal: BrainDumpTaskProposal,
+        user_id: str,
+        task_service: TaskService,
+    ) -> dict:
+        """Execute a single proposal action. Shared by submit_brain_dump().
+
+        Returns:
+            dict with {type, count, task_id?} describing what happened.
+        """
+        import time as _time
+        action = proposal.action or "add"
+        _t0 = _time.monotonic()
+        print(f"[Agent] _execute_action START: action={action} content='{proposal.content}' matched={proposal.matched_task_id}")
+
+        if action == "complete" and proposal.matched_task_id:
+            count = await task_service.complete_task_with_children(proposal.matched_task_id)
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: completed '{proposal.content}' + {count - 1} children")
+            return {"type": "completed", "count": count}
+
+        if action == "edit" and proposal.matched_task_id:
+            changes = dict(proposal.changes or {})
+            if 'dueDate' in changes:
+                changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
+            if changes:
+                await task_service.update_task(proposal.matched_task_id, **changes)
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: edited '{proposal.content}': {changes}")
+            return {"type": "edited", "count": 1}
+
+        if action == "delete" and proposal.matched_task_id:
+            count = await task_service.delete_task_with_children(proposal.matched_task_id)
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: deleted '{proposal.content}' + {count - 1} children")
+            return {"type": "deleted", "count": count}
+
+        if action == "move" and proposal.matched_task_id:
+            if proposal.target_parent_id:
+                target = await task_service.get_task(proposal.target_parent_id)
+                if not target:
+                    raise ValueError(f"Move target '{proposal.target_parent_id}' no longer exists")
+            await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
+            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: moved '{proposal.content}' → {proposal.target_parent_id}")
+            return {"type": "moved", "count": 1}
+
+        # Default: ADD — auto-create category if needed
+        available_categories = await task_service.get_categories(user_id)
+        cat = proposal.category.lower()
+        if cat not in available_categories:
+            if len(available_categories) < 5:
+                await task_service.create_category(user_id, cat)
+            else:
+                cat = "personal"  # at limit, fall back
+        task = await task_service.create_task(
+            user_id=user_id,
+            title=proposal.content,
+            category=cat,
+            parent_id=proposal.parent_id,
+            transcription=proposal.content,
+            description=proposal.description,
+            due_date=proposal.due_date,
+            priority=proposal.priority,
+            tags=proposal.tags,
+            estimated_hours=proposal.estimated_hours,
+            ai_placement={
+                "confidence": proposal.confidence or 0.9,
+                "reasoning": "Brain dump voice input",
+            },
+        )
+        print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: created '{task.title}' ({task.id})")
+        return {"type": "created", "count": 1, "task_id": task.id}
+
+    async def submit_brain_dump(
+        self,
+        user_id: str,
+        tasks: List[BrainDumpTaskProposal],
+        db: AsyncSession,
+    ) -> BrainDumpSubmitResponse:
+        """
+        Commit reviewed brain dump tasks to the database.
+
+        Args:
+            user_id: User ID
+            tasks: List of reviewed/edited task proposals
+            db: Database session
+
+        Returns:
+            BrainDumpSubmitResponse with created task IDs
+        """
+        print(f"\n{'='*60}")
+        print(f"[Agent] SUBMIT BRAIN DUMP: {len(tasks)} tasks for user '{user_id}'")
+
+        task_service = TaskService(db)
+        created_ids: List[str] = []
+        counts: Dict[str, int] = {}
+
+        for proposal in tasks:
+            try:
+                result = await self._execute_action(proposal, user_id, task_service)
+                rtype = result["type"]
+                counts[rtype] = counts.get(rtype, 0) + result["count"]
+                if result.get("task_id"):
+                    created_ids.append(result["task_id"])
+            except Exception as e:
+                print(f"[Agent] failed to process '{proposal.content}' ({proposal.action}): {e}")
+
+        total = sum(counts.values())
+        if total == 0:
+            return BrainDumpSubmitResponse(
+                success=False,
+                created_count=0,
+                created_task_ids=[],
+                message="Failed to process any tasks",
+            )
+
+        # Build summary message with actual counts (including cascaded children)
+        label_map = {"created": "Created", "completed": "completed", "edited": "edited", "deleted": "deleted", "moved": "moved"}
+        parts = [f"{label_map.get(k, k)} {v}" for k, v in counts.items()]
+        message = ", ".join(parts) + f" task{'s' if total != 1 else ''}"
+
+        return BrainDumpSubmitResponse(
+            success=True,
+            created_count=len(created_ids),
+            created_task_ids=created_ids,
+            message=message,
+        )
 
     async def _handle_breakdown(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
         """Handle BREAKDOWN intent — generate subtask suggestions for a task."""

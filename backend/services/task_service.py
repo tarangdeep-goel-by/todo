@@ -52,6 +52,7 @@ class TaskService:
         )
 
         self.db.add(task)
+        await self.db.flush()
 
         # New child under a completed parent → activate ancestor chain
         if parent_id:
@@ -61,14 +62,25 @@ class TaskService:
         await self.db.refresh(task)
         return task
 
+    VALID_DOMAINS = {"work", "personal", "health", "learning", "projects"}
+
     async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
-        """Look up category ID from category name string."""
+        """Look up category ID from category name string. Auto-creates valid domains."""
+        name = category.lower().strip()
         result = await self.db.execute(
             select(Category.id)
-            .where(Category.user_id == user_id, Category.name == category.lower().strip())
+            .where(Category.user_id == user_id, Category.name == name)
         )
         row = result.scalar_one_or_none()
-        return row
+        if row:
+            return row
+
+        # Auto-create if it's one of the 5 valid domains
+        if name in self.VALID_DOMAINS:
+            cat = await self.create_category(user_id, name)
+            return cat.id
+
+        return None
 
     async def get_task(self, task_id: str) -> Optional[Task]:
         """Get task by ID."""
@@ -106,6 +118,16 @@ class TaskService:
         task = await self.get_task(task_id)
         if not task:
             return None
+
+        # Guard against circular parent moves
+        new_parent_id = updates.get('parent_id')
+        if new_parent_id is not None:
+            if new_parent_id == task_id:
+                raise ValueError(f"Cannot move task under itself")
+            descendants = await self._get_all_descendants(task_id)
+            descendant_ids = {d.id for d in descendants}
+            if new_parent_id in descendant_ids:
+                raise ValueError(f"Cannot move task under its own descendant")
 
         for key, value in updates.items():
             if hasattr(task, key):
@@ -166,8 +188,9 @@ class TaskService:
         return len(all_ids)
 
     async def _get_all_descendants(self, task_id: str) -> List[Task]:
-        """Get all descendants recursively."""
+        """Get all descendants recursively (cycle-safe)."""
         all_descendants = []
+        seen = {task_id}
         to_process = [task_id]
 
         while to_process:
@@ -178,8 +201,10 @@ class TaskService:
             children = list(result.scalars().all())
 
             for child in children:
-                all_descendants.append(child)
-                to_process.append(child.id)
+                if child.id not in seen:
+                    seen.add(child.id)
+                    all_descendants.append(child)
+                    to_process.append(child.id)
 
         return all_descendants
 
