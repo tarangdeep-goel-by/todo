@@ -37,13 +37,13 @@ class RambleSession:
             ),
         )
 
-        print("[Ramble] Opening Gemini Live session...")
+        logger.info("Opening Gemini Live session...")
         self._context_manager = self.client.aio.live.connect(
             model="gemini-2.5-flash-native-audio-latest",
             config=config,
         )
         self._session = await self._context_manager.__aenter__()
-        print("[Ramble] Gemini Live session opened successfully")
+        logger.info("Gemini Live session opened successfully")
 
     async def send_audio(self, pcm_base64: str) -> None:
         """Send a chunk of base64-encoded 16kHz PCM audio."""
@@ -60,7 +60,7 @@ class RambleSession:
         """Listen for Gemini Live API events. Calls on_message(dict) for each."""
         if not self._session:
             return
-        print("[Ramble] Starting receive loop")
+        logger.info("Starting receive loop")
         try:
             async for event in self._session.receive():
                 if not event.server_content:
@@ -71,21 +71,21 @@ class RambleSession:
                     text = event.server_content.input_transcription.text
                     if text:
                         self._accumulated_transcription += text
-                        print(f"[Ramble] Input transcription chunk: {text[:200]}")
+                        logger.debug("Input transcription chunk: %s", text[:200])
                         await on_message({
                             "type": "transcription",
                             "text": self._accumulated_transcription,
                         })
 
-            print("[Ramble] Receive loop ended normally")
+            logger.info("Receive loop ended normally")
         except asyncio.CancelledError:
-            print("[Ramble] Receive loop cancelled")
+            logger.info("Receive loop cancelled")
         except Exception as e:
             err_str = str(e)
             if "1000 (OK)" in err_str or "1001" in err_str:
-                print("[Ramble] Receive loop closed normally")
+                logger.info("Receive loop closed normally")
             else:
-                print(f"[Ramble] Receive loop error: {e}")
+                logger.error("Receive loop error: %s", e)
                 await on_message({"type": "error", "message": err_str})
 
     async def close(self) -> None:
@@ -110,10 +110,10 @@ class RambleSession:
 
         # If already Latin script, return as-is
         if all(ord(c) < 256 or c in ' \n\t' for c in raw):
-            print(f"[Ramble] Transcript already Latin: {raw[:100]}")
+            logger.debug("Transcript already Latin: %s", raw[:100])
             return raw
 
-        print(f"[Ramble] Transliterating to English: {raw[:100]}...")
+        logger.info("Transliterating to English: %s...", raw[:100])
         try:
             response = self.client.models.generate_content(
                 model="gemini-2.5-flash-lite",
@@ -121,8 +121,8 @@ class RambleSession:
                          f"Output ONLY the transliterated text, nothing else. No quotes, no explanation.\n\n{raw}",
             )
             result = response.text.strip()
-            print(f"[Ramble] Transliterated: {result[:200]}")
+            logger.debug("Transliterated: %s", result[:200])
             return result
         except Exception as e:
-            print(f"[Ramble] Transliteration failed: {e}, returning raw")
+            logger.error("Transliteration failed: %s, returning raw", e)
             return raw

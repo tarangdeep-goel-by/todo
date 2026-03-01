@@ -1,9 +1,12 @@
 """Gemini AI service for transcription and intent detection."""
+import logging
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 import json
+
+logger = logging.getLogger(__name__)
 
 
 # ──────────────────────────────────────────────
@@ -272,12 +275,12 @@ More examples:
                 raise ValueError(f"Expected JSON array, got {type(result)}")
 
             for i, intent in enumerate(result):
-                print(f"[Gemini] intent[{i}]: {intent.get('intent')} | confidence: {intent.get('confidence')} | params: {intent.get('parameters')}")
+                logger.info("intent[%d]: %s | confidence: %s", i, intent.get('intent'), intent.get('confidence'))
 
             return result
 
         except Exception as e:
-            print(f"[Gemini] intent detection FAILED: {e}")
+            logger.error("intent detection FAILED: %s", e)
             # Return UNKNOWN intent on failure
             return [{
                 "intent": "UNKNOWN",
@@ -393,12 +396,12 @@ Common mistakes to avoid:
                         task["changes"] = changes
 
             for i, task in enumerate(result):
-                print(f"[Gemini] brain_dump[{i}]: content='{task.get('content')}' | category='{task.get('category')}' | due='{task.get('dueDate')}'")
+                logger.info("brain_dump[%d]: content='%s' | category='%s'", i, task.get('content'), task.get('category'))
 
             return result
 
         except Exception as e:
-            print(f"[Gemini] brain dump detection FAILED: {e}")
+            logger.error("brain dump detection FAILED: %s", e)
             return []
 
     async def generate_subtasks(self, task_title: str, task_description: str | None = None, context: str = "") -> List[str]:
@@ -442,9 +445,9 @@ Respond ONLY with a valid JSON array of strings. Example:
             if not isinstance(result, list) or not all(isinstance(s, str) for s in result):
                 raise ValueError("Expected JSON array of strings")
 
-            print(f"[Gemini] generated {len(result)} subtask suggestions for '{task_title}'")
+            logger.info("generated %d subtask suggestions for '%s'", len(result), task_title)
             return result
 
         except Exception as e:
-            print(f"[Gemini] subtask generation FAILED: {e}")
+            logger.error("subtask generation FAILED: %s", e)
             return []
