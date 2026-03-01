@@ -1,11 +1,14 @@
 """Agent service for processing voice commands."""
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Optional
 import uuid
 from .gemini_service import GeminiService
 from .task_service import TaskService
 from models.schemas import AgentResponse, BrainDumpResponse, BrainDumpTaskProposal, BrainDumpSubmitResponse
 from utils.date_parser import parse_flexible_date
+
+logger = logging.getLogger(__name__)
 
 
 class AgentService:
@@ -35,27 +38,26 @@ class AgentService:
         Returns:
             AgentResponse with success, message, type, and data
         """
-        print(f"\n{'='*60}")
-        print(f"[Agent] INPUT: transcription='{transcription}', user_id='{user_id}'")
+        logger.info("process_voice_command: transcription='%s', user_id='%s'", transcription, user_id)
 
         # Step 1: Build FULL task tree context (both work and personal)
         task_service = TaskService(db)
         tree_context = await task_service.build_full_tree_context(user_id)
-        print(f"[Agent] tree context: {len(tree_context)} chars")
+        logger.debug("tree context: %d chars", len(tree_context))
 
         # Step 2: Detect intent(s) — returns a list
         intent_list = await self.gemini.detect_intent(transcription, tree_context)
-        print(f"[Agent] received {len(intent_list)} intent(s)")
+        logger.info("received %d intent(s)", len(intent_list))
 
         # Step 3: Execute each intent sequentially, aggregate results
         results: List[AgentResponse] = []
         for i, intent_data in enumerate(intent_list):
-            print(f"[Agent] processing intent {i+1}/{len(intent_list)}")
-            result = await self._execute_single_intent(intent_data, user_id, db)
+            logger.debug("processing intent %d/%d", i + 1, len(intent_list))
+            result = await self._execute_single_intent(intent_data, user_id, db, task_service)
 
             # If any intent returns a question, stop and return it immediately
             if result.type == "question":
-                print(f"[Agent] intent {i+1} returned question — stopping")
+                logger.debug("intent %d returned question — stopping", i + 1)
                 return result
 
             results.append(result)
@@ -79,12 +81,13 @@ class AgentService:
         self,
         intent_data: Dict,
         user_id: str,
-        db: AsyncSession
+        db: AsyncSession,
+        task_service: TaskService,
     ) -> AgentResponse:
         """Execute a single intent and return its response."""
         # Validate confidence
         if intent_data.get('confidence', 0) < 0.6:
-            print(f"[Agent] LOW CONFIDENCE: {intent_data.get('confidence')} — rejecting")
+            logger.warning("low confidence %.2f — rejecting", intent_data.get('confidence', 0))
             return AgentResponse(
                 success=False,
                 message="Not sure what you meant. Please try rephrasing.",
@@ -94,22 +97,22 @@ class AgentService:
 
         intent = intent_data['intent']
         params = intent_data.get('parameters', {})
-        print(f"[Agent] ROUTING: intent={intent}")
+        logger.info("routing intent=%s", intent)
 
         if intent == "ADD":
-            return await self._handle_add(params, user_id, db)
+            return await self._handle_add(params, user_id, db, task_service)
         elif intent == "COMPLETE":
-            return await self._handle_complete(params, user_id, db)
+            return await self._handle_complete(params, user_id, db, task_service)
         elif intent == "DELETE":
-            return await self._handle_delete(params, user_id, db)
+            return await self._handle_delete(params, user_id, db, task_service)
         elif intent == "EDIT":
-            return await self._handle_edit(params, user_id, db)
+            return await self._handle_edit(params, user_id, db, task_service)
         elif intent == "MOVE":
-            return await self._handle_move(params, user_id, db)
+            return await self._handle_move(params, user_id, db, task_service)
         elif intent == "BREAKDOWN":
-            return await self._handle_breakdown(params, user_id, db)
+            return await self._handle_breakdown(params, user_id, db, task_service)
         elif intent == "QUERY":
-            return await self._handle_query(params, user_id, db)
+            return await self._handle_query(params, user_id, db, task_service)
         else:
             return AgentResponse(
                 success=False,
@@ -146,9 +149,8 @@ class AgentService:
             data=all_data
         )
 
-    async def _handle_add(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+    async def _handle_add(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle ADD intent."""
-        task_service = TaskService(db)
 
         # Check if agent suggests creating new branch
         valid_domains = {"work", "personal", "health", "learning", "projects"}
@@ -252,9 +254,9 @@ class AgentService:
             }
         )
 
-    async def _resolve_tasks(self, params: Dict, user_id: str, db: AsyncSession) -> List:
+    async def _resolve_tasks(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService | None = None) -> List:
         """Resolve tasks from Gemini's matchedTasks IDs, falling back to fuzzy search."""
-        task_service = TaskService(db)
+        task_service = task_service or TaskService(db)
 
         # Try Gemini's direct ID matches first
         matched_ids = params.get('matchedTasks', [])
@@ -265,47 +267,66 @@ class AgentService:
                 if task and task.status == 'active':
                     tasks.append(task)
             if tasks:
-                print(f"[Agent] resolved {len(tasks)} tasks via matchedTasks IDs")
+                logger.debug("resolved %d tasks via matchedTasks IDs", len(tasks))
                 return tasks
 
         # Fallback to fuzzy search
         query = params.get('taskQuery', '')
         if query:
             tasks = await task_service.search_tasks(user_id, query)
-            print(f"[Agent] fuzzy search for '{query}' found {len(tasks)} tasks")
+            logger.debug("fuzzy search for '%s' found %d tasks", query, len(tasks))
             return tasks
 
         return []
 
-    async def _handle_complete(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
-        """Handle COMPLETE intent."""
-        task_service = TaskService(db)
-        query = params.get('taskQuery', '')
+    async def _resolve_and_disambiguate(
+        self,
+        params: Dict,
+        user_id: str,
+        db: AsyncSession,
+        action: str,
+        intent: str,
+        extra_data: Dict | None = None,
+        task_service: TaskService | None = None,
+    ) -> Tuple[Optional[object], Optional[AgentResponse]]:
+        """Resolve tasks and handle empty/ambiguous results.
 
-        matched_tasks = await self._resolve_tasks(params, user_id, db)
+        Returns (task, None) on single match, or (None, AgentResponse) if
+        the caller should return early (no match or disambiguation needed).
+        """
+        query = params.get('taskQuery', '')
+        matched_tasks = await self._resolve_tasks(params, user_id, db, task_service)
 
         if not matched_tasks:
-            return AgentResponse(
+            return None, AgentResponse(
                 success=False,
                 message=f"No tasks found matching '{query}'",
                 type="error",
-                data={"taskQuery": query}
+                data={"taskQuery": query},
             )
 
         if len(matched_tasks) > 1:
-            return AgentResponse(
+            data = {
+                "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
+                "action": action,
+                "intent": intent,
+            }
+            if extra_data:
+                data.update(extra_data)
+            return None, AgentResponse(
                 success=False,
                 message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
                 type="question",
-                data={
-                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
-                    "action": "complete",
-                    "intent": "COMPLETE"
-                }
+                data=data,
             )
 
-        # Complete the task (and children if any)
-        task = matched_tasks[0]
+        return matched_tasks[0], None
+
+    async def _handle_complete(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
+        """Handle COMPLETE intent."""
+        task, early = await self._resolve_and_disambiguate(params, user_id, db, "complete", "COMPLETE", task_service=task_service)
+        if early:
+            return early
         children = await task_service.get_tasks(user_id, parent_id=task.id)
         active_children = [c for c in children if c.status == "active"]
 
@@ -326,35 +347,11 @@ class AgentService:
             data={"task_id": task.id, "title": task.title}
         )
 
-    async def _handle_delete(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+    async def _handle_delete(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle DELETE intent."""
-        task_service = TaskService(db)
-        query = params.get('taskQuery', '')
-
-        matched_tasks = await self._resolve_tasks(params, user_id, db)
-
-        if not matched_tasks:
-            return AgentResponse(
-                success=False,
-                message=f"No tasks found matching '{query}'",
-                type="error",
-                data={"taskQuery": query}
-            )
-
-        if len(matched_tasks) > 1:
-            return AgentResponse(
-                success=False,
-                message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
-                type="question",
-                data={
-                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
-                    "action": "delete",
-                    "intent": "DELETE"
-                }
-            )
-
-        # Hard delete the task and descendants
-        task = matched_tasks[0]
+        task, early = await self._resolve_and_disambiguate(params, user_id, db, "delete", "DELETE", task_service=task_service)
+        if early:
+            return early
         count = await task_service.delete_task_with_children(task.id)
 
         return AgentResponse(
@@ -364,36 +361,15 @@ class AgentService:
             data={"task_id": task.id, "deleted_count": count}
         )
 
-    async def _handle_edit(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+    async def _handle_edit(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle EDIT intent."""
-        task_service = TaskService(db)
-        query = params.get('taskQuery', '')
-
-        matched_tasks = await self._resolve_tasks(params, user_id, db)
-
-        if not matched_tasks:
-            return AgentResponse(
-                success=False,
-                message=f"No tasks found matching '{query}'",
-                type="error",
-                data={"taskQuery": query}
-            )
-
-        if len(matched_tasks) > 1:
-            return AgentResponse(
-                success=False,
-                message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
-                type="question",
-                data={
-                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
-                    "action": "edit",
-                    "intent": "EDIT",
-                    "changes": params.get('changes', {})
-                }
-            )
-
-        # Update the task
-        task = matched_tasks[0]
+        task, early = await self._resolve_and_disambiguate(
+            params, user_id, db, "edit", "EDIT",
+            extra_data={"changes": params.get('changes', {})},
+            task_service=task_service,
+        )
+        if early:
+            return early
         changes = params.get('changes', {})
         if 'dueDate' in changes:
             changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
@@ -406,35 +382,18 @@ class AgentService:
             data={"task_id": task.id, "changes": changes}
         )
 
-    async def _handle_move(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+    async def _handle_move(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle MOVE intent."""
-        task_service = TaskService(db)
-        query = params.get('taskQuery', '')
         target_parent_query = params.get('targetParentQuery')
         target_parent_id = params.get('targetParentId')
 
-        matched_tasks = await self._resolve_tasks(params, user_id, db)
-
-        if not matched_tasks:
-            return AgentResponse(
-                success=False,
-                message=f"No tasks found matching '{query}'",
-                type="error",
-                data={"taskQuery": query}
-            )
-
-        if len(matched_tasks) > 1:
-            return AgentResponse(
-                success=False,
-                message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
-                type="question",
-                data={
-                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
-                    "action": "move",
-                    "intent": "MOVE",
-                    "targetParentQuery": target_parent_query
-                }
-            )
+        task, early = await self._resolve_and_disambiguate(
+            params, user_id, db, "move", "MOVE",
+            extra_data={"targetParentQuery": target_parent_query},
+            task_service=task_service,
+        )
+        if early:
+            return early
 
         # If target parent specified, search for it
         new_parent_id = target_parent_id
@@ -460,7 +419,7 @@ class AgentService:
                         "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in parent_tasks],
                         "action": "select_parent",
                         "intent": "MOVE",
-                        "taskToMove": matched_tasks[0].id
+                        "taskToMove": task.id
                     }
                 )
 
@@ -468,7 +427,6 @@ class AgentService:
             parent_title = parent_tasks[0].title
 
         # Move the task
-        task = matched_tasks[0]
         await task_service.update_task(task.id, parent_id=new_parent_id)
 
         return AgentResponse(
@@ -747,8 +705,7 @@ class AgentService:
         Returns:
             BrainDumpResponse with list of proposed tasks
         """
-        print(f"\n{'='*60}")
-        print(f"[Agent] BRAIN DUMP: transcription='{transcription}', user_id='{user_id}', parent_id={parent_id}")
+        logger.info("process_brain_dump: transcription='%s', user_id='%s', parent_id=%s", transcription, user_id, parent_id)
 
         task_service = TaskService(db)
         tree_context = await task_service.build_full_tree_context(user_id)
@@ -759,7 +716,7 @@ class AgentService:
             parent_task = await task_service.get_task(parent_id)
             if parent_task:
                 parent_category = parent_task.category
-                print(f"[Agent] subtask mode: parent='{parent_task.title}', category='{parent_category}'")
+                logger.debug("subtask mode: parent='%s', category='%s'", parent_task.title, parent_category)
 
         # Get task proposals from Gemini
         raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context)
@@ -781,7 +738,7 @@ class AgentService:
                 seen.add(key)
                 deduped.append(raw)
             else:
-                print(f"[Agent] brain dump dedup: dropped duplicate '{key[1]}' ({key[0]})")
+                logger.debug("brain dump dedup: dropped duplicate '%s' (%s)", key[1], key[0])
         raw_tasks = deduped
 
         # Get available categories for validation
@@ -798,7 +755,7 @@ class AgentService:
 
             confidence = raw.get("confidence", 0.5)
             if confidence < 0.6:
-                print(f"[Agent] brain dump skipping low-confidence ({confidence}): '{content}'")
+                logger.warning("brain dump skipping low-confidence (%.2f): '%s'", confidence, content)
                 continue
 
             task_category = category or parent_category or raw.get("category", "personal")
@@ -811,7 +768,7 @@ class AgentService:
                 if matched:
                     matched_task_id = str(matched[0].id)
                     task_category = matched[0].category or task_category
-                    print(f"[Agent] brain dump resolved '{content}' → task '{matched[0].title}' ({matched_task_id})")
+                    logger.debug("brain dump resolved '%s' → task '%s' (%s)", content, matched[0].title, matched_task_id)
                     if len(matched) > 1:
                         alternate_matches = [
                             {"id": str(m.id), "title": m.title, "category": m.category}
@@ -827,7 +784,7 @@ class AgentService:
                             existing_desc = raw.get("description") or ""
                             raw["description"] = f"{child_note}. {existing_desc}".strip().rstrip(".")
                 else:
-                    print(f"[Agent] brain dump could not resolve '{content}' for {action}, skipping")
+                    logger.warning("brain dump could not resolve '%s' for %s, skipping", content, action)
                     continue
 
             # BREAKDOWN: expand into ADD subtask proposals inline
@@ -853,7 +810,7 @@ class AgentService:
                         target_parent_id = str(targets[0].id)
                         target_content = targets[0].title
                     else:
-                        print(f"[Agent] brain dump could not resolve move target '{target_query}', skipping")
+                        logger.warning("brain dump could not resolve move target '%s', skipping", target_query)
                         continue
                 else:
                     target_content = "top-level"  # move to root
@@ -891,7 +848,7 @@ class AgentService:
                 alternate_matches=alternate_matches,
             ))
 
-        print(f"[Agent] brain dump produced {len(proposals)} task proposals")
+        logger.info("brain dump produced %d task proposals", len(proposals))
 
         return BrainDumpResponse(
             success=True,
@@ -914,11 +871,11 @@ class AgentService:
         import time as _time
         action = proposal.action or "add"
         _t0 = _time.monotonic()
-        print(f"[Agent] _execute_action START: action={action} content='{proposal.content}' matched={proposal.matched_task_id}")
+        logger.debug("_execute_action START: action=%s content='%s' matched=%s", action, proposal.content, proposal.matched_task_id)
 
         if action == "complete" and proposal.matched_task_id:
             count = await task_service.complete_task_with_children(proposal.matched_task_id)
-            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: completed '{proposal.content}' + {count - 1} children")
+            logger.debug("_execute_action DONE in %.0fms: completed '%s' + %d children", (_time.monotonic()-_t0)*1000, proposal.content, count - 1)
             return {"type": "completed", "count": count}
 
         if action == "edit" and proposal.matched_task_id:
@@ -927,12 +884,12 @@ class AgentService:
                 changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
             if changes:
                 await task_service.update_task(proposal.matched_task_id, **changes)
-            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: edited '{proposal.content}': {changes}")
+            logger.debug("_execute_action DONE in %.0fms: edited '%s': %s", (_time.monotonic()-_t0)*1000, proposal.content, changes)
             return {"type": "edited", "count": 1}
 
         if action == "delete" and proposal.matched_task_id:
             count = await task_service.delete_task_with_children(proposal.matched_task_id)
-            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: deleted '{proposal.content}' + {count - 1} children")
+            logger.debug("_execute_action DONE in %.0fms: deleted '%s' + %d children", (_time.monotonic()-_t0)*1000, proposal.content, count - 1)
             return {"type": "deleted", "count": count}
 
         if action == "move" and proposal.matched_task_id:
@@ -941,7 +898,7 @@ class AgentService:
                 if not target:
                     raise ValueError(f"Move target '{proposal.target_parent_id}' no longer exists")
             await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
-            print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: moved '{proposal.content}' → {proposal.target_parent_id}")
+            logger.debug("_execute_action DONE in %.0fms: moved '%s' → %s", (_time.monotonic()-_t0)*1000, proposal.content, proposal.target_parent_id)
             return {"type": "moved", "count": 1}
 
         # Default: ADD — auto-create category if needed
@@ -968,7 +925,7 @@ class AgentService:
                 "reasoning": "Brain dump voice input",
             },
         )
-        print(f"[Agent] _execute_action DONE in {(_time.monotonic()-_t0)*1000:.0f}ms: created '{task.title}' ({task.id})")
+        logger.debug("_execute_action DONE in %.0fms: created '%s' (%s)", (_time.monotonic()-_t0)*1000, task.title, task.id)
         return {"type": "created", "count": 1, "task_id": task.id}
 
     async def submit_brain_dump(
@@ -988,8 +945,7 @@ class AgentService:
         Returns:
             BrainDumpSubmitResponse with created task IDs
         """
-        print(f"\n{'='*60}")
-        print(f"[Agent] SUBMIT BRAIN DUMP: {len(tasks)} tasks for user '{user_id}'")
+        logger.info("submit_brain_dump: %d tasks for user '%s'", len(tasks), user_id)
 
         task_service = TaskService(db)
         created_ids: List[str] = []
@@ -1003,7 +959,7 @@ class AgentService:
                 if result.get("task_id"):
                     created_ids.append(result["task_id"])
             except Exception as e:
-                print(f"[Agent] failed to process '{proposal.content}' ({proposal.action}): {e}")
+                logger.error("failed to process '%s' (%s): %s", proposal.content, proposal.action, e)
 
         total = sum(counts.values())
         if total == 0:
@@ -1026,35 +982,14 @@ class AgentService:
             message=message,
         )
 
-    async def _handle_breakdown(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+    async def _handle_breakdown(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle BREAKDOWN intent — generate subtask suggestions for a task."""
-        task_service = TaskService(db)
-        query = params.get('taskQuery', '')
-
-        matched_tasks = await self._resolve_tasks(params, user_id, db)
-
-        if not matched_tasks:
-            return AgentResponse(
-                success=False,
-                message=f"No tasks found matching '{query}'",
-                type="error",
-                data={"taskQuery": query}
-            )
-
-        if len(matched_tasks) > 1:
-            return AgentResponse(
-                success=False,
-                message=f"Found {len(matched_tasks)} tasks matching '{query}'. Which one?",
-                type="question",
-                data={
-                    "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in matched_tasks],
-                    "action": "select_breakdown_target",
-                    "intent": "BREAKDOWN"
-                }
-            )
-
-        # Single match — generate subtask suggestions
-        task = matched_tasks[0]
+        task, early = await self._resolve_and_disambiguate(
+            params, user_id, db, "select_breakdown_target", "BREAKDOWN",
+            task_service=task_service,
+        )
+        if early:
+            return early
         tree_context = await task_service.build_full_tree_context(user_id)
         suggestions = await self.gemini.generate_subtasks(
             task_title=task.title,
@@ -1081,9 +1016,8 @@ class AgentService:
             }
         )
 
-    async def _handle_query(self, params: Dict, user_id: str, db: AsyncSession) -> AgentResponse:
+    async def _handle_query(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle QUERY intent."""
-        task_service = TaskService(db)
         filters = params.get('filters', {})
 
         tasks = await task_service.get_tasks(

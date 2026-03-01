@@ -1,4 +1,5 @@
 """Agent API router."""
+import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
@@ -10,6 +11,7 @@ from services.gemini_service import GeminiService
 from services.agent_service import AgentService
 from config import get_settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
@@ -119,9 +121,9 @@ async def submit_brain_dump(
     """
     import time
     t0 = time.monotonic()
-    print(f"[Submit] REQUEST received: {len(request.tasks)} tasks for user '{request.user_id}'")
+    logger.info("braindump/submit: %d tasks for user '%s'", len(request.tasks), request.user_id)
     for i, t in enumerate(request.tasks):
-        print(f"[Submit]   task[{i}]: action={t.action} content='{t.content}' matched={t.matched_task_id}")
+        logger.debug("  task[%d]: action=%s content='%s' matched=%s", i, t.action, t.content, t.matched_task_id)
 
     settings = get_settings()
     gemini_service = GeminiService(settings.gemini_api_key)
@@ -132,5 +134,5 @@ async def submit_brain_dump(
         tasks=request.tasks,
         db=db,
     )
-    print(f"[Submit] RESPONSE in {(time.monotonic() - t0) * 1000:.1f}ms: success={result.success} message='{result.message}'")
+    logger.info("braindump/submit RESPONSE in %.1fms: success=%s", (time.monotonic() - t0) * 1000, result.success)
     return result

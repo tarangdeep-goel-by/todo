@@ -119,7 +119,7 @@ async def ramble_websocket(websocket: WebSocket):
                 if session:
                     # Transliterate to English if needed, then send
                     transcript = await session.get_english_transcription()
-                    print(f"[Ramble WS] Final transcript: '{transcript}'")
+                    logger.info("Final transcript: '%s'", transcript)
                     if transcript:
                         await send_to_client({
                             "type": "final_transcript",
