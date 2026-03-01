@@ -79,6 +79,41 @@ class AudioService {
     await _recorder.stop();
   }
 
+  /// Start streaming raw PCM audio (16kHz, mono, 16-bit).
+  /// Returns a Stream of PCM byte chunks for WebSocket streaming.
+  Future<Stream<List<int>>> startStream() async {
+    final hasPerm = await hasPermission();
+    if (!hasPerm) {
+      final granted = await requestPermission();
+      if (!granted) throw Exception('Microphone permission denied');
+    }
+
+    // Monitor amplitude for waveform visualization
+    _amplitudeSubscription = _recorder.onAmplitudeChanged(
+      const Duration(milliseconds: 100),
+    ).listen((amp) {
+      final normalized = ((amp.current + 60) / 60).clamp(0.0, 1.0);
+      _waveformData.add(normalized);
+      if (_waveformData.length > 50) _waveformData.removeAt(0);
+    });
+
+    return await _recorder.startStream(
+      const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 16000,
+        numChannels: 1,
+      ),
+    );
+  }
+
+  /// Stop the audio stream.
+  Future<void> stopStream() async {
+    await _amplitudeSubscription?.cancel();
+    _amplitudeSubscription = null;
+    _waveformData.clear();
+    await _recorder.stop();
+  }
+
   /// Get current waveform data for visualization
   List<double> get waveformData => List.unmodifiable(_waveformData);
 

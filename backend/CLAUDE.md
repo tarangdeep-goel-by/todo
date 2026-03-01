@@ -62,12 +62,22 @@ Client → FastAPI Router → Service → SQLAlchemy AsyncSession → PostgreSQL
 4. Confidence check (rejects < 0.6)
 5. Intent handler executes action, returns `AgentResponse`
 6. Ambiguous commands return `type="question"` with matches → client calls `POST /api/agent/resolve`
+7. Unknown category → returns `select_category` question → user picks → `POST /api/agent/resolve`
+
+### Brain Dump Pipeline (`POST /api/agent/braindump`)
+Two-step proposal-then-commit flow for multi-task voice input:
+1. Client streams audio via WebSocket (`/ws/ramble`) → Gemini Live transcribes in real-time
+2. Client sends transcript to `/api/agent/braindump` → `GeminiService.detect_brain_dump()` extracts multiple tasks
+3. Returns `BrainDumpResponse` with `List[BrainDumpTaskProposal]` (not yet created)
+4. User reviews/edits proposals in UI → submits via `POST /api/agent/braindump/submit`
+5. `AgentService.submit_brain_dump()` batch-creates tasks
 
 ### Key Layers
 - **`routers/`** — API endpoints. Services are instantiated per-request (no DI container). DB session via `Depends(get_db)`.
 - **`services/task_service.py`** — All task CRUD, tree operations (`_get_all_descendants` recursive), completion cascading, category management (5-category limit).
 - **`services/agent_service.py`** — Voice command orchestrator. Uses deterministic UUIDs for root categories (`uuid5` with fixed namespace).
-- **`services/gemini_service.py`** — Gemini 2.5 Flash Lite integration. Sync API calls wrapped in async service.
+- **`services/gemini_service.py`** — Gemini 2.5 Flash Lite integration. Sync API calls wrapped in async service. `detect_brain_dump()` extracts multiple tasks from free-form text.
+- **`services/ramble_service.py`** — Gemini Live API streaming transcription. `RambleSession` manages WebSocket connection for real-time audio→text. Uses `google-genai` SDK (separate from `google-generativeai` used elsewhere).
 - **`services/query_builder.py`** — Dynamic SQLAlchemy query construction with multi-field filtering/sorting/pagination.
 - **`utils/fuzzy_matcher.py`** — RapidFuzz `token_set_ratio` matching (70% threshold, weighted: title 60%, description 30%, tags 10%).
 - **`utils/date_parser.py`** — Flexible date parsing ("today", "next monday", ISO strings) → timezone-aware UTC.
@@ -109,4 +119,7 @@ All config from Docker environment (no `.env` file). Managed via Pydantic `Setti
 | `PATCH` | `/api/tasks/{id}` | Update task |
 | `PUT` | `/api/tasks/{id}/complete` | Complete task (cascades to children) |
 | `DELETE` | `/api/tasks/{id}` | Hard delete task + descendants |
+| `POST` | `/api/agent/braindump` | Extract task proposals from transcript |
+| `POST` | `/api/agent/braindump/submit` | Commit reviewed task proposals |
+| `WebSocket` | `/ws/ramble` | Stream audio for real-time transcription |
 | `GET` | `/health` | Health check |
