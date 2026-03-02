@@ -159,6 +159,8 @@ async def update_task(
         updates['title'] = request.title
     if request.description is not None:
         updates['description'] = request.description
+    if request.category is not None:
+        updates['category'] = request.category
     if request.parent_id is not None:
         updates['parent_id'] = request.parent_id
     if request.due_date is not None:

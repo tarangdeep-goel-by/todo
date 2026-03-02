@@ -103,6 +103,7 @@ class UpdateTaskRequest(BaseModel):
     """Request schema for updating a task."""
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
+    category: Optional[str] = None  # Move to different domain
     parent_id: Optional[str] = None  # Move to different parent
     due_date: Optional[datetime] = None
     status: Optional[WriteTaskStatus] = None
