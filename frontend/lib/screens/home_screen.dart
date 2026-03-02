@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/spacing.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/api_provider.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/top_bar.dart';
-import '../widgets/push_to_talk_button.dart';
+import '../widgets/bottom_nav_bar.dart';
+import '../widgets/ptt_input_overlay.dart';
 import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
@@ -60,6 +62,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final viewMode = ref.watch(viewModeProvider);
     final taskCount = ref.watch(allTasksProvider).length;
 
+    const navTotalHeight =
+        AppSpacing.bottomNavHeight + AppSpacing.bottomNavMarginBottom;
+
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -80,24 +85,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
 
+            // Floating bottom nav bar
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: BottomNavBar(),
+            ),
+
             // Filter button (only in flat view)
             if (viewMode == ViewMode.flat) const FilterButton(),
 
             // Coaching hint — rotating examples when no tasks exist
             if (taskCount == 0)
-              const Positioned(
+              Positioned(
                 left: 0,
                 right: 0,
-                bottom: 100,
-                child: CoachingHint(),
+                bottom: navTotalHeight + 24,
+                child: const CoachingHint(),
               ),
 
-            // Push-to-talk CTA button (always visible)
-            const Positioned(
+            // Typing/processing overlay (sits above floating nav)
+            Positioned(
               left: 0,
               right: 0,
-              bottom: 32,
-              child: PushToTalkButton(),
+              bottom: navTotalHeight,
+              child: const PttInputOverlay(),
             ),
           ],
         ),

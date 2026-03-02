@@ -8,6 +8,7 @@ import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import '../utils/string_extensions.dart';
 import 'styled_snackbar.dart';
 
 /// Bottom sheet for resolving question-type agent responses.
@@ -29,28 +30,19 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
   String get _action => _data['action'] as String? ?? '';
   List<dynamic> get _matches => _data['matches'] as List<dynamic>? ?? [];
 
-  Future<void> _onMatchTap(Map<String, dynamic> match) async {
-    if (_loadingId != null) return;
-
-    HapticService.light();
-    setState(() => _loadingId = match['id'] as String);
-
+  /// Shared resolve-action flow: set loading → API call → fetchAll → pop → handle result.
+  Future<void> _resolveAction({
+    required String loadingId,
+    required Future<AgentResponse> Function() apiCall,
+  }) async {
+    setState(() => _loadingId = loadingId);
     try {
-      final apiService = ref.read(apiServiceProvider);
-      final result = await apiService.resolveQuestion(
-        userId: AppConstants.defaultUserId,
-        action: _action,
-        selectedTaskId: match['id'] as String,
-        data: _data,
-      );
-
-      // Refresh tasks
+      final result = await apiCall();
       await ref.read(taskStoreProvider.notifier).fetchAll();
 
       if (!mounted) return;
       Navigator.pop(context);
 
-      // If resolve returns another question, show a new sheet
       if (result.type == 'question' && result.data != null) {
         showModalBottomSheet(
           context: context,
@@ -75,38 +67,33 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
     }
   }
 
+  Future<void> _onMatchTap(Map<String, dynamic> match) async {
+    if (_loadingId != null) return;
+    HapticService.light();
+    final apiService = ref.read(apiServiceProvider);
+    await _resolveAction(
+      loadingId: match['id'] as String,
+      apiCall: () => apiService.resolveQuestion(
+        userId: AppConstants.defaultUserId,
+        action: _action,
+        selectedTaskId: match['id'] as String,
+        data: _data,
+      ),
+    );
+  }
+
   Future<void> _onCreateCategory() async {
     if (_loadingId != null) return;
-
     HapticService.medium();
-    setState(() => _loadingId = 'confirm');
-
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final result = await apiService.resolveQuestion(
+    final apiService = ref.read(apiServiceProvider);
+    await _resolveAction(
+      loadingId: 'confirm',
+      apiCall: () => apiService.resolveQuestion(
         userId: AppConstants.defaultUserId,
         action: 'create_category',
         data: _data,
-      );
-
-      await ref.read(taskStoreProvider.notifier).fetchAll();
-
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      showStyledSnackbar(context,
-        message: result.message,
-        style: SnackbarStyle.success,
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loadingId = null);
-        showStyledSnackbar(context,
-          message: 'Failed: $e',
-          style: SnackbarStyle.error,
-        );
-      }
-    }
+      ),
+    );
   }
 
   @override
@@ -243,36 +230,16 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
 
   Future<void> _onSelectCategory(String category) async {
     if (_loadingId != null) return;
-
     HapticService.medium();
-    setState(() => _loadingId = category);
-
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final result = await apiService.resolveQuestion(
+    final apiService = ref.read(apiServiceProvider);
+    await _resolveAction(
+      loadingId: category,
+      apiCall: () => apiService.resolveQuestion(
         userId: AppConstants.defaultUserId,
         action: 'select_category',
         data: {..._data, 'selected_category': category},
-      );
-
-      await ref.read(taskStoreProvider.notifier).fetchAll();
-
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      showStyledSnackbar(context,
-        message: result.message,
-        style: SnackbarStyle.success,
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loadingId = null);
-        showStyledSnackbar(context,
-          message: 'Failed: $e',
-          style: SnackbarStyle.error,
-        );
-      }
-    }
+      ),
+    );
   }
 
   Widget _buildSelectCategoryBody() {
@@ -319,7 +286,7 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    cat[0].toUpperCase() + cat.substring(1),
+                    cat.capitalize,
                     style: AppTypography.metadataText(color: domain.primary)
                         .copyWith(
                       fontSize: 15,
@@ -416,7 +383,7 @@ class _QuestionBottomSheetState extends ConsumerState<QuestionBottomSheet> {
                           ),
                         )
                       : Text(
-                          'Create ${suggestedCategory.isNotEmpty ? suggestedCategory[0].toUpperCase() + suggestedCategory.substring(1) : "category"}',
+                          'Create ${suggestedCategory.isNotEmpty ? suggestedCategory.capitalize : "category"}',
                           style: AppTypography.metadataText(
                             color: domain.textOnPrimary,
                           ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),

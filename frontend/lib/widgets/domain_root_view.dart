@@ -5,6 +5,7 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../providers/task_store_provider.dart';
 import 'task_row_tile.dart';
+import '../utils/string_extensions.dart';
 
 /// Domain root view — lists all L1 tasks (parentId == null) for a domain.
 class DomainRootView extends ConsumerWidget {
@@ -68,7 +69,7 @@ class DomainRootView extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 child: Text(
-                  category[0].toUpperCase() + category.substring(1),
+                  category.capitalize,
                   style: AppTypography.domainTitle(context, color: domain.primary)
                       .copyWith(fontSize: 28),
                 ),

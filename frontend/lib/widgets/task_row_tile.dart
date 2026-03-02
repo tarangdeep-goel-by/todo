@@ -68,7 +68,7 @@ class TaskRowTile extends StatelessWidget {
                 if (task.priority != null) ...[
                   const SizedBox(width: 4),
                   Text(
-                    task.priority!.substring(0, 1).toUpperCase(),
+                    task.priority![0].toUpperCase(),
                     style: AppTypography.metadataText(
                       color: domain.primary.withValues(alpha: 0.6),
                     ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),

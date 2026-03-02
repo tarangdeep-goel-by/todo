@@ -1,10 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../config/constants.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../services/haptic_service.dart';
+import 'base_snackbar_overlay.dart';
 
 /// Shows a domain-colored floating undo bar at the bottom of the screen.
 ///
@@ -33,13 +32,13 @@ VoidCallback showUndoSnackbar(
     builder: (context) => _UndoSnackbarOverlay(
       message: message,
       domain: domain,
-      duration: duration,
+      snackbarDuration: duration,
       onUndo: () {
         HapticService.light();
         dismiss();
         onUndo();
       },
-      onDismiss: dismiss,
+      onDismissCallback: dismiss,
     ),
   );
 
@@ -51,168 +50,96 @@ VoidCallback showUndoSnackbar(
 class _UndoSnackbarOverlay extends StatefulWidget {
   final String message;
   final DomainPalette domain;
-  final Duration duration;
+  final Duration snackbarDuration;
   final VoidCallback onUndo;
-  final VoidCallback onDismiss;
+  final VoidCallback onDismissCallback;
 
   const _UndoSnackbarOverlay({
     required this.message,
     required this.domain,
-    required this.duration,
+    required this.snackbarDuration,
     required this.onUndo,
-    required this.onDismiss,
+    required this.onDismissCallback,
   });
 
   @override
   State<_UndoSnackbarOverlay> createState() => _UndoSnackbarOverlayState();
 }
 
-class _UndoSnackbarOverlayState extends State<_UndoSnackbarOverlay>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slideAnimation;
-  late final Animation<double> _fadeAnimation;
-  Timer? _autoHideTimer;
+class _UndoSnackbarOverlayState
+    extends BaseSnackbarOverlayState<_UndoSnackbarOverlay> {
+  @override
+  DomainPalette get palette => widget.domain;
 
   @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: AppAnimations.snackbarIn,
-      reverseDuration: AppAnimations.snackbarOut,
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppAnimations.easeOutCubic,
-      reverseCurve: Curves.easeIn,
-    ));
-
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-
-    _controller.forward();
-
-    _autoHideTimer = Timer(widget.duration, _animateOut);
-  }
-
-  Future<void> _animateOut() async {
-    if (!mounted) return;
-    await _controller.reverse();
-    if (mounted) widget.onDismiss();
-  }
+  Duration get duration => widget.snackbarDuration;
 
   @override
-  void dispose() {
-    _autoHideTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
+  VoidCallback get onDismiss => widget.onDismissCallback;
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return buildSnackbarShell(
+      child: Row(
+        children: [
+          // Check icon
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: palette.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.check,
+              size: 16,
+              color: palette.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
 
-    return Positioned(
-      left: AppSpacing.md,
-      right: AppSpacing.md,
-      bottom: bottomPadding + 96, // above the CTA button area
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Material(
-            color: Colors.transparent,
+          // Message
+          Expanded(
+            child: Text(
+              widget.message,
+              style: AppTypography.metadataText(
+                color: palette.primary,
+              ).copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Undo button
+          GestureDetector(
+            onTap: widget.onUndo,
             child: Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: 14,
+                horizontal: 14,
+                vertical: 6,
               ),
               decoration: BoxDecoration(
-                color: widget.domain.surface,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                border: Border.all(
-                  color: widget.domain.primary.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: palette.primary,
+                borderRadius:
+                    BorderRadius.circular(AppSpacing.radiusPill),
               ),
-              child: Row(
-                children: [
-                  // Check icon
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: widget.domain.primary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.check,
-                      size: 16,
-                      color: widget.domain.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Message
-                  Expanded(
-                    child: Text(
-                      widget.message,
-                      style: AppTypography.metadataText(
-                        color: widget.domain.primary,
-                      ).copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // Undo button
-                  GestureDetector(
-                    onTap: widget.onUndo,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: widget.domain.primary,
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusPill),
-                      ),
-                      child: Text(
-                        'Undo',
-                        style: AppTypography.metadataText(
-                          color: widget.domain.textOnPrimary,
-                        ).copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Undo',
+                style: AppTypography.metadataText(
+                  color: palette.textOnPrimary,
+                ).copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -53,6 +53,12 @@ class AppTypography {
         color: color,
       );
 
+  static TextStyle navLabel({Color? color}) => GoogleFonts.dmSans(
+        fontSize: 10.0,
+        fontWeight: FontWeight.w600,
+        color: color,
+      );
+
   static TextStyle taskPreview(BuildContext context, {Color? color}) =>
       GoogleFonts.dmSans(
         fontSize: 16.0,

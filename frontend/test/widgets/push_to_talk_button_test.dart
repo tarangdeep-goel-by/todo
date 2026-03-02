@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:frontend/widgets/push_to_talk_button.dart';
+import 'package:frontend/widgets/ptt_input_overlay.dart';
 import 'package:frontend/providers/api_provider.dart';
 import 'package:frontend/providers/recording_provider.dart';
 import '../helpers/test_helpers.dart';
@@ -13,7 +13,7 @@ void main() {
     mockApi = MockApiService();
   });
 
-  Widget buildButton({List<Override> extraOverrides = const []}) {
+  Widget buildOverlay({List<Override> extraOverrides = const []}) {
     return ProviderScope(
       overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
@@ -22,7 +22,7 @@ void main() {
       child: MaterialApp(
         home: Scaffold(
           body: LayoutBuilder(
-            builder: (context, constraints) => const PushToTalkButton(),
+            builder: (context, constraints) => const PttInputOverlay(),
           ),
         ),
       ),
@@ -41,36 +41,12 @@ void main() {
   }
 
   group('Idle state', () {
-    testWidgets('shows "Type or hold to talk" label', (tester) async {
-      await pumpIgnoringOverflow(tester, buildButton());
-      expect(find.text('Type or hold to talk'), findsOneWidget);
-    });
-
-    testWidgets('shows keyboard icon', (tester) async {
-      await pumpIgnoringOverflow(tester, buildButton());
-      expect(find.byIcon(Icons.keyboard_alt_outlined), findsOneWidget);
-    });
-
-    testWidgets('contains AnimatedContainer', (tester) async {
-      await pumpIgnoringOverflow(tester, buildButton());
-      expect(find.byType(AnimatedContainer), findsOneWidget);
-    });
-  });
-
-  group('Widget structure', () {
-    testWidgets('renders GestureDetector', (tester) async {
-      await pumpIgnoringOverflow(tester, buildButton());
-      expect(find.byType(GestureDetector), findsWidgets);
-    });
-
-    testWidgets('renders PushToTalkButton', (tester) async {
-      await pumpIgnoringOverflow(tester, buildButton());
-      expect(find.byType(PushToTalkButton), findsOneWidget);
-    });
-
-    testWidgets('has Center widget', (tester) async {
-      await pumpIgnoringOverflow(tester, buildButton());
-      expect(find.byType(Center), findsWidgets);
+    testWidgets('renders nothing when idle', (tester) async {
+      await pumpIgnoringOverflow(tester, buildOverlay());
+      expect(find.byType(PttInputOverlay), findsOneWidget);
+      // Should render SizedBox.shrink — no text field, no dots
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byType(AnimatedContainer), findsNothing);
     });
   });
 
@@ -78,7 +54,7 @@ void main() {
     testWidgets('shows TextField when typing', (tester) async {
       await pumpIgnoringOverflow(
         tester,
-        buildButton(extraOverrides: [
+        buildOverlay(extraOverrides: [
           recordingStateProvider.overrideWith((ref) => RecordingState.typing),
         ]),
       );
@@ -89,7 +65,7 @@ void main() {
     testWidgets('shows close and send buttons in typing mode', (tester) async {
       await pumpIgnoringOverflow(
         tester,
-        buildButton(extraOverrides: [
+        buildOverlay(extraOverrides: [
           recordingStateProvider.overrideWith((ref) => RecordingState.typing),
         ]),
       );
