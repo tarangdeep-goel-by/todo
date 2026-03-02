@@ -11,6 +11,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'domain_root_view.dart';
+import 'task_parent_picker.dart';
 import 'task_row_tile.dart';
 import 'styled_snackbar.dart';
 import '../screens/ramble_screen.dart';
@@ -181,6 +182,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   bool _savingStatus = false;
   bool _savingEstimate = false;
   bool _savingSubtask = false;
+  bool _savingMove = false;
 
   @override
   void initState() {
@@ -467,6 +469,85 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
+  // --- Move ---
+
+  void _openMoveSheet(Task task) {
+    if (_savingMove) return;
+    HapticService.medium();
+    showModalBottomSheet<ParentPickerResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: BoxDecoration(
+          color: AppColors.darkBg,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppSpacing.radiusLg),
+          ),
+        ),
+        child: TaskParentPicker(
+          currentParentId: task.parentId,
+          excludeTaskId: task.id,
+          onBack: () => Navigator.of(context).pop(),
+          onSelect: (result) {
+            Navigator.of(context).pop(result);
+          },
+        ),
+      ),
+    ).then((result) {
+      if (result != null) _moveTask(task, result);
+    });
+  }
+
+  Future<void> _moveTask(Task task, ParentPickerResult result) async {
+    // Skip if target is same as current parent
+    if (result.taskId == task.parentId && result.category == task.category) return;
+
+    setState(() => _savingMove = true);
+    final store = ref.read(taskStoreProvider.notifier);
+
+    // Optimistic update
+    final optimistic = task.copyWith(
+      parentId: result.taskId ?? '',
+      category: result.category,
+    );
+    store.upsertTask(optimistic);
+
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      final clearFields = <String>{};
+      if (result.taskId == null) clearFields.add('parent_id');
+
+      final updated = await apiService.updateTask(
+        task.id,
+        UpdateTaskRequest(
+          parentId: result.taskId,
+          category: result.category != task.category ? result.category : null,
+          clearFields: clearFields,
+        ),
+      );
+      store.upsertTask(updated);
+      if (mounted) {
+        final target = result.taskTitle?.capitalize ?? 'top level';
+        showStyledSnackbar(context,
+          message: 'Moved to $target',
+          style: SnackbarStyle.success,
+        );
+      }
+    } catch (e) {
+      // Rollback
+      store.upsertTask(task);
+      if (mounted) {
+        showStyledSnackbar(context,
+          message: 'Failed to move: $e',
+          style: SnackbarStyle.error,
+        );
+      }
+    }
+    if (mounted) setState(() => _savingMove = false);
+  }
+
   // --- Subtask ---
 
   void _startAddingSubtask() {
@@ -656,7 +737,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                         ),
                         GestureDetector(
                           onTap: () => _navigateTo(ancestors[i].id),
-                          child: Flexible(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 120),
                             child: Text(
                               ancestors[i].title,
                               style: AppTypography.metadataText(
@@ -830,6 +912,13 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 backgroundColor: AppColors.overdue,
                 foregroundColor: AppColors.darkBg,
               ),
+            _buildActionChip(
+              onTap: () => _openMoveSheet(task),
+              icon: Icons.drive_file_move_outline,
+              label: _savingMove ? 'Moving...' : 'Move',
+              backgroundColor: defaultBg,
+              foregroundColor: defaultFg,
+            ),
             _buildActionChip(
               onTap: () => _toggleStatus(task, isCompleted ? 'active' : 'completed'),
               icon: isCompleted ? Icons.check_box : Icons.check_box_outline_blank,

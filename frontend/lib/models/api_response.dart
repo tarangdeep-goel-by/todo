@@ -235,6 +235,7 @@ class UpdateTaskRequest {
   final String? status;
   final String? category;
   final String? priority;
+  final String? parentId;
   final DateTime? completedAt;
   final DateTime? dueDate;
   final double? estimatedHours;
@@ -246,6 +247,7 @@ class UpdateTaskRequest {
     this.status,
     this.category,
     this.priority,
+    this.parentId,
     this.completedAt,
     this.dueDate,
     this.estimatedHours,
@@ -259,6 +261,7 @@ class UpdateTaskRequest {
     if (status != null) json['status'] = status;
     if (category != null) json['category'] = category;
     if (priority != null) json['priority'] = priority;
+    if (parentId != null) json['parent_id'] = parentId;
     if (completedAt != null) json['completed_at'] = completedAt!.toIso8601String();
     if (dueDate != null) json['due_date'] = dueDate!.toIso8601String();
     if (estimatedHours != null) json['estimated_hours'] = estimatedHours;
