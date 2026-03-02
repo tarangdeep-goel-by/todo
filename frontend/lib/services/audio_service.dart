@@ -6,6 +6,11 @@ import '../config/constants.dart';
 
 /// Service for native audio recording
 class AudioService {
+  /// Normalize a dBFS amplitude value to the 0-1 range.
+  /// Assumes a floor of -60 dB and a ceiling of 0 dB.
+  static double normalizeAmplitude(double current) =>
+      ((current + 60) / 60).clamp(0.0, 1.0);
+
   final AudioRecorder _recorder = AudioRecorder();
   final List<double> _waveformData = [];
   StreamSubscription<Amplitude>? _amplitudeSubscription;
@@ -47,8 +52,7 @@ class AudioService {
     _amplitudeSubscription = _recorder.onAmplitudeChanged(
       const Duration(milliseconds: 100),
     ).listen((amp) {
-      // Normalize amplitude to 0-1 range
-      final normalized = ((amp.current + 60) / 60).clamp(0.0, 1.0);
+      final normalized = normalizeAmplitude(amp.current);
       _waveformData.add(normalized);
 
       // Keep only last 50 samples
@@ -92,7 +96,7 @@ class AudioService {
     _amplitudeSubscription = _recorder.onAmplitudeChanged(
       const Duration(milliseconds: 100),
     ).listen((amp) {
-      final normalized = ((amp.current + 60) / 60).clamp(0.0, 1.0);
+      final normalized = normalizeAmplitude(amp.current);
       _waveformData.add(normalized);
       if (_waveformData.length > 50) _waveformData.removeAt(0);
     });

@@ -37,30 +37,50 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     });
   }
 
-  void _toggleFilter(String value, List<String>? Function(TaskFilter) getter, TaskFilter Function(List<String>?) updater) {
+  void _toggleCategory(String category) {
     HapticService.light();
     setState(() {
-      final current = getter(_currentFilter)?.toList() ?? [];
-      if (current.contains(value)) {
-        current.remove(value);
+      final current = _currentFilter.categories?.toList() ?? [];
+      if (current.contains(category)) {
+        current.remove(category);
       } else {
-        current.add(value);
+        current.add(category);
       }
-      _currentFilter = updater(current.isEmpty ? null : current);
+      _currentFilter = _currentFilter.copyWith(
+        categories: current.isEmpty ? null : current,
+      );
     });
   }
 
-  void _toggleCategory(String category) => _toggleFilter(
-    category, (f) => f.categories, (v) => _currentFilter.copyWith(categories: v),
-  );
+  void _togglePriority(String priority) {
+    HapticService.light();
+    setState(() {
+      final current = _currentFilter.priorities?.toList() ?? [];
+      if (current.contains(priority)) {
+        current.remove(priority);
+      } else {
+        current.add(priority);
+      }
+      _currentFilter = _currentFilter.copyWith(
+        priorities: current.isEmpty ? null : current,
+      );
+    });
+  }
 
-  void _togglePriority(String priority) => _toggleFilter(
-    priority, (f) => f.priorities, (v) => _currentFilter.copyWith(priorities: v),
-  );
-
-  void _toggleStatus(String status) => _toggleFilter(
-    status, (f) => f.statuses, (v) => _currentFilter.copyWith(statuses: v),
-  );
+  void _toggleStatus(String status) {
+    HapticService.light();
+    setState(() {
+      final current = _currentFilter.statuses?.toList() ?? [];
+      if (current.contains(status)) {
+        current.remove(status);
+      } else {
+        current.add(status);
+      }
+      _currentFilter = _currentFilter.copyWith(
+        statuses: current.isEmpty ? null : current,
+      );
+    });
+  }
 
   void _setDatePreset(String preset) {
     HapticService.medium();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -8,6 +9,7 @@ import '../models/api_response.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import '../utils/string_extensions.dart';
 import 'task_detail_overlay.dart';
 import 'empty_state.dart';
 import 'loading_state.dart';
@@ -141,11 +143,8 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     return widgets;
   }
 
-  String _dayLabel(DateTime date) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
-  }
+  String _dayLabel(DateTime date) =>
+      DateFormat('EEEE, MMM d').format(date);
 
   Widget _buildSection(String title, List<Task> tasks, Color headerColor) {
     return Column(
@@ -319,7 +318,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  task.priority!.substring(0, 1).toUpperCase() + task.priority!.substring(1),
+                  task.priority!.capitalize,
                   style: AppTypography.metadataText(
                     color: domain.primary.withValues(alpha: 0.8),
                   ).copyWith(fontSize: 10, fontWeight: FontWeight.w600),

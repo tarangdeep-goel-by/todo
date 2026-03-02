@@ -12,6 +12,7 @@ import '../services/haptic_service.dart';
 import '../widgets/undo_snackbar.dart';
 import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
+import '../utils/string_extensions.dart';
 
 /// Domain card widget with focus/compressed states
 class DomainCard extends ConsumerStatefulWidget {
@@ -157,7 +158,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
     final metaParts = <Widget>[];
     if (task.priority != null) {
       metaParts.add(Text(
-        task.priority!.substring(0, 1).toUpperCase() + task.priority!.substring(1),
+        task.priority!.capitalize,
         style: AppTypography.metadataText(
           color: domain.primary.withValues(alpha: 0.7),
         ).copyWith(fontSize: 11, fontWeight: FontWeight.w500),
@@ -240,6 +241,9 @@ class _DomainCardState extends ConsumerState<DomainCard> {
     );
   }
 
+  String _formatTaskCount(int count) =>
+      '$count ${count == 1 ? 'task' : 'tasks'}';
+
   /// Focused card: full bleed, domain primary background
   Widget _buildFocusedCard(BuildContext context) {
     final taskCount = tasks.where((t) => t.isActive).length;
@@ -306,7 +310,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
                     ),
                   ),
                   Text(
-                    '$taskCount ${taskCount == 1 ? 'task' : 'tasks'}',
+                    _formatTaskCount(taskCount),
                     style: AppTypography.metadataText(
                       color: domain.textOnPrimary.withValues(alpha: 0.8),
                     ).copyWith(
@@ -383,7 +387,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
 
           // Task count (right aligned, bolder)
           Text(
-            '$taskCount ${taskCount == 1 ? 'task' : 'tasks'}',
+            _formatTaskCount(taskCount),
             style: AppTypography.metadataText(
               color: domain.primary.withValues(alpha: 0.8),
             ).copyWith(

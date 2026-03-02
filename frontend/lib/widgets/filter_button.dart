@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'filter_sheet.dart';
 
@@ -23,6 +24,10 @@ class FilterButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(taskFilterProvider);
     final activeCount = filter.activeFilterCount;
+    final paletteMap = ref.watch(domainPalettesProvider);
+    final accent = paletteMap.values.isNotEmpty
+        ? paletteMap.values.first
+        : DomainColors.palettes.first.withName('');
 
     return Positioned(
       top: AppSpacing.topBarHeight + 8,
@@ -37,14 +42,14 @@ class FilterButton extends ConsumerWidget {
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             border: Border.all(
               color: activeCount > 0
-                  ? DomainColors.workDark.primary
+                  ? accent.primary
                   : AppColors.darkText.withValues(alpha: 0.3),
               width: 2,
             ),
             boxShadow: activeCount > 0
                 ? [
                     BoxShadow(
-                      color: DomainColors.workDark.glow!,
+                      color: accent.glow ?? accent.primary.withValues(alpha: 0.3),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
@@ -57,7 +62,7 @@ class FilterButton extends ConsumerWidget {
                 child: Icon(
                   Icons.tune_rounded,
                   color: activeCount > 0
-                      ? DomainColors.workDark.primary
+                      ? accent.primary
                       : AppColors.darkText,
                   size: 24,
                 ),
@@ -70,7 +75,7 @@ class FilterButton extends ConsumerWidget {
                     width: 18,
                     height: 18,
                     decoration: BoxDecoration(
-                      color: DomainColors.workDark.primary,
+                      color: accent.primary,
                       shape: BoxShape.circle,
                     ),
                     child: Center(

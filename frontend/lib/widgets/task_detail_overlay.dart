@@ -14,6 +14,7 @@ import 'domain_root_view.dart';
 import 'task_row_tile.dart';
 import 'styled_snackbar.dart';
 import '../screens/ramble_screen.dart';
+import '../utils/string_extensions.dart';
 
 /// Sentinel for "field not provided" in _updateField
 const _noChange = Object();
@@ -204,16 +205,20 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Navigation ---
 
+  void _resetEditingFlags() {
+    _editingTitle = false;
+    _editingDescription = false;
+    _addingSubtask = false;
+    _priorityExpanded = false;
+  }
+
   void _navigateTo(String taskId) {
     HapticService.selection();
     setState(() {
       _navHistory.add((taskId: _activeTaskId, domainRoot: _activeDomainRoot));
       _activeTaskId = taskId;
       _activeDomainRoot = null;
-      _editingTitle = false;
-      _editingDescription = false;
-      _addingSubtask = false;
-      _priorityExpanded = false;
+      _resetEditingFlags();
     });
   }
 
@@ -232,10 +237,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     setState(() {
       _activeTaskId = prev.taskId ?? '';
       _activeDomainRoot = prev.domainRoot;
-      _editingTitle = false;
-      _editingDescription = false;
-      _addingSubtask = false;
-      _priorityExpanded = false;
+      _resetEditingFlags();
     });
   }
 
@@ -523,7 +525,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   String _priorityLabel(String? priority) {
     if (priority == null || priority == 'none') return 'No priority';
-    return '${priority[0].toUpperCase()}${priority.substring(1)}';
+    return priority.capitalize;
   }
 
   IconData _priorityIcon(String? priority) {
@@ -910,6 +912,17 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
+  // --- Section header ---
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: AppTypography.metadataText(
+        color: AppColors.darkText.withValues(alpha: 0.4),
+      ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
+    );
+  }
+
   // --- Description ---
 
   Widget _buildDescription(DomainPalette domain, Task task) {
@@ -917,12 +930,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'DESCRIPTION',
-            style: AppTypography.metadataText(
-              color: AppColors.darkText.withValues(alpha: 0.4),
-            ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
-          ),
+          _buildSectionHeader('DESCRIPTION'),
           const SizedBox(height: 4),
           TextField(
             controller: _descriptionController,
@@ -960,12 +968,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'DESCRIPTION',
-            style: AppTypography.metadataText(
-              color: AppColors.darkText.withValues(alpha: 0.4),
-            ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
-          ),
+          _buildSectionHeader('DESCRIPTION'),
           const SizedBox(height: 4),
           Text(
             task.description?.isNotEmpty == true
@@ -1013,6 +1016,60 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
+  // --- Subtask input row ---
+
+  Widget _buildSubtaskInputRow(DomainPalette domain, Task task) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Container(
+            width: AppSpacing.leftAccentBar,
+            height: 28,
+            decoration: BoxDecoration(
+              color: domain.primary.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: TextField(
+              controller: _subtaskController,
+              focusNode: _subtaskFocus,
+              style: AppTypography.metadataText(color: domain.primary)
+                  .copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'New subtask...',
+                hintStyle: AppTypography.metadataText(
+                  color: domain.primary.withValues(alpha: 0.3),
+                ).copyWith(fontSize: 14),
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onSubmitted: (_) => _saveSubtask(task),
+              enabled: !_savingSubtask,
+            ),
+          ),
+          if (_savingSubtask)
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: domain.primary,
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () => _saveSubtask(task),
+              child: Icon(Icons.check, size: 20, color: domain.primary),
+            ),
+        ],
+      ),
+    );
+  }
+
   // --- Subtasks ---
 
   Widget _buildSubtasksSection(DomainPalette domain, Task task, List<Task> subtasks) {
@@ -1022,12 +1079,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'SUBTASKS',
-              style: AppTypography.metadataText(
-                color: AppColors.darkText.withValues(alpha: 0.4),
-              ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
-            ),
+            _buildSectionHeader('SUBTASKS'),
             if (!_addingSubtask)
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1064,55 +1116,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
         // Inline add subtask
         if (_addingSubtask)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                Container(
-                  width: AppSpacing.leftAccentBar,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: domain.primary.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: TextField(
-                    controller: _subtaskController,
-                    focusNode: _subtaskFocus,
-                    style: AppTypography.metadataText(color: domain.primary)
-                        .copyWith(fontSize: 14, fontWeight: FontWeight.w500),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'New subtask...',
-                      hintStyle: AppTypography.metadataText(
-                        color: domain.primary.withValues(alpha: 0.3),
-                      ).copyWith(fontSize: 14),
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onSubmitted: (_) => _saveSubtask(task),
-                    enabled: !_savingSubtask,
-                  ),
-                ),
-                if (_savingSubtask)
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: domain.primary,
-                    ),
-                  )
-                else
-                  GestureDetector(
-                    onTap: () => _saveSubtask(task),
-                    child: Icon(Icons.check, size: 20, color: domain.primary),
-                  ),
-              ],
-            ),
-          ),
+          _buildSubtaskInputRow(domain, task),
       ],
     );
   }

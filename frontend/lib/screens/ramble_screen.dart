@@ -16,6 +16,7 @@ import '../services/haptic_service.dart';
 import '../services/ramble_websocket_service.dart';
 import '../widgets/waveform_painter.dart';
 import '../widgets/styled_snackbar.dart';
+import '../utils/string_extensions.dart';
 
 /// Ramble mode phases
 enum _RamblePhase { recording, editing, processing, reviewing }
@@ -1166,22 +1167,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     };
   }
 
-  Widget _buildFooter(DomainPalette domain) {
-    if (_phase == _RamblePhase.recording) {
-      return _buildRecordingFooter(domain);
-    }
-
-    if (_phase == _RamblePhase.processing) {
-      return const SizedBox(height: AppSpacing.md);
-    }
-
-    if (_phase == _RamblePhase.editing) {
-      return _buildEditingFooter(domain);
-    }
-
-    // Reviewing phase
-    return _buildReviewingFooter(domain);
-  }
+  Widget _buildFooter(DomainPalette domain) => switch (_phase) {
+    _RamblePhase.recording => _buildRecordingFooter(domain),
+    _RamblePhase.processing => const SizedBox(height: AppSpacing.md),
+    _RamblePhase.editing => _buildEditingFooter(domain),
+    _RamblePhase.reviewing => _buildReviewingFooter(domain),
+  };
 
   Widget _buildRecordingFooter(DomainPalette domain) {
     return Padding(
@@ -1557,41 +1548,11 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
                     ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ['add', 'complete', 'edit', 'delete', 'move'].map((a) {
-                      final selected = a == _action;
-                      final color = _actionChipColor(a);
-                      return GestureDetector(
-                        onTap: () => setState(() => _action = a),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? color
-                                : color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: color.withValues(
-                                alpha: selected ? 1.0 : 0.3,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            a[0].toUpperCase() + a.substring(1),
-                            style: AppTypography.metadataText(
-                              color: selected ? Colors.white : color,
-                            ).copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                  _ChipSelector(
+                    items: const ['add', 'complete', 'edit', 'delete', 'move'],
+                    selected: _action,
+                    onSelect: (a) => setState(() => _action = a),
+                    colorFn: _actionChipColor,
                   ),
                 ],
               ),
@@ -1599,11 +1560,12 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
 
             const SizedBox(height: AppSpacing.md),
 
-            // Title field
+            // Title field (read-only for complete/delete — these act on existing tasks)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: TextField(
                 controller: _titleController,
+                readOnly: _action == 'complete' || _action == 'delete',
                 style: AppTypography.metadataText(color: AppColors.darkText)
                     .copyWith(fontSize: 15, height: 1.4),
                 maxLines: 2,
@@ -1639,66 +1601,44 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
 
             const SizedBox(height: AppSpacing.md),
 
-            // Category chips
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Category',
-                    style: AppTypography.metadataText(
-                      color: AppColors.darkText.withValues(alpha: 0.5),
-                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+            // Category chips (editable for add/move, locked for complete/delete/edit)
+            IgnorePointer(
+              ignoring: _action != 'add' && _action != 'move',
+              child: Opacity(
+                opacity: (_action == 'add' || _action == 'move') ? 1.0 : 0.5,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Category',
+                        style: AppTypography.metadataText(
+                          color: AppColors.darkText.withValues(alpha: 0.5),
+                        ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      _ChipSelector(
+                        items: categories,
+                        selected: _category,
+                        onSelect: (cat) => setState(() => _category = cat),
+                        colorFn: (cat) => DomainColors.getDomain(
+                          cat, true, widget.paletteMap,
+                        ).primary,
+                        selectedTextColorFn: (cat) => DomainColors.getDomain(
+                          cat, true, widget.paletteMap,
+                        ).textOnPrimary,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: categories.map((cat) {
-                      final catDomain = DomainColors.getDomain(
-                        cat, true, widget.paletteMap,
-                      );
-                      final selected = cat == _category;
-                      return GestureDetector(
-                        onTap: () => setState(() => _category = cat),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? catDomain.primary
-                                : catDomain.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: catDomain.primary.withValues(
-                                alpha: selected ? 1.0 : 0.3,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            cat[0].toUpperCase() + cat.substring(1),
-                            style: AppTypography.metadataText(
-                              color: selected
-                                  ? catDomain.textOnPrimary
-                                  : catDomain.primary,
-                            ).copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+                ),
               ),
             ),
 
             const SizedBox(height: AppSpacing.md),
 
-            // Priority chips
+            // Priority chips (locked for complete/delete)
+            if (_action == 'add' || _action == 'edit')
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Column(
@@ -1711,49 +1651,21 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
                     ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ['none', 'low', 'medium', 'high'].map((p) {
-                      final selected = p == _priority;
-                      final color = _priorityChipColor(p);
-                      return GestureDetector(
-                        onTap: () => setState(() => _priority = p),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? color
-                                : color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: color.withValues(
-                                alpha: selected ? 1.0 : 0.3,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            p[0].toUpperCase() + p.substring(1),
-                            style: AppTypography.metadataText(
-                              color: selected ? Colors.white : color,
-                            ).copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                  _ChipSelector(
+                    items: const ['none', 'low', 'medium', 'high'],
+                    selected: _priority,
+                    onSelect: (p) => setState(() => _priority = p),
+                    colorFn: _priorityChipColor,
                   ),
                 ],
               ),
             ),
 
+            if (_action == 'add' || _action == 'edit')
             const SizedBox(height: AppSpacing.md),
 
-            // Due date
+            // Due date (only for add/edit)
+            if (_action == 'add' || _action == 'edit')
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Column(
@@ -1908,5 +1820,54 @@ class _ProposalEditSheetState extends State<_ProposalEditSheet> {
       'move' => AppColors.dueSoon,
       _ => AppColors.darkText.withValues(alpha: 0.7),
     };
+  }
+}
+
+/// Reusable chip selector for action/category/priority pickers.
+class _ChipSelector extends StatelessWidget {
+  final List<String> items;
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final Color Function(String) colorFn;
+  final Color Function(String)? selectedTextColorFn;
+
+  const _ChipSelector({
+    required this.items,
+    required this.selected,
+    required this.onSelect,
+    required this.colorFn,
+    this.selectedTextColorFn,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items.map((item) {
+        final isSelected = item == selected;
+        final color = colorFn(item);
+        final selectedTextColor = selectedTextColorFn?.call(item) ?? Colors.white;
+        return GestureDetector(
+          onTap: () => onSelect(item),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected ? color : color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: color.withValues(alpha: isSelected ? 1.0 : 0.3),
+              ),
+            ),
+            child: Text(
+              item.capitalize,
+              style: AppTypography.metadataText(
+                color: isSelected ? selectedTextColor : color,
+              ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 }

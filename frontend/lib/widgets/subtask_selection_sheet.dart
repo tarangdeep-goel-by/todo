@@ -8,9 +8,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'styled_snackbar.dart';
-
-String _sentenceCase(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+import '../utils/string_extensions.dart';
 
 /// Bottom sheet for selecting subtasks from AI suggestions + adding custom ones.
 class SubtaskSelectionSheet extends ConsumerStatefulWidget {
@@ -166,7 +164,7 @@ class _SubtaskSelectionSheetState extends ConsumerState<SubtaskSelectionSheet> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _sentenceCase(widget.parentTask['title'] as String? ?? ''),
+                  (widget.parentTask['title'] as String? ?? '').capitalize,
                   style: AppTypography.metadataText(color: domain.primary)
                       .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
                   maxLines: 2,

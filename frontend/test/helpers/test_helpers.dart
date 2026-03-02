@@ -74,3 +74,20 @@ Widget buildTestApp(Widget child, {List<Override> overrides = const []}) {
     child: MaterialApp(home: Scaffold(body: child)),
   );
 }
+
+/// Wrap a widget in ProviderScope + MaterialApp with an Overlay for testing
+/// snackbars and other overlay-based widgets.
+Widget buildOverlayTestApp(Widget child, {List<Override> overrides = const []}) {
+  return ProviderScope(
+    overrides: overrides,
+    child: MaterialApp(
+      home: Scaffold(
+        body: Overlay(
+          initialEntries: [
+            OverlayEntry(builder: (_) => child),
+          ],
+        ),
+      ),
+    ),
+  );
+}

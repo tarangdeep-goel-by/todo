@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../config/constants.dart';
 import '../config/theme.dart';
-import '../config/spacing.dart';
 import '../config/typography.dart';
+import 'base_snackbar_overlay.dart';
 
 /// Snackbar style variants.
 enum SnackbarStyle { success, error, info }
@@ -58,10 +56,10 @@ VoidCallback showStyledSnackbar(
   entry = OverlayEntry(
     builder: (context) => _StyledSnackbarOverlay(
       message: message,
-      palette: palette,
+      snackbarPalette: palette,
       icon: icon,
-      duration: duration,
-      onDismiss: dismiss,
+      snackbarDuration: duration,
+      onDismissCallback: dismiss,
     ),
   );
 
@@ -79,141 +77,70 @@ DomainPalette _paletteForStyle(SnackbarStyle style) {
 
 class _StyledSnackbarOverlay extends StatefulWidget {
   final String message;
-  final DomainPalette palette;
+  final DomainPalette snackbarPalette;
   final IconData icon;
-  final Duration duration;
-  final VoidCallback onDismiss;
+  final Duration snackbarDuration;
+  final VoidCallback onDismissCallback;
 
   const _StyledSnackbarOverlay({
     required this.message,
-    required this.palette,
+    required this.snackbarPalette,
     required this.icon,
-    required this.duration,
-    required this.onDismiss,
+    required this.snackbarDuration,
+    required this.onDismissCallback,
   });
 
   @override
   State<_StyledSnackbarOverlay> createState() => _StyledSnackbarOverlayState();
 }
 
-class _StyledSnackbarOverlayState extends State<_StyledSnackbarOverlay>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slideAnimation;
-  late final Animation<double> _fadeAnimation;
-  Timer? _autoHideTimer;
+class _StyledSnackbarOverlayState
+    extends BaseSnackbarOverlayState<_StyledSnackbarOverlay> {
+  @override
+  DomainPalette get palette => widget.snackbarPalette;
 
   @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: AppAnimations.snackbarIn,
-      reverseDuration: AppAnimations.snackbarOut,
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppAnimations.easeOutCubic,
-      reverseCurve: Curves.easeIn,
-    ));
-
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-
-    _controller.forward();
-    _autoHideTimer = Timer(widget.duration, _animateOut);
-  }
-
-  Future<void> _animateOut() async {
-    if (!mounted) return;
-    await _controller.reverse();
-    if (mounted) widget.onDismiss();
-  }
+  Duration get duration => widget.snackbarDuration;
 
   @override
-  void dispose() {
-    _autoHideTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
+  VoidCallback get onDismiss => widget.onDismissCallback;
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return Positioned(
-      left: AppSpacing.md,
-      right: AppSpacing.md,
-      bottom: bottomPadding + 96,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: 14,
-              ),
-              decoration: BoxDecoration(
-                color: widget.palette.surface,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                border: Border.all(
-                  color: widget.palette.primary.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Icon
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: widget.palette.primary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: 16,
-                      color: widget.palette.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Message
-                  Expanded(
-                    child: Text(
-                      widget.message,
-                      style: AppTypography.metadataText(
-                        color: widget.palette.primary,
-                      ).copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+    return buildSnackbarShell(
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: palette.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              widget.icon,
+              size: 16,
+              color: palette.primary,
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+
+          // Message
+          Expanded(
+            child: Text(
+              widget.message,
+              style: AppTypography.metadataText(
+                color: palette.primary,
+              ).copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

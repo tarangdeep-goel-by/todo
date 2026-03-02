@@ -44,6 +44,21 @@ class ActiveFilterChips extends ConsumerWidget {
     );
   }
 
+  VoidCallback _removeFromList({
+    required WidgetRef ref,
+    required TaskFilter filter,
+    required String value,
+    required List<String> list,
+    required TaskFilter Function(List<String>?) updater,
+  }) {
+    return () {
+      HapticService.light();
+      final updated = list.toList()..remove(value);
+      ref.read(taskFilterProvider.notifier).state =
+          updater(updated.isEmpty ? null : updated);
+    };
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(taskFilterProvider);
@@ -72,13 +87,13 @@ class ActiveFilterChips extends ConsumerWidget {
               return _buildChip(
                 label: cat.toUpperCase(),
                 color: domain.primary,
-                onRemove: () {
-                  HapticService.light();
-                  final updated = filter.categories!.toList()..remove(cat);
-                  ref.read(taskFilterProvider.notifier).state = filter.copyWith(
-                    categories: updated.isEmpty ? null : updated,
-                  );
-                },
+                onRemove: _removeFromList(
+                  ref: ref,
+                  filter: filter,
+                  value: cat,
+                  list: filter.categories!,
+                  updater: (v) => filter.copyWith(categories: v),
+                ),
               );
             }),
 
@@ -93,13 +108,13 @@ class ActiveFilterChips extends ConsumerWidget {
               return _buildChip(
                 label: 'PRI: ${priority.toUpperCase()}',
                 color: color,
-                onRemove: () {
-                  HapticService.light();
-                  final updated = filter.priorities!.toList()..remove(priority);
-                  ref.read(taskFilterProvider.notifier).state = filter.copyWith(
-                    priorities: updated.isEmpty ? null : updated,
-                  );
-                },
+                onRemove: _removeFromList(
+                  ref: ref,
+                  filter: filter,
+                  value: priority,
+                  list: filter.priorities!,
+                  updater: (v) => filter.copyWith(priorities: v),
+                ),
               );
             }),
 
@@ -114,13 +129,13 @@ class ActiveFilterChips extends ConsumerWidget {
               return _buildChip(
                 label: status.toUpperCase(),
                 color: color,
-                onRemove: () {
-                  HapticService.light();
-                  final updated = filter.statuses!.toList()..remove(status);
-                  ref.read(taskFilterProvider.notifier).state = filter.copyWith(
-                    statuses: updated.isEmpty ? null : updated,
-                  );
-                },
+                onRemove: _removeFromList(
+                  ref: ref,
+                  filter: filter,
+                  value: status,
+                  list: filter.statuses!,
+                  updater: (v) => filter.copyWith(statuses: v),
+                ),
               );
             }),
 

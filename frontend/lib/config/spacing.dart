@@ -28,6 +28,13 @@ class AppSpacing {
   // Top bar
   static const double topBarHeight = 48.0;
 
+  // Bottom nav
+  static const double bottomNavHeight = 72.0;
+  static const double bottomNavPttSize = 56.0;
+  static const double bottomNavMarginH = 16.0;
+  static const double bottomNavMarginBottom = 12.0;
+  static const double bottomNavRadius = 24.0;
+
   // Border radius
   static const double radiusNone = 0.0;
   static const double radiusSm = 12.0;

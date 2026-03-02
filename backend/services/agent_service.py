@@ -768,6 +768,7 @@ class AgentService:
                 if matched:
                     matched_task_id = str(matched[0].id)
                     task_category = matched[0].category or task_category
+                    content = matched[0].title  # show real task title in proposal UI
                     logger.debug("brain dump resolved '%s' → task '%s' (%s)", content, matched[0].title, matched_task_id)
                     if len(matched) > 1:
                         alternate_matches = [

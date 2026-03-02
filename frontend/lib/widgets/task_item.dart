@@ -11,6 +11,7 @@ import '../services/haptic_service.dart';
 import '../widgets/undo_snackbar.dart';
 import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
+import '../utils/string_extensions.dart';
 
 /// Task item widget for flat view with swipe actions
 class TaskItem extends ConsumerWidget {
@@ -130,6 +131,33 @@ class TaskItem extends ConsumerWidget {
     }
   }
 
+  Widget _buildBadge({
+    required String text,
+    required Color color,
+    double backgroundAlpha = 0.2,
+    FontWeight fontWeight = FontWeight.w700,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 6,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: backgroundAlpha),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: AppTypography.metadataText(
+          color: color,
+        ).copyWith(
+          fontSize: 10,
+          fontWeight: fontWeight,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final paletteMap = ref.watch(domainPalettesProvider);
@@ -245,7 +273,7 @@ class TaskItem extends ConsumerWidget {
                     ),
                     if (parentName != null)
                       Text(
-                        parentName![0].toUpperCase() + parentName!.substring(1),
+                        parentName!.capitalize,
                         style: AppTypography.metadataText(
                           color: domain.primary.withValues(alpha: 0.4),
                         ).copyWith(
@@ -260,68 +288,19 @@ class TaskItem extends ConsumerWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               if (isOverdue) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.overdue.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Overdue',
-                    style: AppTypography.metadataText(
-                      color: AppColors.overdue,
-                    ).copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                _buildBadge(text: 'Overdue', color: AppColors.overdue),
                 const SizedBox(width: 4),
               ],
               if (isDueSoon) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.dueSoon.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Due Soon',
-                    style: AppTypography.metadataText(
-                      color: AppColors.dueSoon,
-                    ).copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                _buildBadge(text: 'Due Soon', color: AppColors.dueSoon),
                 const SizedBox(width: 4),
               ],
               if (task.priority != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: domain.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    task.priority!.substring(0, 1).toUpperCase() + task.priority!.substring(1),
-                    style: AppTypography.metadataText(
-                      color: domain.primary.withValues(alpha: 0.8),
-                    ).copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                _buildBadge(
+                  text: task.priority!.capitalize,
+                  color: domain.primary.withValues(alpha: 0.8),
+                  backgroundAlpha: 0.15,
+                  fontWeight: FontWeight.w600,
                 ),
             ],
           ),

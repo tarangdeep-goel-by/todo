@@ -111,6 +111,15 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
     });
   }
 
+  /// Returns an error string if [name] is invalid for a domain, or null if valid.
+  /// Checks: empty, too long (>30 chars), duplicate (case-insensitive).
+  String? _validateDomainName(String name, Set<String> existing) {
+    if (name.isEmpty) return 'Name cannot be empty';
+    if (name.length > 30) return 'Name is too long (max 30 characters)';
+    if (existing.contains(name.toLowerCase())) return 'Domain already exists';
+    return null;
+  }
+
   Future<void> _showAddDomainSheet(int currentCount) async {
     final controller = TextEditingController();
     final existingNames = _getDomains()
@@ -174,15 +183,9 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
                     ),
                     onSubmitted: (value) {
                       final name = value.trim();
-                      if (name.isEmpty) {
-                        setSheetState(
-                            () => errorText = 'Name cannot be empty');
-                        return;
-                      }
-                      if (existingNames
-                          .contains(name.toLowerCase())) {
-                        setSheetState(() =>
-                            errorText = 'Domain already exists');
+                      final error = _validateDomainName(name, existingNames);
+                      if (error != null) {
+                        setSheetState(() => errorText = error);
                         return;
                       }
                       Navigator.pop(ctx, name);
@@ -194,15 +197,9 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
                     child: TextButton(
                       onPressed: () {
                         final name = controller.text.trim();
-                        if (name.isEmpty) {
-                          setSheetState(() =>
-                              errorText = 'Name cannot be empty');
-                          return;
-                        }
-                        if (existingNames
-                            .contains(name.toLowerCase())) {
-                          setSheetState(() =>
-                              errorText = 'Domain already exists');
+                        final error = _validateDomainName(name, existingNames);
+                        if (error != null) {
+                          setSheetState(() => errorText = error);
                           return;
                         }
                         Navigator.pop(ctx, name);
@@ -264,7 +261,15 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
 
   Future<void> _deleteDomain(
       DomainPalette domain, List<Task> domainTasks) async {
-    final taskCount = domainTasks.length;
+    final confirmed = await _confirmDeleteDomain(domain, domainTasks.length);
+    if (!confirmed || !mounted) return;
+    await _performDeleteDomain(domain, domainTasks);
+  }
+
+  /// Shows a confirmation dialog for domain deletion.
+  /// Returns true if the user confirmed, false otherwise.
+  Future<bool> _confirmDeleteDomain(
+      DomainPalette domain, int taskCount) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -305,9 +310,12 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
         ],
       ),
     );
+    return confirmed == true;
+  }
 
-    if (confirmed != true || !mounted) return;
-
+  /// Performs the domain deletion: optimistic removal, API calls, rollback on failure.
+  Future<void> _performDeleteDomain(
+      DomainPalette domain, List<Task> domainTasks) async {
     final store = ref.read(taskStoreProvider.notifier);
     final apiService = ref.read(apiServiceProvider);
 
