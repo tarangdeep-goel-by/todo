@@ -371,6 +371,7 @@ Common mistakes to avoid:
                 ),
             )
 
+            logger.info("brain_dump raw response: %s", response.text)
             result = json.loads(response.text)
 
             # Normalize: always return a list
@@ -401,7 +402,7 @@ Common mistakes to avoid:
             return result
 
         except Exception as e:
-            logger.error("brain dump detection FAILED: %s", e)
+            logger.error("brain dump detection FAILED: %s", e, exc_info=True)
             return []
 
     async def generate_subtasks(self, task_title: str, task_description: str | None = None, context: str = "") -> List[str]:

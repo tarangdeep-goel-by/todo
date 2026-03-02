@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -42,6 +43,16 @@ class ActiveFilterChips extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _formatDueDateLabel(TaskFilter filter) {
+    final fmt = DateFormat('MMM d');
+    if (filter.dueDateGte != null && filter.dueDateLte != null) {
+      return '${fmt.format(filter.dueDateGte!)} - ${fmt.format(filter.dueDateLte!)}';
+    }
+    if (filter.dueDateLte != null) return 'OVERDUE';
+    if (filter.dueDateGte != null) return 'DUE AFTER ${fmt.format(filter.dueDateGte!)}';
+    return 'DUE DATE';
   }
 
   VoidCallback _removeFromList({
@@ -155,7 +166,7 @@ class ActiveFilterChips extends ConsumerWidget {
 
           if (filter.dueDateGte != null || filter.dueDateLte != null)
             _buildChip(
-              label: 'DUE DATE',
+              label: _formatDueDateLabel(filter),
               color: AppColors.overdue,
               onRemove: () {
                 HapticService.light();

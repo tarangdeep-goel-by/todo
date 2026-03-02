@@ -50,7 +50,9 @@ class TaskFilter {
       priorities != null ||
       statuses != null ||
       createdAtGte != null ||
+      createdAtLte != null ||
       dueDateGte != null ||
+      dueDateLte != null ||
       sortOptions.isNotEmpty;
 
   int get activeFilterCount {

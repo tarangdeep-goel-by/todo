@@ -171,6 +171,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   // Priority expansion
   bool _priorityExpanded = false;
 
+  // AI placement expansion
+  bool _aiPlacementExpanded = false;
+
   // Navigation history stack
   final List<({String? taskId, String? domainRoot})> _navHistory = [];
 
@@ -212,6 +215,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     _editingDescription = false;
     _addingSubtask = false;
     _priorityExpanded = false;
+    _aiPlacementExpanded = false;
   }
 
   void _navigateTo(String taskId) {
@@ -620,6 +624,35 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       default:
         return Icons.remove;
     }
+  }
+
+  // --- AI placement helpers ---
+
+  bool _hasAiPlacement(Task task) {
+    final json = task.aiPlacementJson;
+    if (json == null) return false;
+    final reasoning = json['reasoning'] as String? ?? '';
+    return reasoning.isNotEmpty && reasoning != 'Manual creation';
+  }
+
+  double _getAiConfidence(Task task) {
+    final json = task.aiPlacementJson;
+    if (json == null) return 1.0;
+    final raw = json['confidence'];
+    if (raw is num) return raw.toDouble();
+    return 1.0;
+  }
+
+  String _getAiReasoning(Task task) {
+    final json = task.aiPlacementJson;
+    if (json == null) return '';
+    return json['reasoning'] as String? ?? '';
+  }
+
+  bool _hasVoiceTranscription(Task task) {
+    final transcription = task.transcription.trim();
+    if (transcription.isEmpty) return false;
+    return transcription.toLowerCase() != task.title.toLowerCase();
   }
 
   // --- Ancestor chain ---
@@ -1078,27 +1111,74 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   Widget _buildMetadata(DomainPalette domain, Task task) {
     final dimColor = AppColors.darkText.withValues(alpha: 0.4);
+    final dimStyle = AppTypography.metadataText(color: dimColor)
+        .copyWith(fontSize: 11);
+    final showAi = _hasAiPlacement(task);
+    final showTranscription = _hasVoiceTranscription(task);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Created ${_formatDateTime(task.createdAt)}',
-          style: AppTypography.metadataText(color: dimColor)
-              .copyWith(fontSize: 11),
-        ),
+        Text('Created ${_formatDateTime(task.createdAt)}', style: dimStyle),
         const SizedBox(height: 2),
-        Text(
-          'Updated ${_formatDateTime(task.updatedAt)}',
-          style: AppTypography.metadataText(color: dimColor)
-              .copyWith(fontSize: 11),
-        ),
+        Text('Updated ${_formatDateTime(task.updatedAt)}', style: dimStyle),
         if (task.isCompleted && task.completedAt != null) ...[
           const SizedBox(height: 2),
+          Text('Completed ${_formatDateTime(task.completedAt!)}', style: dimStyle),
+        ],
+
+        // AI placement
+        if (showAi) ...[
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () => setState(() => _aiPlacementExpanded = !_aiPlacementExpanded),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, size: 13, color: dimColor),
+                const SizedBox(width: 4),
+                Text('AI placed', style: dimStyle),
+                if (_getAiConfidence(task) < 0.8) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.warning_amber_rounded, size: 13, color: AppColors.overdue),
+                ],
+                const SizedBox(width: 4),
+                Icon(
+                  _aiPlacementExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 14, color: dimColor,
+                ),
+              ],
+            ),
+          ),
+          if (_aiPlacementExpanded) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 17),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_getAiReasoning(task), style: dimStyle),
+                  if (_getAiConfidence(task) < 0.8) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Confidence: ${(_getAiConfidence(task) * 100).round()}%',
+                      style: dimStyle,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+
+        // Voice transcription
+        if (showTranscription) ...[
+          const SizedBox(height: 6),
           Text(
-            'Completed ${_formatDateTime(task.completedAt!)}',
-            style: AppTypography.metadataText(color: dimColor)
-                .copyWith(fontSize: 11),
+            'Voice: "${task.transcription}"',
+            style: dimStyle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ],
