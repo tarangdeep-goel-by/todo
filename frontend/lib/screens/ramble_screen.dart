@@ -401,12 +401,28 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       }
 
       if (mounted) {
+        var tasks = response.tasks;
+
+        // Fallback: if Gemini returned nothing, create a single ADD proposal
+        // from the raw transcript so the user can still add what they said.
+        if (tasks.isEmpty) {
+          tasks = [
+            BrainDumpTaskProposal(
+              id: 'fallback-${DateTime.now().millisecondsSinceEpoch}',
+              action: 'add',
+              content: text,
+              category: widget.prefilledCategory ?? 'personal',
+              parentId: widget.prefilledParentId,
+            ),
+          ];
+        }
+
         setState(() {
           if (_existingProposals.isNotEmpty) {
-            _proposals = [..._existingProposals, ...response.tasks];
+            _proposals = [..._existingProposals, ...tasks];
             _existingProposals = [];
           } else {
-            _proposals = response.tasks;
+            _proposals = tasks;
           }
           _deselectedIds.clear();
           _phase = _RamblePhase.reviewing;
@@ -1425,6 +1441,7 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
   late String _category;
   late String _priority;
   DateTime? _dueDate;
+  String? _matchedTaskId;
   String? _targetParentId;
   String? _targetContent;
 
@@ -1437,6 +1454,7 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
     _category = widget.proposal.category;
     _priority = widget.proposal.priority ?? 'none';
     _dueDate = widget.proposal.dueDate;
+    _matchedTaskId = widget.proposal.matchedTaskId;
     _targetParentId = widget.proposal.targetParentId;
     _targetContent = widget.proposal.targetContent;
   }
@@ -1467,7 +1485,7 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
       parentId: isAdd ? widget.proposal.parentId : null,
       labels: widget.proposal.labels,
       changes: isAdd ? null : widget.proposal.changes,
-      matchedTaskId: isAdd ? null : widget.proposal.matchedTaskId,
+      matchedTaskId: isAdd ? null : _matchedTaskId,
       targetParentId: isMove ? _targetParentId : null,
       targetContent: isMove ? _targetContent : null,
     );
@@ -1520,6 +1538,21 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
     if (picked != null) setState(() => _dueDate = picked);
   }
 
+  void _flipMoveDirection() {
+    HapticService.light();
+    setState(() {
+      // Swap source (title + matchedTaskId) with destination (targetContent + targetParentId)
+      final oldTitle = _titleController.text;
+      final oldMatchedId = _matchedTaskId;
+
+      _titleController.text = _targetContent ?? '';
+      _matchedTaskId = _targetParentId;
+
+      _targetContent = oldTitle;
+      _targetParentId = oldMatchedId;
+    });
+  }
+
   Widget _buildMoveToRow(DomainPalette domain) {
     final targetLabel = _targetContent != null
         ? _targetContent!.capitalize
@@ -1530,11 +1563,31 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Move to',
-            style: AppTypography.metadataText(
-              color: AppColors.darkText.withValues(alpha: 0.5),
-            ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              Text(
+                'Move to',
+                style: AppTypography.metadataText(
+                  color: AppColors.darkText.withValues(alpha: 0.5),
+                ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: _flipMoveDirection,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swap_vert_rounded, size: 14, color: domain.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Flip',
+                      style: AppTypography.metadataText(color: domain.primary)
+                          .copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           GestureDetector(
@@ -1659,7 +1712,7 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                   child: TextField(
                     controller: _titleController,
-                    readOnly: _action == 'complete' || _action == 'delete',
+                    readOnly: _action != 'add' && _action != 'edit',
                     style: AppTypography.metadataText(color: AppColors.darkText)
                         .copyWith(fontSize: 15, height: 1.4),
                     maxLines: 2,

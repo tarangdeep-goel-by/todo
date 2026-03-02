@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -17,11 +18,22 @@ class FilterSheet extends ConsumerStatefulWidget {
 
 class _FilterSheetState extends ConsumerState<FilterSheet> {
   late TaskFilter _currentFilter;
+  String? _activeDatePreset;
 
   @override
   void initState() {
     super.initState();
     _currentFilter = ref.read(taskFilterProvider);
+    // Detect active date preset from initial filter
+    if (_currentFilter.dueDateLte != null && _currentFilter.dueDateGte == null && _currentFilter.createdAtGte == null) {
+      _activeDatePreset = 'overdue';
+    } else if (_currentFilter.createdAtGte != null && _currentFilter.createdAtLte != null) {
+      _activeDatePreset = 'today';
+    } else if (_currentFilter.createdAtGte != null && _currentFilter.createdAtLte == null) {
+      _activeDatePreset = 'week';
+    } else if (_currentFilter.dueDateGte != null && _currentFilter.dueDateLte != null) {
+      _activeDatePreset = 'custom';
+    }
   }
 
   void _applyFilters() {
@@ -34,6 +46,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     HapticService.medium();
     setState(() {
       _currentFilter = TaskFilter();
+      _activeDatePreset = null;
     });
   }
 
@@ -84,8 +97,24 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
 
   void _setDatePreset(String preset) {
     HapticService.medium();
-    final now = DateTime.now();
     setState(() {
+      // Toggle off if same preset tapped again
+      if (_activeDatePreset == preset) {
+        _activeDatePreset = null;
+        _currentFilter = _currentFilter.copyWith(
+          createdAtGte: null, createdAtLte: null,
+          dueDateGte: null, dueDateLte: null,
+        );
+        return;
+      }
+
+      // Clear all date fields first
+      _currentFilter = _currentFilter.copyWith(
+        createdAtGte: null, createdAtLte: null,
+        dueDateGte: null, dueDateLte: null,
+      );
+
+      final now = DateTime.now();
       switch (preset) {
         case 'today':
           _currentFilter = _currentFilter.copyWith(
@@ -105,7 +134,56 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
           );
           break;
       }
+      _activeDatePreset = preset;
     });
+  }
+
+  Future<void> _pickCustomDateRange() async {
+    HapticService.medium();
+    final paletteMap = ref.read(domainPalettesProvider);
+    final accentColor = paletteMap.values.isNotEmpty
+        ? paletteMap.values.first.primary
+        : DomainColors.palettes.first.primary;
+
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365 * 3)),
+      initialDateRange: (_currentFilter.dueDateGte != null && _currentFilter.dueDateLte != null)
+          ? DateTimeRange(start: _currentFilter.dueDateGte!, end: _currentFilter.dueDateLte!)
+          : null,
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: accentColor,
+              surface: AppColors.darkBg,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _currentFilter = _currentFilter.copyWith(
+          createdAtGte: null, createdAtLte: null,
+          dueDateGte: picked.start,
+          dueDateLte: picked.end,
+        );
+        _activeDatePreset = 'custom';
+      });
+    }
+  }
+
+  String _formatCustomRange() {
+    if (_currentFilter.dueDateGte != null && _currentFilter.dueDateLte != null) {
+      final fmt = DateFormat('MMM d');
+      return '${fmt.format(_currentFilter.dueDateGte!)} - ${fmt.format(_currentFilter.dueDateLte!)}';
+    }
+    return 'CUSTOM';
   }
 
   void _toggleSort(String field) {
@@ -367,21 +445,27 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     children: [
                       _buildFilterChip(
                         label: 'TODAY',
-                        isSelected: false,
+                        isSelected: _activeDatePreset == 'today',
                         onTap: () => _setDatePreset('today'),
                         color: accentColor,
                       ),
                       _buildFilterChip(
                         label: 'THIS WEEK',
-                        isSelected: false,
+                        isSelected: _activeDatePreset == 'week',
                         onTap: () => _setDatePreset('week'),
                         color: accentColor,
                       ),
                       _buildFilterChip(
                         label: 'OVERDUE',
-                        isSelected: false,
+                        isSelected: _activeDatePreset == 'overdue',
                         onTap: () => _setDatePreset('overdue'),
                         color: AppColors.overdue,
+                      ),
+                      _buildFilterChip(
+                        label: _activeDatePreset == 'custom' ? _formatCustomRange() : 'CUSTOM',
+                        isSelected: _activeDatePreset == 'custom',
+                        onTap: () => _pickCustomDateRange(),
+                        color: accentColor,
                       ),
                     ],
                   ),
