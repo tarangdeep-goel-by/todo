@@ -115,7 +115,16 @@ Rules:
 - Filler speech ("um", "let me think") → skip
 - Self-corrections ("no wait, I mean...") → use the correction only
 - Near-duplicates ("buy milk", "get milk", "purchase milk") → merge into one
-- If the tree is empty, pick categories from: career, finance, health, relationships, growth, recreation, home, community
+- Pick categories from the tree when possible. If no tree match, use the 8 MECE life domains:
+  * career — job, work projects, professional development, networking, meetings, deadlines
+  * finance — budget, bills, taxes, savings, investments, subscriptions, insurance
+  * health — exercise, diet, medical, sleep, mental health, medication, appointments
+  * relationships — family, friends, partner, social plans, gifts, calls, thank-you notes
+  * growth — learning, courses, reading, certifications, skills, languages, practice
+  * recreation — hobbies, travel, entertainment, sports, dining out, games, creative projects
+  * home — chores, groceries, repairs, cleaning, cooking, organizing, errands
+  * community — volunteering, donations, neighborhood, local events, civic engagement
+- Placement: nest under an existing parent when the new task is clearly a subtask (e.g. "buy protein powder" under "Meal prep"). Create at root level when it's an independent task or no obvious parent exists.
 - Return [] for pure filler or nonsense with no actionable content
 
 For edit actions, always populate the `changes` object with the modified field:

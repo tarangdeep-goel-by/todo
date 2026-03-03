@@ -186,14 +186,10 @@ async def main():
         print("No cases match the filter criteria.")
         sys.exit(1)
 
-    # Build tree context — compressed when pg_native
+    # Build tree context — same for both search engines
     search_engine = os.environ.get("SEARCH_ENGINE", "fuzzy")
-    compressed = search_engine == "pg_native"
-    tree_context = build_tree_context(tasks, compressed=compressed)
-    if compressed:
-        print(f"  Using compressed tree ({len(tree_context)} chars)")
-    else:
-        print(f"  Using full tree ({len(tree_context)} chars)")
+    tree_context = build_tree_context(tasks)
+    print(f"  Using full tree ({len(tree_context)} chars)")
 
     # Init Gemini
     model_name = "gemini-2.5-flash-lite"
