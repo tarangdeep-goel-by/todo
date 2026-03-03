@@ -21,8 +21,8 @@ class AgentService:
         """Initialize with Gemini service."""
         self.gemini = gemini_service
 
-    async def _resolve_parent_search(self, user_id: str, query: str, db: AsyncSession, task_service: TaskService):
-        """Search for a parent task by query, dispatching on search engine."""
+    async def _search_tasks(self, user_id: str, query: str, db: AsyncSession, task_service: TaskService):
+        """Search for tasks by query, dispatching on configured search engine."""
         settings = get_settings()
         if settings.search_engine == "pg_native":
             search = TaskSearchService(db)
@@ -66,9 +66,7 @@ class AgentService:
             )
 
         task_service = TaskService(db)
-        settings = get_settings()
-        compressed = settings.search_engine == "pg_native"
-        tree_context = await task_service.build_full_tree_context(user_id, compressed=compressed)
+        tree_context = await task_service.build_full_tree_context(user_id)
 
         # If parent_id provided (subtask mode), look up parent for default category
         parent_category = None
@@ -126,12 +124,7 @@ class AgentService:
             matched_task_id = None
             alternate_matches = None
             if action in ("complete", "edit", "delete", "move", "breakdown"):
-                if settings.search_engine == "pg_native":
-                    search = TaskSearchService(db)
-                    search_results = await search.search(user_id, content, status_filter="active")
-                    matched = [task for task, score in search_results]
-                else:
-                    matched = await task_service.search_tasks(user_id, content)
+                matched = await self._search_tasks(user_id, content, db, task_service)
                 if matched:
                     matched_task_id = str(matched[0].id)
                     task_category = matched[0].category or task_category
@@ -173,7 +166,7 @@ class AgentService:
             if action == "move":
                 target_query = raw.get("targetParentQuery")
                 if target_query:
-                    targets = await self._resolve_parent_search(user_id, target_query, db, task_service)
+                    targets = await self._search_tasks(user_id, target_query, db, task_service)
                     if targets:
                         target_parent_id = str(targets[0].id)
                         target_content = targets[0].title
@@ -192,7 +185,7 @@ class AgentService:
                 # Gemini's parentQuery can still override for relative nesting
                 parent_query = raw.get("parentQuery")
                 if parent_query:
-                    parent_tasks = await self._resolve_parent_search(user_id, parent_query, db, task_service)
+                    parent_tasks = await self._search_tasks(user_id, parent_query, db, task_service)
                     if parent_tasks:
                         resolved_parent_id = str(parent_tasks[0].id)
 

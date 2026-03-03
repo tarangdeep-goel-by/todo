@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 import json
 
-from config import get_settings
-
 logger = logging.getLogger(__name__)
 
 
@@ -65,16 +63,7 @@ class GeminiService:
         Returns:
             List of task proposal dicts, each with action, content, category, etc.
         """
-        settings = get_settings()
-        use_pg_native = settings.search_engine == "pg_native"
-
-        if use_pg_native:
-            context_desc = """The task tree below shows the user's current tasks organized by category.
-Each category header (e.g. "CAREER:") represents a top-level domain — use the lowercase
-form (e.g. "career") as the category value. Tasks are nested with indentation showing parent-child
-relationships. [done] marks completed tasks."""
-        else:
-            context_desc = """The task tree below shows the user's current tasks organized by category.
+        context_desc = """The task tree below shows the user's current tasks organized by category.
 Each category header (e.g. "CAREER TASKS:") represents a top-level domain — use the lowercase
 form (e.g. "career") as the category value. Tasks are nested with "├──" showing parent-child
 relationships. Task IDs are shown in parentheses."""
