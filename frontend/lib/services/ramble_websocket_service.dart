@@ -9,7 +9,11 @@ enum RambleConnectionState { disconnected, connecting, connected, reconnecting }
 
 /// WebSocket client for streaming ramble audio to backend (transcription-only).
 class RambleWebSocketService {
+  final WebSocketChannel Function(Uri) _channelFactory;
   WebSocketChannel? _channel;
+
+  RambleWebSocketService({WebSocketChannel Function(Uri)? channelFactory})
+      : _channelFactory = channelFactory ?? WebSocketChannel.connect;
   final _transcriptionController = StreamController<String>.broadcast();
   final _finalTranscriptController = StreamController<String>.broadcast();
   final _statusController = StreamController<String>.broadcast();
@@ -56,7 +60,7 @@ class RambleWebSocketService {
     _setConnectionState(RambleConnectionState.connecting);
 
     debugPrint('[RambleWS] Connecting to $_wsUrl');
-    _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+    _channel = _channelFactory(Uri.parse(_wsUrl));
 
     try {
       await _channel!.ready;
@@ -110,7 +114,7 @@ class RambleWebSocketService {
     debugPrint('[RambleWS] Attempting reconnect in 2s...');
     await Future.delayed(const Duration(seconds: 2));
 
-    _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+    _channel = _channelFactory(Uri.parse(_wsUrl));
     try {
       await _channel!.ready;
       debugPrint('[RambleWS] Reconnected');
