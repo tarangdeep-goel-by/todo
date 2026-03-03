@@ -300,7 +300,7 @@
           "action": "add",
           "checks": {
             "content_contains": "guitar",
-            "category_contains": "hobbies",
+            "category_exact": "recreation",
             "confidence_gte": 0.6
           }
         }
