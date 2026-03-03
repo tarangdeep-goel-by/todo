@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 # Set env vars before any app imports
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
+os.environ.setdefault("SEARCH_ENGINE", "pg_native")
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -45,6 +46,7 @@ async def db_engine():
 
     engine = create_async_engine(TEST_DB_URL, echo=False)
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()

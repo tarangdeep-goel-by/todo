@@ -14,7 +14,7 @@ class CoachingHint extends StatefulWidget {
 
 class _CoachingHintState extends State<CoachingHint> {
   static const _hints = [
-    'Add buy groceries to personal',
+    'Add buy groceries to home',
     'Schedule standup for tomorrow',
     "What's overdue?",
     'Complete the meeting prep',

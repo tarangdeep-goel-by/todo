@@ -4,9 +4,10 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
+import '../models/api_response.dart';
+import '../providers/api_provider.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
-import '../utils/agent_response_handler.dart';
 import '../screens/ramble_screen.dart';
 import 'styled_snackbar.dart';
 
@@ -56,8 +57,8 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     // Colors
     final idleBg = AppColors.darkText;
     final idleText = AppColors.darkBg;
-    final activeBg = DomainColors.workDark.primary;
-    final activeText = DomainColors.workDark.textOnPrimary;
+    final activeBg = DomainColors.careerDark.primary;
+    final activeText = DomainColors.careerDark.textOnPrimary;
     final bgColor = isProcessing ? activeBg : idleBg;
 
     return Center(
@@ -243,13 +244,54 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   Future<void> _processCommand(String text) async {
     ref.read(recordingStateProvider.notifier).state = RecordingState.processing;
 
-    await processAndHandleAgentResponse(
-      context: context,
-      ref: ref,
-      text: text,
-    );
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      final response = await apiService.processBrainDump(
+        transcription: text,
+        userId: AppConstants.defaultUserId,
+      );
 
-    _resetState();
+      _resetState();
+      if (!mounted) return;
+
+      final proposals = response.tasks;
+
+      // If brain dump returned no proposals, create a fallback ADD proposal
+      if (proposals.isEmpty) {
+        proposals.add(BrainDumpTaskProposal(
+          id: 'fallback-${DateTime.now().millisecondsSinceEpoch}',
+          action: 'add',
+          content: text,
+          category: 'home',
+        ));
+      }
+
+      // Navigate to RambleScreen in review mode
+      final result = await Navigator.push<({bool success, String message})>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RambleScreen(
+            initialProposals: proposals,
+            initialTranscript: text,
+          ),
+        ),
+      );
+
+      if (result != null && mounted) {
+        showStyledSnackbar(context,
+          message: result.message,
+          style: result.success ? SnackbarStyle.success : SnackbarStyle.error,
+        );
+      }
+    } catch (e) {
+      _resetState();
+      if (mounted) {
+        showStyledSnackbar(context,
+          message: 'Failed to process: $e',
+          style: SnackbarStyle.error,
+        );
+      }
+    }
   }
 
   void _resetState() {

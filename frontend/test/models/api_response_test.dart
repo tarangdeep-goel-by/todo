@@ -2,53 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/models/api_response.dart';
 
 void main() {
-  group('AgentResponse.fromJson', () {
-    test('parses success response', () {
-      final r = AgentResponse.fromJson({
-        'success': true,
-        'message': 'Created task',
-        'type': 'confirmation',
-        'data': {'task_id': 't1'},
-      });
-      expect(r.success, true);
-      expect(r.message, 'Created task');
-      expect(r.type, 'confirmation');
-      expect(r.data?['task_id'], 't1');
-    });
-
-    test('parses question type', () {
-      final r = AgentResponse.fromJson({
-        'success': false,
-        'message': 'Which one?',
-        'type': 'question',
-        'data': {
-          'matches': [
-            {'id': '1', 'title': 'A'},
-          ],
-          'action': 'complete',
-        },
-      });
-      expect(r.type, 'question');
-      expect(r.data?['matches'], isList);
-    });
-
-    test('handles null data', () {
-      final r = AgentResponse.fromJson({
-        'success': false,
-        'message': 'Error',
-        'type': 'error',
-        'data': null,
-      });
-      expect(r.data, isNull);
-    });
-  });
-
   group('CreateTaskRequest.toJson', () {
     test('serializes required and optional fields', () {
       final req = CreateTaskRequest(
         userId: 'u1',
         title: 'Task',
-        category: 'work',
+        category: 'career',
         transcription: 'task',
         description: 'desc',
         dueDate: DateTime(2025, 6, 15),
@@ -56,7 +15,7 @@ void main() {
       final json = req.toJson();
       expect(json['user_id'], 'u1');
       expect(json['title'], 'Task');
-      expect(json['category'], 'work');
+      expect(json['category'], 'career');
       expect(json['description'], 'desc');
       expect(json['due_date'], isNotNull);
     });
@@ -85,7 +44,7 @@ void main() {
             'title': 'Task 1',
             'description': null,
             'parent_id': null,
-            'category': 'work',
+            'category': 'career',
             'status': 'active',
             'created_at': '2025-01-15T00:00:00.000',
             'updated_at': '2025-01-15T00:00:00.000',
@@ -122,7 +81,7 @@ void main() {
         title: 'T',
         description: 'D',
         status: 'completed',
-        category: 'personal',
+        category: 'home',
         priority: 'high',
         dueDate: DateTime(2025, 6, 15),
         completedAt: DateTime(2025, 6, 15),

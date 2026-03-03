@@ -8,7 +8,7 @@ void main() {
     testWidgets('shows initial hint text', (tester) async {
       await tester.pumpWidget(buildTestApp(const CoachingHint()));
 
-      expect(find.textContaining('Add buy groceries to personal'), findsOneWidget);
+      expect(find.textContaining('Add buy groceries to home'), findsOneWidget);
     });
 
     testWidgets('hint text changes after 4 seconds', (tester) async {

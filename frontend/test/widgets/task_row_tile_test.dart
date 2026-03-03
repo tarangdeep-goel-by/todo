@@ -8,7 +8,7 @@ void main() {
   late DomainPalette domain;
 
   setUp(() {
-    domain = DomainColors.workDark;
+    domain = DomainColors.careerDark;
   });
 
   group('TaskRowTile', () {

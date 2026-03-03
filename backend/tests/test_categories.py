@@ -7,18 +7,18 @@ class TestCategoryService:
 
     async def test_task_has_category_id_fk(self, task_service):
         """Created task should have category_id pointing to the category row."""
-        cat = await task_service.create_category("test-user", "work")
+        cat = await task_service.create_category("test-user", "career")
         task = await task_service.create_task(
-            user_id="test-user", title="FK test", category="work",
+            user_id="test-user", title="FK test", category="career",
             transcription="fk test",
         )
         assert task.category_id == cat.id
 
     async def test_task_resolves_category_id_automatically(self, task_service):
         """When category_id is not passed, create_task resolves it from category string."""
-        cat = await task_service.create_category("test-user", "personal")
+        cat = await task_service.create_category("test-user", "home")
         task = await task_service.create_task(
-            user_id="test-user", title="Auto resolve", category="personal",
+            user_id="test-user", title="Auto resolve", category="home",
             transcription="auto resolve",
         )
         assert task.category_id == cat.id
@@ -32,14 +32,14 @@ class TestCategoryService:
         assert task.category_id is None
 
     async def test_create_category(self, task_service):
-        cat = await task_service.create_category("test-user", "work")
-        assert cat.name == "work"
+        cat = await task_service.create_category("test-user", "career")
+        assert cat.name == "career"
         assert cat.position == 0
         assert cat.user_id == "test-user"
 
     async def test_create_assigns_lowest_unused_position(self, task_service):
-        await task_service.create_category("test-user", "work")     # pos 0
-        await task_service.create_category("test-user", "personal") # pos 1
+        await task_service.create_category("test-user", "career")     # pos 0
+        await task_service.create_category("test-user", "home")       # pos 1
         await task_service.delete_category(
             (await task_service.get_categories_from_db("test-user"))[0].id,
             "test-user",
@@ -49,29 +49,29 @@ class TestCategoryService:
         assert cat.position == 0
 
     async def test_create_duplicate_rejected(self, task_service):
-        await task_service.create_category("test-user", "work")
+        await task_service.create_category("test-user", "career")
         with pytest.raises(ValueError, match="already exists"):
-            await task_service.create_category("test-user", "work")
+            await task_service.create_category("test-user", "career")
 
-    async def test_create_max_five(self, task_service):
-        for name in ["a", "b", "c", "d", "e"]:
+    async def test_create_max_eight(self, task_service):
+        for name in ["a", "b", "c", "d", "e", "f", "g", "h"]:
             await task_service.create_category("test-user", name)
         with pytest.raises(ValueError, match="Maximum"):
-            await task_service.create_category("test-user", "f")
+            await task_service.create_category("test-user", "i")
 
     async def test_get_categories_returns_names(self, task_service):
-        await task_service.create_category("test-user", "work")
-        await task_service.create_category("test-user", "personal")
+        await task_service.create_category("test-user", "career")
+        await task_service.create_category("test-user", "home")
         names = await task_service.get_categories("test-user")
-        assert names == ["work", "personal"]
+        assert names == ["career", "home"]
 
     async def test_count_categories(self, task_service):
         assert await task_service.count_categories("test-user") == 0
-        await task_service.create_category("test-user", "work")
+        await task_service.create_category("test-user", "career")
         assert await task_service.count_categories("test-user") == 1
 
     async def test_delete_category(self, task_service):
-        cat = await task_service.create_category("test-user", "work")
+        cat = await task_service.create_category("test-user", "career")
         assert await task_service.delete_category(cat.id, "test-user") is True
         assert await task_service.count_categories("test-user") == 0
 
@@ -91,11 +91,11 @@ class TestCategoryAPI:
 
     async def test_create_and_list(self, test_client):
         resp = await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "work",
+            "user_id": "test-user", "name": "career",
         })
         assert resp.status_code == 201
         data = resp.json()
-        assert data["name"] == "work"
+        assert data["name"] == "career"
         assert data["position"] == 0
 
         resp = await test_client.get("/categories", params={"user_id": "test-user"})
@@ -103,16 +103,16 @@ class TestCategoryAPI:
 
     async def test_create_duplicate_400(self, test_client):
         await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "work",
+            "user_id": "test-user", "name": "career",
         })
         resp = await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "work",
+            "user_id": "test-user", "name": "career",
         })
         assert resp.status_code == 400
 
     async def test_delete_category(self, test_client):
         resp = await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "work",
+            "user_id": "test-user", "name": "career",
         })
         cat_id = resp.json()["id"]
         resp = await test_client.delete(

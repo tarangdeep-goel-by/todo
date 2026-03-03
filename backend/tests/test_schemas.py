@@ -1,29 +1,7 @@
-"""Tests for Pydantic schemas — 8 tests."""
+"""Tests for Pydantic schemas — 5 tests."""
 import pytest
 from pydantic import ValidationError
-from models.schemas import AgentResolveRequest, TaskFilterParams
-
-
-# ──────────── AgentResolveRequest ────────────
-
-class TestAgentResolveRequest:
-    def test_valid_request(self):
-        req = AgentResolveRequest(
-            user_id="u1", action="complete", selected_task_id="t1",
-            data={"key": "val"},
-        )
-        assert req.user_id == "u1"
-        assert req.action == "complete"
-        assert req.selected_task_id == "t1"
-
-    def test_action_required(self):
-        with pytest.raises(ValidationError):
-            AgentResolveRequest(user_id="u1")
-
-    def test_optional_fields_default_none(self):
-        req = AgentResolveRequest(user_id="u1", action="delete")
-        assert req.selected_task_id is None
-        assert req.data is None
+from models.schemas import TaskFilterParams
 
 
 # ──────────── TaskFilterParams ────────────

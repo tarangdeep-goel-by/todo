@@ -17,20 +17,6 @@ class WriteTaskStatus(str, Enum):
     COMPLETED = "completed"
 
 
-class AgentProcessRequest(BaseModel):
-    """Request schema for agent processing."""
-    transcription: str = Field(..., min_length=1, max_length=5000)
-    user_id: str = Field(..., min_length=1)
-
-
-class AgentResolveRequest(BaseModel):
-    """Request schema for resolving a question response."""
-    user_id: str = Field(..., min_length=1)
-    selected_task_id: Optional[str] = None
-    action: str = Field(..., min_length=1)
-    data: Optional[Dict[str, Any]] = None
-
-
 class BrainDumpRequest(BaseModel):
     """Request schema for brain dump voice processing."""
     transcription: str = Field(..., min_length=1, max_length=5000)
@@ -142,14 +128,6 @@ class TaskResponse(BaseModel):
     estimated_hours: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class AgentResponse(BaseModel):
-    """Response schema for agent processing."""
-    success: bool
-    message: str
-    type: str  # "confirmation", "question", "error"
-    data: Optional[Dict[str, Any]] = None
 
 
 class TaskTreeNode(BaseModel):

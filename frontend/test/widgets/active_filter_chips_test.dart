@@ -9,8 +9,8 @@ import 'package:frontend/config/theme.dart';
 
 void main() {
   final testPaletteMap = <String, DomainPalette>{
-    'work': DomainColors.workDark,
-    'personal': DomainColors.personalDark,
+    'career': DomainColors.careerDark,
+    'home': DomainColors.homeDark,
   };
 
   Widget buildChips({TaskFilter? filter}) {
@@ -37,10 +37,10 @@ void main() {
 
     testWidgets('shows category chips', (tester) async {
       await tester.pumpWidget(buildChips(
-        filter: TaskFilter(categories: ['work']),
+        filter: TaskFilter(categories: ['career']),
       ));
 
-      expect(find.text('WORK'), findsOneWidget);
+      expect(find.text('CAREER'), findsOneWidget);
       expect(find.text('Clear All'), findsOneWidget);
     });
 

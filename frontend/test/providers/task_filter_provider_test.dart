@@ -17,13 +17,13 @@ void main() {
 
     test('copyWith with categories sets categories', () {
       const filter = TaskFilter();
-      final updated = filter.copyWith(categories: ['work', 'personal']);
-      expect(updated.categories, ['work', 'personal']);
+      final updated = filter.copyWith(categories: ['career', 'home']);
+      expect(updated.categories, ['career', 'home']);
     });
 
     test('isActive true when any filter set', () {
       final withCategories =
-          const TaskFilter().copyWith(categories: ['work']);
+          const TaskFilter().copyWith(categories: ['career']);
       expect(withCategories.isActive, isTrue);
 
       final withPriorities =
@@ -46,7 +46,7 @@ void main() {
 
     test('activeFilterCount correctly counts multiple filters', () {
       final filter = const TaskFilter().copyWith(
-        categories: ['work'],
+        categories: ['career'],
         priorities: ['high'],
         dueDateGte: DateTime(2025, 1, 1),
         sortOptions: [const SortOption('title')],
