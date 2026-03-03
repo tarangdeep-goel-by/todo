@@ -13,8 +13,13 @@
           "checks": {
             "title_contains": "code review",
             "category_exact": "work",
-            "suggestedParent_exact": "eval-work-010",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "backend services"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-010"
           }
         }
       ]
@@ -31,8 +36,13 @@
           "checks": {
             "title_contains": "groceries",
             "category_exact": "personal",
-            "suggestedParent_null": true,
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_null": true
+          },
+          "checks_fuzzy": {
+            "suggestedParent_null": true
           }
         }
       ]
@@ -66,8 +76,13 @@
           "checks": {
             "title_contains": "login bug",
             "priority_exact": "high",
-            "suggestedParent_exact": "eval-work-011",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "auth service refactor"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-011"
           }
         }
       ]
@@ -84,8 +99,13 @@
           "checks": {
             "title_contains": "meditation",
             "category_exact": "health",
-            "suggestedParent_exact": "eval-health-026",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "mental wellness"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-health-026"
           }
         }
       ]
@@ -102,8 +122,13 @@
           "checks": {
             "title_contains": "yoga",
             "category_exact": "health",
-            "suggestedParent_exact": "eval-health-001",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "fitness"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-health-001"
           }
         }
       ]
@@ -120,8 +145,13 @@
           "checks": {
             "title_contains": "GraphQL",
             "category_exact": "learning",
-            "suggestedParent_exact": "eval-learning-001",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "software engineering"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-learning-001"
           }
         }
       ]
@@ -155,8 +185,13 @@
           "checks": {
             "title_contains": "tech spec",
             "category_exact": "work",
-            "suggestedParent_exact": "eval-work-036",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "acme corp"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-036"
           }
         },
         {
@@ -164,8 +199,13 @@
           "checks": {
             "title_contains": "program plan",
             "category_exact": "work",
-            "suggestedParent_exact": "eval-work-036",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "acme corp"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-036"
           }
         }
       ]
@@ -181,24 +221,39 @@
           "intent": "ADD",
           "checks": {
             "title_contains": "unit tests",
-            "suggestedParent_exact": "eval-work-019",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "infrastructure"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-019"
           }
         },
         {
           "intent": "ADD",
           "checks": {
             "title_contains": "integration tests",
-            "suggestedParent_exact": "eval-work-019",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "infrastructure"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-019"
           }
         },
         {
           "intent": "ADD",
           "checks": {
             "title_contains": "load tests",
-            "suggestedParent_exact": "eval-work-019",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "infrastructure"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-019"
           }
         }
       ]
@@ -232,8 +287,13 @@
           "intent": "ADD",
           "checks": {
             "title_contains": "monitoring dashboard",
-            "suggestedParent_exact": "eval-work-019",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "infrastructure"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-019"
           }
         }
       ]
@@ -284,8 +344,13 @@
           "intent": "ADD",
           "checks": {
             "title_contains": "Kubernetes",
-            "suggestedParent_exact": "eval-learning-002",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "system design"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-learning-002"
           }
         }
       ]
@@ -318,8 +383,13 @@
           "intent": "ADD",
           "checks": {
             "title_contains": "reading list",
-            "suggestedParent_exact": "eval-learning-019",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "ai"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-learning-019"
           }
         }
       ]
@@ -1094,8 +1164,13 @@
         {
           "intent": "ADD",
           "checks": {
-            "suggestedParent_exact": "eval-work-006",
             "confidence_gte": 0.7
+          },
+          "checks_pg_native": {
+            "parentQuery_contains": "analyze survey results"
+          },
+          "checks_fuzzy": {
+            "suggestedParent_exact": "eval-work-006"
           }
         }
       ]

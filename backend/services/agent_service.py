@@ -5,8 +5,10 @@ from typing import Dict, Any, List, Tuple, Optional
 import uuid
 from .gemini_service import GeminiService
 from .task_service import TaskService
+from .task_search_service import TaskSearchService
 from models.schemas import AgentResponse, BrainDumpResponse, BrainDumpTaskProposal, BrainDumpSubmitResponse
 from utils.date_parser import parse_flexible_date
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +42,12 @@ class AgentService:
         """
         logger.info("process_voice_command: transcription='%s', user_id='%s'", transcription, user_id)
 
-        # Step 1: Build FULL task tree context (both work and personal)
+        # Step 1: Build task tree context (compressed when pg_native for ~56% token savings)
         task_service = TaskService(db)
-        tree_context = await task_service.build_full_tree_context(user_id)
-        logger.debug("tree context: %d chars", len(tree_context))
+        settings = get_settings()
+        compressed = settings.search_engine == "pg_native"
+        tree_context = await task_service.build_full_tree_context(user_id, compressed=compressed)
+        logger.debug("tree context: %d chars (compressed=%s)", len(tree_context), compressed)
 
         # Step 2: Detect intent(s) — returns a list
         intent_list = await self.gemini.detect_intent(transcription, tree_context)
@@ -215,15 +219,44 @@ class AgentService:
                 }
             )
 
+        # Resolve parent — pg_native uses parentQuery text search, fuzzy uses suggestedParent UUID
+        settings = get_settings()
+        if settings.search_engine == "pg_native":
+            parent_id = None
+            parent_query = params.get('parentQuery')
+            if parent_query:
+                search = TaskSearchService(db)
+                parent_task, candidates = await search.resolve_single(user_id, parent_query)
+                if parent_task:
+                    parent_id = parent_task.id
+                elif candidates:
+                    return AgentResponse(
+                        success=False,
+                        message=f"Found {len(candidates)} possible parent tasks for '{parent_query}'. Which one?",
+                        type="question",
+                        data={
+                            "matches": [{"id": t.id, "title": t.title, "category": t.category} for t in candidates],
+                            "action": "select_parent",
+                            "intent": "ADD",
+                            "suggested_title": params['title'],
+                            "description": params.get('description'),
+                            "priority": params.get('priority'),
+                            "dueDate": params.get('dueDate'),
+                            "category": category or params.get('category', 'personal'),
+                        }
+                    )
+        else:
+            parent_id = params.get('suggestedParent')
+
         parsed_due_date = parse_flexible_date(params.get('dueDate'))
         task = await task_service.create_task(
             user_id=user_id,
             title=params['title'],
             category=category or params['category'],
-            parent_id=params.get('suggestedParent'),
+            parent_id=parent_id,
             transcription=params['title'],
             ai_placement={
-                "suggested_parent": params.get('suggestedParent'),
+                "suggested_parent": parent_id,
                 "confidence": params.get('confidence', 0.9),
                 "reasoning": params.get('reasoning', '')
             },
@@ -236,8 +269,8 @@ class AgentService:
 
         # Get parent info for response message
         parent_info = ""
-        if params.get('suggestedParent') and params['suggestedParent'] not in ['root-work', 'root-personal']:
-            parent = await task_service.get_task(params['suggestedParent'])
+        if parent_id:
+            parent = await task_service.get_task(parent_id)
             if parent:
                 parent_info = f" under {parent.title}"
 
@@ -255,10 +288,24 @@ class AgentService:
         )
 
     async def _resolve_tasks(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService | None = None) -> List:
-        """Resolve tasks from Gemini's matchedTasks IDs, falling back to fuzzy search."""
-        task_service = task_service or TaskService(db)
+        """Resolve tasks based on search engine setting.
 
-        # Try Gemini's direct ID matches first
+        pg_native: use TaskSearchService (pg_trgm trigram search)
+        fuzzy: use Gemini matchedTasks IDs → fallback to RapidFuzz
+        """
+        task_service = task_service or TaskService(db)
+        settings = get_settings()
+
+        if settings.search_engine == "pg_native":
+            query = params.get('taskQuery', '')
+            if not query:
+                return []
+            search = TaskSearchService(db)
+            results = await search.search(user_id, query, status_filter="active")
+            logger.debug("pg_trgm search for '%s' found %d tasks", query, len(results))
+            return [task for task, score in results]
+
+        # Fuzzy mode: try Gemini's direct ID matches first
         matched_ids = params.get('matchedTasks', [])
         if matched_ids:
             tasks = []
@@ -382,6 +429,16 @@ class AgentService:
             data={"task_id": task.id, "changes": changes}
         )
 
+    async def _resolve_parent_search(self, user_id: str, query: str, db: AsyncSession, task_service: TaskService):
+        """Search for a parent task by query, dispatching on search engine."""
+        settings = get_settings()
+        if settings.search_engine == "pg_native":
+            search = TaskSearchService(db)
+            results = await search.search(user_id, query, status_filter="active")
+            return [task for task, score in results]
+        else:
+            return await task_service.search_tasks(user_id, query)
+
     async def _handle_move(self, params: Dict, user_id: str, db: AsyncSession, task_service: TaskService) -> AgentResponse:
         """Handle MOVE intent."""
         target_parent_query = params.get('targetParentQuery')
@@ -400,7 +457,7 @@ class AgentService:
         parent_title = "top-level"
 
         if target_parent_query:
-            parent_tasks = await task_service.search_tasks(user_id, target_parent_query)
+            parent_tasks = await self._resolve_parent_search(user_id, target_parent_query, db, task_service)
 
             if not parent_tasks:
                 return AgentResponse(
@@ -513,7 +570,7 @@ class AgentService:
             if not target_parent_query:
                 return AgentResponse(success=False, message="No target parent specified", type="error")
 
-            parent_tasks = await task_service.search_tasks(user_id, target_parent_query)
+            parent_tasks = await self._resolve_parent_search(user_id, target_parent_query, db, task_service)
             if not parent_tasks:
                 return AgentResponse(
                     success=False,
@@ -560,7 +617,10 @@ class AgentService:
             task = await task_service.get_task(selected_task_id)
             if not task:
                 return AgentResponse(success=False, message="Task not found", type="error")
-            tree_context = await task_service.build_full_tree_context(user_id)
+            settings = get_settings()
+            tree_context = await task_service.build_full_tree_context(
+                user_id, compressed=settings.search_engine == "pg_native"
+            )
             suggestions = await self.gemini.generate_subtasks(
                 task_title=task.title,
                 task_description=task.description,
@@ -708,7 +768,9 @@ class AgentService:
         logger.info("process_brain_dump: transcription='%s', user_id='%s', parent_id=%s", transcription, user_id, parent_id)
 
         task_service = TaskService(db)
-        tree_context = await task_service.build_full_tree_context(user_id)
+        settings = get_settings()
+        compressed = settings.search_engine == "pg_native"
+        tree_context = await task_service.build_full_tree_context(user_id, compressed=compressed)
 
         # If parent_id provided (subtask mode), look up parent for default category
         parent_category = None
@@ -760,11 +822,16 @@ class AgentService:
 
             task_category = category or parent_category or raw.get("category", "personal")
 
-            # For actions on existing tasks, resolve via fuzzy search
+            # For actions on existing tasks, resolve via search
             matched_task_id = None
             alternate_matches = None
             if action in ("complete", "edit", "delete", "move", "breakdown"):
-                matched = await task_service.search_tasks(user_id, content)
+                if settings.search_engine == "pg_native":
+                    search = TaskSearchService(db)
+                    search_results = await search.search(user_id, content, status_filter="active")
+                    matched = [task for task, score in search_results]
+                else:
+                    matched = await task_service.search_tasks(user_id, content)
                 if matched:
                     matched_task_id = str(matched[0].id)
                     task_category = matched[0].category or task_category
@@ -806,7 +873,7 @@ class AgentService:
             if action == "move":
                 target_query = raw.get("targetParentQuery")
                 if target_query:
-                    targets = await task_service.search_tasks(user_id, target_query)
+                    targets = await self._resolve_parent_search(user_id, target_query, db, task_service)
                     if targets:
                         target_parent_id = str(targets[0].id)
                         target_content = targets[0].title
@@ -825,7 +892,7 @@ class AgentService:
                 # Gemini's parentQuery can still override for relative nesting
                 parent_query = raw.get("parentQuery")
                 if parent_query:
-                    parent_tasks = await task_service.search_tasks(user_id, parent_query)
+                    parent_tasks = await self._resolve_parent_search(user_id, parent_query, db, task_service)
                     if parent_tasks:
                         resolved_parent_id = str(parent_tasks[0].id)
 
@@ -991,7 +1058,10 @@ class AgentService:
         )
         if early:
             return early
-        tree_context = await task_service.build_full_tree_context(user_id)
+        settings = get_settings()
+        tree_context = await task_service.build_full_tree_context(
+            user_id, compressed=settings.search_engine == "pg_native"
+        )
         suggestions = await self.gemini.generate_subtasks(
             task_title=task.title,
             task_description=task.description,

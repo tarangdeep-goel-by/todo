@@ -246,14 +246,14 @@ class TaskService:
 
         return activated_ids
 
-    async def build_full_tree_context(self, user_id: str) -> str:
+    async def build_full_tree_context(self, user_id: str, compressed: bool = False) -> str:
         """
-        Build readable FULL task tree for Gemini context.
+        Build readable task tree for Gemini context.
 
-        Architecture:
-        - user_id is the root
-        - Top-level tasks have parent_id=NULL
-        - Tasks are categorized by the 'category' property
+        Args:
+            user_id: User ID
+            compressed: If True, omit UUIDs for ~56% token reduction.
+                        Titles + hierarchy + status are preserved.
 
         Returns:
             Tree structure as string with all tasks organized by category
@@ -268,20 +268,45 @@ class TaskService:
                 categories[task.category] = []
             categories[task.category].append(task)
 
-        # Build hierarchical tree string
-        tree_str = f"User: {user_id}\n\n"
+        if compressed:
+            return self._build_compressed_tree(categories)
+        return self._build_full_tree(categories, user_id)
 
+    def _build_full_tree(self, categories: Dict[str, List[Task]], user_id: str) -> str:
+        """Build full tree with UUIDs (original format)."""
+        tree_str = f"User: {user_id}\n\n"
         for category, tasks in sorted(categories.items()):
             tree_str += f"{category.upper()} TASKS:\n"
-            # Get top-level tasks (parent_id=NULL)
             top_level = [t for t in tasks if t.parent_id is None]
             for task in top_level:
                 status_tag = " [COMPLETED]" if task.status == "completed" else ""
                 tree_str += f"├── {task.title} (id: {task.id}){status_tag}\n"
                 tree_str += self._build_subtree(tasks, task.id, indent=1)
             tree_str += "\n"
-
         return tree_str
+
+    def _build_compressed_tree(self, categories: Dict[str, List[Task]]) -> str:
+        """Build compressed tree without UUIDs (~56% fewer tokens)."""
+        tree_str = ""
+        for category, tasks in sorted(categories.items()):
+            tree_str += f"{category.upper()}:\n"
+            top_level = [t for t in tasks if t.parent_id is None]
+            for task in top_level:
+                status_tag = " [done]" if task.status == "completed" else ""
+                tree_str += f"- {task.title}{status_tag}\n"
+                tree_str += self._build_compressed_subtree(tasks, task.id, indent=1)
+            tree_str += "\n"
+        return tree_str
+
+    def _build_compressed_subtree(self, tasks: List[Task], parent_id: str, indent: int = 0) -> str:
+        """Recursively build compressed tree string."""
+        result = ""
+        children = [t for t in tasks if t.parent_id == parent_id]
+        for child in children:
+            status_tag = " [done]" if child.status == "completed" else ""
+            result += "  " * indent + f"- {child.title}{status_tag}\n"
+            result += self._build_compressed_subtree(tasks, child.id, indent + 1)
+        return result
 
     def _build_subtree(self, tasks: List[Task], parent_id: str, indent: int = 0) -> str:
         """Recursively build tree string with indentation."""

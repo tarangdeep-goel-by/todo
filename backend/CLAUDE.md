@@ -57,12 +57,13 @@ Client → FastAPI Router → Service → SQLAlchemy AsyncSession → PostgreSQL
 
 ### Voice Command Pipeline (`POST /api/agent/process`)
 1. `GeminiService.refine_transcription()` — cleans up raw transcript
-2. `TaskService.build_full_tree_context()` — builds indented tree string for AI context
-3. `GeminiService.detect_intent()` — returns intent (ADD/COMPLETE/DELETE/EDIT/MOVE/QUERY/BREAKDOWN) + params
+2. `TaskService.build_full_tree_context()` — builds indented tree string for AI context (compressed when `SEARCH_ENGINE=pg_native` for ~56% token savings)
+3. `GeminiService.detect_intent()` — returns intent (ADD/COMPLETE/DELETE/EDIT/MOVE/QUERY/BREAKDOWN) + params. When `pg_native`: text queries only, no UUIDs. When `fuzzy`: UUIDs + matchedTasks.
 4. Confidence check (rejects < 0.6)
-5. Intent handler executes action, returns `AgentResponse`
-6. Ambiguous commands return `type="question"` with matches → client calls `POST /api/agent/resolve`
-7. Unknown category → returns `select_category` question → user picks → `POST /api/agent/resolve`
+5. Task resolution: `pg_native` → `TaskSearchService` (pg_trgm trigram search in PG). `fuzzy` → Gemini IDs + RapidFuzz fallback.
+6. Intent handler executes action, returns `AgentResponse`
+7. Ambiguous commands return `type="question"` with matches → client calls `POST /api/agent/resolve`
+8. Unknown category → returns `select_category` question → user picks → `POST /api/agent/resolve`
 
 ### Brain Dump Pipeline (`POST /api/agent/braindump`)
 Two-step proposal-then-commit flow for multi-task voice input:
@@ -79,7 +80,8 @@ Two-step proposal-then-commit flow for multi-task voice input:
 - **`services/gemini_service.py`** — Gemini 2.5 Flash Lite integration. Sync API calls wrapped in async service. `detect_brain_dump()` extracts multiple tasks from free-form text.
 - **`services/ramble_service.py`** — Gemini Live API streaming transcription. `RambleSession` manages WebSocket connection for real-time audio→text. Uses `google-genai` SDK (separate from `google-generativeai` used elsewhere).
 - **`services/query_builder.py`** — Dynamic SQLAlchemy query construction with multi-field filtering/sorting/pagination.
-- **`utils/fuzzy_matcher.py`** — RapidFuzz `token_set_ratio` matching (70% threshold, weighted: title 60%, description 30%, tags 10%).
+- **`services/task_search_service.py`** — PG-native task search using `pg_trgm` trigram similarity. Weighted: title 70% + description 30%. `resolve_single()` returns confident match or ambiguous candidates.
+- **`utils/fuzzy_matcher.py`** — RapidFuzz matching (max of `token_set_ratio`, `partial_ratio`, stripped ratio). Weighted: title 70%, description 30%. Threshold: 60%. Near-exact matches (≥90) suppress weaker results. Used when `SEARCH_ENGINE=fuzzy`.
 - **`utils/date_parser.py`** — Flexible date parsing ("today", "next monday", ISO strings) → timezone-aware UTC.
 
 ### Database
@@ -88,13 +90,30 @@ Two-step proposal-then-commit flow for multi-task voice input:
 - **`categories`**: Persistent domain definitions (id, user_id, name, position). Unique constraint on `(user_id, name)`.
 - **Key columns**: UUID pk, JSONB `ai_placement_json`, ARRAY `tags`, computed `overdue` status (in Pydantic, not DB)
 - **Statuses**: `active` and `completed` only (no `archived`)
-- **Indexes**: `(user_id, category)`, `(user_id, category_id)`, `(user_id, status)`, `parent_id`, `created_at`
+- **Indexes**: `(user_id, category)`, `(user_id, category_id)`, `(user_id, status)`, `parent_id`, `created_at`, `title` (GIN trigram), `description` (GIN trigram)
 
-### Testing Setup
-- Tests use real PostgreSQL (`todo_test` DB), not SQLite — UUID and JSONB types require it
-- `conftest.py`: creates `todo_test` DB once, recreates tables per engine fixture, cleans `tasks` table after each test
-- `GeminiService` is always mocked (`AsyncMock` with passthrough `refine_transcription`)
-- API tests use `httpx.AsyncClient` with `ASGITransport` and FastAPI dependency overrides
+### Key Patterns
+
+**Session Management (`get_db`):** Auto-commits on success, auto-rollbacks on exception. Services call `flush()` for ID generation mid-transaction, `commit()` for final persistence, `refresh()` to reload from DB.
+
+**Multi-Intent Processing:** `detect_intent()` can return multiple intents. `AgentService` executes them sequentially, stops on first `type="question"`, and aggregates successes into one response.
+
+**Ambiguous Command Resolution:** Fuzzy search returns 0 → error; 1 → execute; >1 → return `type="question"` with matches for client disambiguation via `/api/agent/resolve`.
+
+**Category Auto-Creation:** `_resolve_category_id()` auto-creates categories from the 5 valid domains on first use. Returns `None` for invalid names. Hard limit enforced in both `TaskService` and `AgentService`.
+
+**Tree Safety:** `update_task()` guards against circular references (moving task under itself or its descendants). `_get_all_descendants()` uses BFS with cycle detection. `_activate_ancestor_chain()` walks up parent chain to reactivate completed ancestors when a child becomes active.
+
+**Error Convention:** Services raise `ValueError` for business logic errors → routers catch and return `HTTPException(400)`. Pydantic validation → 422 automatic. Low confidence → `AgentResponse(success=False, type="error")`.
+
+**WebSocket Ramble:** 5-minute session limit with 30-second heartbeats. Client sends `start` → streams base64 PCM `audio` chunks → sends `stop`. Server emits real-time `transcription` events.
+
+### Testing Patterns
+
+- **Test helpers** (`tests/helpers.py`): `make_task()` and `make_task_tree()` factories for creating test data
+- **Mock pattern**: `_intent()` helper builds Gemini response format; `mock_gemini.detect_intent = AsyncMock(return_value=_intent("ADD", title="x", category="work"))`
+- **Dependency override**: API tests swap `get_db` via `app.dependency_overrides[get_db]` to share test session
+- **Cleanup**: `conftest.py` deletes all tasks/categories after each test (real DB, not mocks)
 
 ## Environment Variables
 
@@ -106,6 +125,7 @@ All config from Docker environment (no `.env` file). Managed via Pydantic `Setti
 | `GEMINI_API_KEY` | Yes | — |
 | `APP_ENV` | No | `development` |
 | `DEBUG` | No | `True` |
+| `SEARCH_ENGINE` | No | `fuzzy` (`pg_native` or `fuzzy`) |
 
 ## API Endpoints
 
