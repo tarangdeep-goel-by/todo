@@ -28,6 +28,9 @@ services:
       # Gemini API Key
       GEMINI_API_KEY: ${GEMINI_API_KEY}
 
+      # Sarvam AI (streaming STT)
+      SARVAM_API_KEY: ${SARVAM_API_KEY}
+
       # Application settings
       APP_ENV: development
       DEBUG: "True"

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Gemini API
     gemini_api_key: str
 
+    # Sarvam AI (streaming STT)
+    sarvam_api_key: str
+
     # Application
     app_env: str = "development"
     debug: bool = True
