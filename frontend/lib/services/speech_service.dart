@@ -4,8 +4,10 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 
 /// Callback-based wrapper around SpeechToText for on-device recognition
 class SpeechService {
-  final SpeechToText _speech = SpeechToText();
+  final SpeechToText _speech;
   bool _initialized = false;
+
+  SpeechService({SpeechToText? speech}) : _speech = speech ?? SpeechToText();
 
   /// Called with (text, isFinal) on each recognition result
   void Function(String text, bool isFinal)? onResult;
