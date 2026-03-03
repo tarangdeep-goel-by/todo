@@ -105,24 +105,24 @@ class LiquidFocusScrollController {
         compressedPct = 0.15;
         break;
       case 5:
-        focusedPct = 0.70;
-        compressedPct = 0.075;
+        focusedPct = 0.74;
+        compressedPct = 0.065;
         break;
       case 6:
-        focusedPct = 0.625;
-        compressedPct = 0.075;
+        focusedPct = 0.68;
+        compressedPct = 0.064;
         break;
       case 7:
-        focusedPct = 0.55;
-        compressedPct = 0.075;
+        focusedPct = 0.60;
+        compressedPct = 0.067;
         break;
       case 8:
-        focusedPct = 0.475;
-        compressedPct = 0.075;
+        focusedPct = 0.525;
+        compressedPct = 0.068;
         break;
       default:
-        focusedPct = 0.475;
-        compressedPct = 0.075;
+        focusedPct = 0.525;
+        compressedPct = 0.068;
     }
 
     var focused = availableHeight * focusedPct;

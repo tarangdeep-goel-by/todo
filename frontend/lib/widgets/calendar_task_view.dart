@@ -272,15 +272,17 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
       onTap: () => _toggleTask(task),
       onLongPress: () => showTaskDetailOverlay(context, taskId: task.id),
       child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: 3,
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 2),
         decoration: BoxDecoration(
-          color: domain.surface,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(AppSpacing.radiusMd),
-            bottomRight: Radius.circular(AppSpacing.radiusMd),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              domain.surface,
+              Color.lerp(domain.surface, domain.darkShade, 0.15)!,
+              domain.surface.withValues(alpha: 0.85),
+            ],
+            stops: const [0.0, 0.5, 1.0],
           ),
           border: Border(
             left: BorderSide(
