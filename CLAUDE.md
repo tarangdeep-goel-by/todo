@@ -25,12 +25,13 @@ cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
 ## Commands
 
 ```bash
-# Backend tests (154, inside Docker)
+# Backend tests (inside Docker)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 docker exec todo-backend python -m pytest tests/test_agent_service.py -v                     # Single file
 docker exec todo-backend python -m pytest tests/test_agent_service.py::TestHandleAdd::test_add_task_basic -v  # Single test
+docker exec todo-backend python tests/performance/test_agent_performance.py                  # Performance benchmarks
 
-# Frontend tests (125)
+# Frontend tests
 cd frontend && flutter test                                              # All
 cd frontend && flutter test test/providers/task_store_provider_test.dart  # Single file
 cd frontend && flutter test --name "filters tasks by category"           # By name
@@ -39,6 +40,7 @@ cd frontend && flutter analyze                                           # Lint 
 # Database migrations
 docker exec todo-backend alembic upgrade head                            # Apply
 docker exec todo-backend alembic revision --autogenerate -m "description"  # Create new
+docker exec todo-backend alembic downgrade -1                              # Rollback one
 
 # Intent detection eval (65 cases, ~90s with LLM)
 docker exec todo-backend python evaluation/run_eval.py                    # Full run
@@ -102,6 +104,7 @@ Categories (Work, Personal, Health, Learning, Projects) are enforced in `agent_s
 **Backend** (Docker env in `docker-compose.yml`):
 - `DATABASE_URL`: `postgresql+asyncpg://todo:todo123@postgres:5432/todo_db`
 - `GEMINI_API_KEY`: Google Gemini API key
+- `SEARCH_ENGINE`: `pg_native` (pg_trgm trigram search) or `fuzzy` (RapidFuzz). Default: `fuzzy`
 
 **Frontend** (`frontend/lib/config/constants.dart`):
 - `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)

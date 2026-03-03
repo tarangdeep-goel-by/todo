@@ -44,6 +44,7 @@ async def run_eval(
     tree_context: str,
     gemini: Optional[GeminiService],
     no_llm: bool = False,
+    search_engine: str = "fuzzy",
 ) -> List[Dict]:
     """Run all eval cases and return results."""
     results = []
@@ -78,6 +79,7 @@ async def run_eval(
             type_field="intent",
             content_field="title",
             params_field="parameters",
+            search_engine=search_engine,
         )
 
         all_checks = []
@@ -145,8 +147,14 @@ async def main():
                         help="Run only cases of this intent category (ADD, COMPLETE, etc.)")
     parser.add_argument("--filter-id", default=None,
                         help="Run single case by ID")
+    parser.add_argument("--search-engine", default=None,
+                        help="Override SEARCH_ENGINE (fuzzy or pg_native)")
 
     args = parser.parse_args()
+
+    # Override search engine if specified
+    if args.search_engine:
+        os.environ["SEARCH_ENGINE"] = args.search_engine
 
     # Load task tree
     with open(args.task_tree) as f:
@@ -168,8 +176,14 @@ async def main():
         print("No cases match the filter criteria.")
         sys.exit(1)
 
-    # Build tree context
-    tree_context = build_tree_context(tasks)
+    # Build tree context — compressed when pg_native
+    search_engine = os.environ.get("SEARCH_ENGINE", "fuzzy")
+    compressed = search_engine == "pg_native"
+    tree_context = build_tree_context(tasks, compressed=compressed)
+    if compressed:
+        print(f"  Using compressed tree ({len(tree_context)} chars)")
+    else:
+        print(f"  Using full tree ({len(tree_context)} chars)")
 
     # Init Gemini
     model_name = "gemini-2.5-flash-lite"
@@ -193,7 +207,7 @@ async def main():
     print_header("TODO AGENT EVAL — Intent Detection", model_name, len(cases), len(tasks))
 
     # Run eval
-    results = await run_eval(cases, tree_context, gemini, no_llm=args.no_llm)
+    results = await run_eval(cases, tree_context, gemini, no_llm=args.no_llm, search_engine=search_engine)
 
     # Summary
     summary = build_summary(results)

@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 import json
 
+from config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,6 +40,7 @@ class IntentParameters(BaseModel):
     description: Optional[str] = Field(default=None, description="Longer description with context, or null if brief")
     category: Optional[str] = Field(default=None, description="Task category")
     suggestedParent: Optional[str] = Field(default=None, description="Task ID for parent, or null for top-level")
+    parentQuery: Optional[str] = Field(default=None, description="Search terms to find the parent task (pg_native mode)")
     reasoning: Optional[str] = Field(default=None, description="Why this category/parent was chosen")
     needsNewBranch: Optional[bool] = Field(default=None, description="True if suggesting new top-level category")
     suggestedBranchName: Optional[str] = Field(default=None, description="Only if needsNewBranch=true")
@@ -55,11 +58,40 @@ class IntentParameters(BaseModel):
     filters: Optional[IntentQueryFilters] = Field(default=None, description="Filters for QUERY intent")
 
 
+class IntentParametersPgNative(BaseModel):
+    """Parameters for pg_native mode — no UUIDs, text queries only."""
+    # ADD fields
+    title: Optional[str] = Field(default=None, description="Short concise task title (2-6 words)")
+    description: Optional[str] = Field(default=None, description="Longer description with context, or null if brief")
+    category: Optional[str] = Field(default=None, description="Task category")
+    parentQuery: Optional[str] = Field(default=None, description="Search terms to find the parent task, or null for top-level")
+    reasoning: Optional[str] = Field(default=None, description="Why this category/parent was chosen")
+    needsNewBranch: Optional[bool] = Field(default=None, description="True if suggesting new top-level category")
+    suggestedBranchName: Optional[str] = Field(default=None, description="Only if needsNewBranch=true")
+    priority: Optional[str] = Field(default=None, description="high|medium|low or null")
+    dueDate: Optional[str] = Field(default=None, description="Relative date string or null")
+    estimatedHours: Optional[float] = Field(default=None, description="Time estimate if mentioned")
+    # COMPLETE/DELETE/EDIT/MOVE/BREAKDOWN fields
+    taskQuery: Optional[str] = Field(default=None, description="Search terms to find the task")
+    changes: Optional[IntentEditChanges] = Field(default=None, description="For EDIT: fields being changed")
+    targetParentQuery: Optional[str] = Field(default=None, description="For MOVE: search terms for destination parent")
+    # QUERY fields
+    query: Optional[str] = Field(default=None, description="Search criteria for QUERY intent")
+    filters: Optional[IntentQueryFilters] = Field(default=None, description="Filters for QUERY intent")
+
+
 class IntentResponse(BaseModel):
     """A single detected intent from user input."""
     intent: str = Field(description="One of: ADD, COMPLETE, DELETE, EDIT, MOVE, BREAKDOWN, UNKNOWN")
     confidence: float = Field(description="0.0-1.0 confidence in the detection")
     parameters: Optional[IntentParameters] = Field(default=None, description="Intent-specific parameters")
+
+
+class IntentResponsePgNative(BaseModel):
+    """A single detected intent — pg_native mode (no UUIDs in params)."""
+    intent: str = Field(description="One of: ADD, COMPLETE, DELETE, EDIT, MOVE, BREAKDOWN, UNKNOWN")
+    confidence: float = Field(description="0.0-1.0 confidence in the detection")
+    parameters: Optional[IntentParametersPgNative] = Field(default=None, description="Intent-specific parameters")
 
 
 # ──────────────────────────────────────────────
@@ -99,26 +131,147 @@ class GeminiService:
         """Initialize Gemini service with API key."""
         self.client = genai.Client(api_key=api_key)
 
-    async def detect_intent(
-        self,
-        transcription: str,
-        task_tree_context: str
-    ) -> List[Dict[str, Any]]:
-        """
-        Detect user intent(s) and extract parameters from a voice/text command.
+    def _build_intent_prompt_pg_native(self, transcription: str, task_tree_context: str) -> str:
+        """Build intent detection prompt for pg_native mode (compressed tree, no UUIDs)."""
+        return f"""Current task tree (titles only, no IDs):
+{task_tree_context}
 
-        Handles transcription cleanup internally — no separate refine step needed.
-        Returns a list of intents (single-element for simple commands, multi-element
-        for compound commands like "add X and Y under Z").
+User said: "{transcription}"
 
-        Args:
-            transcription: Raw user command (voice transcription or typed text)
-            task_tree_context: String representation of task tree
+IMPORTANT: The input may be a raw voice transcription with filler words (um, uh, like),
+minor errors, or odd spacing. Mentally clean it up before analyzing, but preserve all
+task names, proper nouns, and multi-word phrases EXACTLY as the user said them.
+Do NOT join separate words into one (e.g. "safe drop" must stay "safe drop", not "SafeDrop").
+Do NOT split a single command into multiple sentences.
 
-        Returns:
-            List of intent dicts, each with intent, confidence, parameters.
-        """
-        prompt = f"""Current task tree:
+Detect the user's intent. Available intents:
+- ADD: Create new task (keywords: add, create, new, remember, note)
+- COMPLETE: Mark task(s) as done (keywords: complete, completed, done, finish, finished, mark). IMPORTANT: "completed [task name]" or "finished [task name]" means the user wants to COMPLETE that task
+- DELETE: Remove/archive task(s) (keywords: delete, remove, archive, cancel)
+- EDIT: Modify existing task properties — title, priority, due date, OR category (keywords: edit, change, update, rename, reschedule, "is a [category] task", "belongs in [category]", "should be in [category]")
+- MOVE: Move task to a different PARENT TASK within the tree (keywords: move under, put under, relocate under). MOVE is ONLY for changing parent-child relationships, NOT for changing categories.
+- BREAKDOWN: User wants to break a task into subtasks (keywords: break down, split, decompose, break into steps, break into subtasks)
+- UNKNOWN: Unclear intent
+
+CRITICAL DISTINCTION — EDIT vs MOVE:
+- Changing a task's CATEGORY (work, personal, health, etc.) = EDIT with changes.category
+  Examples: "X is a work task", "X belongs in personal", "change X to work category"
+- Changing a task's PARENT (putting it under another task) = MOVE
+  Examples: "move X under Y", "put X under project Alpha"
+- If user says "[task] is a [category] task" → this is EDIT (category change), NOT MOVE
+
+For ADD tasks:
+- Determine category based on task nature
+- Default categories: "work" and "personal"
+- If task clearly doesn't fit work/personal (hobbies, health, learning, community, finance, etc.), suggest new category
+- Set needsNewBranch=true when suggesting new category (max 5 categories total)
+- If user explicitly mentions a category name not in the tree (e.g., "Add X to Hobbies"), treat it as new category creation
+- Use parentQuery with the parent task's title as search terms, or null for top-level tasks.
+  Do NOT return task IDs — only return text search queries.
+
+When to suggest new categories (needsNewBranch=true):
+- Hobbies: music practice, art projects, collections, crafts
+- Health: doctor appointments, fitness goals, mental health
+- Learning: courses, reading, skill development
+- Finance: budgeting, investments, taxes
+- Community: volunteering, local events, activism
+- Travel: trip planning, vacation tasks
+
+When user creates new category:
+- "Add X to [CategoryName]" where CategoryName is NOT in current tree → category=CategoryName, needsNewBranch=false (user is explicitly creating it)
+- "Create [CategoryName] category" → Just acknowledge, wait for actual task
+- "Yes" or "Create it" after previous suggestion → Need explicit category mention to proceed
+
+MULTI-TASK COMMANDS:
+If the user's command contains MULTIPLE independent actions, return a JSON ARRAY with one
+object per action. Each object has its own intent, confidence, and parameters.
+- "add X and Y under Z" → two ADD objects, both with parentQuery="Z"
+- "complete A and delete B" → one COMPLETE + one DELETE object
+- "add X, Y, and Z to work" → three ADD objects
+
+For single-action commands, still return a JSON array with ONE element.
+
+Each element in the array uses this format:
+{{
+  "intent": "ADD|COMPLETE|DELETE|EDIT|MOVE|UNKNOWN",
+  "confidence": 0.95,
+  "parameters": {{
+    // For ADD:
+    "title": "short concise task title (2-6 words)",
+    "description": "longer description with context and details from speech, or null if speech was already brief",
+    "category": "work" or "personal" or suggest new category name,
+    "parentQuery": "search terms for parent task, or null for top-level",
+    "reasoning": "Why this category/parent was chosen",
+    "needsNewBranch": false,
+    "suggestedBranchName": "",
+    "priority": "high|medium|low or null",
+    "dueDate": "relative date string or ISO datetime or null",
+    "estimatedHours": number or null
+
+    // For COMPLETE/DELETE:
+    "taskQuery": "search terms to find the task"
+
+    // For EDIT:
+    "taskQuery": "search terms to find the task — use the task name as the user said it",
+    "changes": {{
+      "title": "new title if mentioned",
+      "dueDate": "ISO date if mentioned",
+      "priority": "high|medium|low if mentioned",
+      "category": "work or personal if mentioned"
+    }}
+
+    // For MOVE:
+    "taskQuery": "search terms to find the task to move",
+    "targetParentQuery": "search terms to find the new parent, or null for top-level",
+    "reasoning": "Why this move makes sense"
+
+    IMPORTANT for MOVE intent:
+    - If user says "move to top level", "move to main level", "move to root",
+      "shouldn't be under anything", set targetParentQuery=null
+    - If user specifies a parent task, set targetParentQuery with search terms
+
+    // For BREAKDOWN:
+    "taskQuery": "search terms to find the task to break down"
+
+    // For QUERY:
+    "query": "search criteria",
+    "filters": {{
+      "category": "work or personal if mentioned",
+      "status": "active or completed if mentioned"
+    }}
+  }}
+}}
+
+Respond ONLY with a valid JSON ARRAY. Examples:
+
+Single command (array of 1):
+[{{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Groceries", "category": "personal", "parentQuery": null, "reasoning": "Personal errand", "needsNewBranch": false}}}}]
+
+Multi-task command (array of N):
+- "add tech spec and program plan under safe drop" →
+[
+  {{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Tech spec", "category": "work", "parentQuery": "safe drop", "reasoning": "Sub-task of safe drop"}}}},
+  {{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Program plan", "category": "work", "parentQuery": "safe drop", "reasoning": "Sub-task of safe drop"}}}}
+]
+
+- "complete grocery shopping and add meal prep" →
+[
+  {{"intent": "COMPLETE", "confidence": 0.95, "parameters": {{"taskQuery": "grocery shopping"}}}},
+  {{"intent": "ADD", "confidence": 0.95, "parameters": {{"title": "Meal prep", "category": "personal", "parentQuery": null, "reasoning": "Personal task"}}}}
+]
+
+More examples:
+- "create a new task safe drop" → [{{"intent": "ADD", ...}}]
+- "Complete the backend API task" → [{{"intent": "COMPLETE", "confidence": 0.95, "parameters": {{"taskQuery": "backend API"}}}}]
+- "Completed easy runs this week" → [{{"intent": "COMPLETE", ...}}]
+- "safe drop is a work task" → [{{"intent": "EDIT", "confidence": 0.95, "parameters": {{"taskQuery": "safe drop", "changes": {{"category": "work"}}}}}}]
+- "Move groceries under shopping list" → [{{"intent": "MOVE", "confidence": 0.95, "parameters": {{"taskQuery": "groceries", "targetParentQuery": "shopping list"}}}}]
+- "add X, Y, and Z under project Alpha" → 3 ADD objects in the array, all with parentQuery="project Alpha"
+"""
+
+    def _build_intent_prompt_fuzzy(self, transcription: str, task_tree_context: str) -> str:
+        """Build intent detection prompt for fuzzy mode (full tree with UUIDs)."""
+        return f"""Current task tree:
 {task_tree_context}
 
 User said: "{transcription}"
@@ -256,13 +409,42 @@ More examples:
 - "add X, Y, and Z under project Alpha" → 3 ADD objects in the array, all with suggestedParent=Alpha's ID
 """
 
+    async def detect_intent(
+        self,
+        transcription: str,
+        task_tree_context: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Detect user intent(s) and extract parameters from a voice/text command.
+
+        Handles transcription cleanup internally — no separate refine step needed.
+        Returns a list of intents (single-element for simple commands, multi-element
+        for compound commands like "add X and Y under Z").
+
+        Args:
+            transcription: Raw user command (voice transcription or typed text)
+            task_tree_context: String representation of task tree
+
+        Returns:
+            List of intent dicts, each with intent, confidence, parameters.
+        """
+        settings = get_settings()
+        use_pg_native = settings.search_engine == "pg_native"
+
+        if use_pg_native:
+            prompt = self._build_intent_prompt_pg_native(transcription, task_tree_context)
+            schema = list[IntentResponsePgNative]
+        else:
+            prompt = self._build_intent_prompt_fuzzy(transcription, task_tree_context)
+            schema = list[IntentResponse]
+
         try:
             response = await self.client.aio.models.generate_content(
                 model=self.MODEL,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type='application/json',
-                    response_schema=list[IntentResponse],
+                    response_schema=schema,
                 ),
             )
 
@@ -305,11 +487,22 @@ More examples:
         Returns:
             List of task proposal dicts, each with action, content, category, etc.
         """
-        prompt = f"""<context>
-The task tree below shows the user's current tasks organized by category.
+        settings = get_settings()
+        use_pg_native = settings.search_engine == "pg_native"
+
+        if use_pg_native:
+            context_desc = """The task tree below shows the user's current tasks organized by category.
+Each category header (e.g. "WORK:") represents a top-level domain — use the lowercase
+form (e.g. "work") as the category value. Tasks are nested with indentation showing parent-child
+relationships. [done] marks completed tasks."""
+        else:
+            context_desc = """The task tree below shows the user's current tasks organized by category.
 Each category header (e.g. "WORK TASKS:") represents a top-level domain — use the lowercase
 form (e.g. "work") as the category value. Tasks are nested with "├──" showing parent-child
-relationships. Task IDs are shown in parentheses.
+relationships. Task IDs are shown in parentheses."""
+
+        prompt = f"""<context>
+{context_desc}
 
 {task_tree_context}
 </context>
