@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Search engine: "fuzzy" (RapidFuzz) or "pg_native" (pg_trgm)
     search_engine: str = "fuzzy"
 
+    # Category limits
+    max_categories: int = 8
+
     @field_validator("search_engine")
     @classmethod
     def validate_search_engine(cls, v):

@@ -62,7 +62,7 @@ class TaskService:
         await self.db.refresh(task)
         return task
 
-    VALID_DOMAINS = {"work", "personal", "health", "learning", "projects"}
+    VALID_DOMAINS = {"career", "finance", "health", "relationships", "growth", "recreation", "home", "community"}
 
     async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
         """Look up category ID from category name string. Auto-creates valid domains."""
@@ -355,7 +355,8 @@ class TaskService:
         return list(result.scalars().all())
 
     async def create_category(self, user_id: str, name: str) -> Category:
-        """Create a category. Validates max 5, no duplicate, assigns lowest unused position."""
+        """Create a category. Validates max 8, no duplicate, assigns lowest unused position."""
+        from config import get_settings
         name = name.lower().strip()
 
         # Check duplicate
@@ -366,19 +367,20 @@ class TaskService:
         if existing.scalar_one_or_none():
             raise ValueError(f"Category '{name}' already exists")
 
-        # Check max 5
+        # Check max categories
+        max_cats = get_settings().max_categories
         count = await self.count_categories(user_id)
-        if count >= 5:
-            raise ValueError("Maximum of 5 categories reached")
+        if count >= max_cats:
+            raise ValueError(f"Maximum of {max_cats} categories reached")
 
-        # Find lowest unused position (0-4)
+        # Find lowest unused position (0 to max-1)
         result = await self.db.execute(
             select(Category.position)
             .where(Category.user_id == user_id)
             .order_by(Category.position)
         )
         used_positions = {row[0] for row in result.all()}
-        position = next(p for p in range(5) if p not in used_positions)
+        position = next(p for p in range(max_cats) if p not in used_positions)
 
         category = Category(
             id=str(uuid.uuid4()),

@@ -54,7 +54,7 @@ void main() {
       final task1 = createTestTask(
         id: 'flat-1',
         title: 'review PR',
-        category: 'work',
+        category: 'career',
       );
       final task2 = createTestTask(
         id: 'flat-2',

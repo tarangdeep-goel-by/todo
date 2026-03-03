@@ -16,8 +16,8 @@ void main() {
   });
 
   final testPaletteMap = <String, DomainPalette>{
-    'work': DomainColors.workDark,
-    'personal': DomainColors.personalDark,
+    'career': DomainColors.careerDark,
+    'home': DomainColors.homeDark,
   };
 
   Widget buildOverlay({required String taskId, required List<Task> tasks}) {
@@ -44,7 +44,7 @@ void main() {
       final task = createTestTask(
         id: 'test-id-1',
         title: 'review pull request',
-        category: 'work',
+        category: 'career',
       );
       await tester.pumpWidget(buildOverlay(
         taskId: 'test-id-1',
@@ -60,7 +60,7 @@ void main() {
       final task = createTestTask(
         id: 'test-id-1',
         title: 'some task',
-        category: 'work',
+        category: 'career',
       );
       await tester.pumpWidget(buildOverlay(
         taskId: 'test-id-1',
@@ -75,7 +75,7 @@ void main() {
       final task = createTestTask(
         id: 'test-id-1',
         title: 'some task',
-        category: 'work',
+        category: 'career',
       );
       await tester.pumpWidget(buildOverlay(
         taskId: 'test-id-1',
@@ -90,7 +90,7 @@ void main() {
       final task = createTestTask(
         id: 'test-id-1',
         title: 'some task',
-        category: 'work',
+        category: 'career',
       );
       await tester.pumpWidget(buildOverlay(
         taskId: 'test-id-1',
@@ -98,7 +98,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('work'), findsOneWidget);
+      expect(find.text('career'), findsOneWidget);
     });
 
     testWidgets('shows "Task not found" for missing task', (tester) async {
@@ -115,7 +115,7 @@ void main() {
       final task = createTestTask(
         id: 'test-id-1',
         title: 'important task',
-        category: 'work',
+        category: 'career',
         priority: 'high',
       );
       await tester.pumpWidget(buildOverlay(

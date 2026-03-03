@@ -15,21 +15,21 @@ class TestProcessBrainDump:
     async def test_single_task(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Buy groceries", "category": "personal", "dueDate": "tomorrow", "confidence": 0.9},
+            {"content": "Buy groceries", "category": "home", "dueDate": "tomorrow", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump("buy groceries tomorrow", "test-user", db_session)
         assert result.success is True
         assert len(result.tasks) == 1
         assert result.tasks[0].content == "Buy groceries"
-        assert result.tasks[0].category == "personal"
+        assert result.tasks[0].category == "home"
         assert result.tasks[0].due_date is not None
 
     async def test_multiple_tasks(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Buy milk", "category": "personal", "confidence": 0.9},
-            {"content": "Call dentist", "category": "personal", "dueDate": "tomorrow", "confidence": 0.9},
-            {"content": "Finish report", "category": "work", "priority": "high", "confidence": 0.9},
+            {"content": "Buy milk", "category": "home", "confidence": 0.9},
+            {"content": "Call dentist", "category": "home", "dueDate": "tomorrow", "confidence": 0.9},
+            {"content": "Finish report", "category": "career", "priority": "high", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump(
             "buy milk, call dentist tomorrow, finish the report it's urgent",
@@ -59,19 +59,19 @@ class TestProcessBrainDump:
     async def test_category_override(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Task A", "category": "personal", "confidence": 0.9},
-            {"content": "Task B", "category": "personal", "confidence": 0.9},
+            {"content": "Task A", "category": "home", "confidence": 0.9},
+            {"content": "Task B", "category": "home", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump(
-            "task a and task b", "test-user", db_session, category="work",
+            "task a and task b", "test-user", db_session, category="career",
         )
         assert result.success is True
-        assert all(t.category == "work" for t in result.tasks)
+        assert all(t.category == "career" for t in result.tasks)
 
     async def test_parent_query_resolved(self, agent_service, mock_gemini, task_service, db_session):
         tree = await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Write unit tests", "category": "work", "parentQuery": "Project Alpha", "confidence": 0.9},
+            {"content": "Write unit tests", "category": "career", "parentQuery": "Project Alpha", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump(
             "write unit tests under project alpha", "test-user", db_session,
@@ -79,12 +79,32 @@ class TestProcessBrainDump:
         assert result.success is True
         assert result.tasks[0].parent_id == tree["project_alpha"].id
 
+    async def test_gibberish_returns_empty_proposals(self, agent_service, mock_gemini, task_service, db_session):
+        """Gibberish text triggers pre-filter → success=False, empty tasks."""
+        await make_task_tree(task_service)
+        result = await agent_service.process_brain_dump("xkcd qwrty zxcvbn", "test-user", db_session)
+        assert result.success is False
+        assert len(result.tasks) == 0
+        assert "rephras" in result.message.lower() or "understand" in result.message.lower()
+        # Gemini should NOT have been called
+        mock_gemini.detect_brain_dump.assert_not_called()
+
+    async def test_normal_text_passes_to_gemini(self, agent_service, mock_gemini, task_service, db_session):
+        """Valid text bypasses pre-filter and reaches Gemini."""
+        await make_task_tree(task_service)
+        mock_gemini.detect_brain_dump = AsyncMock(return_value=[
+            {"content": "Buy groceries", "category": "home", "confidence": 0.9},
+        ])
+        result = await agent_service.process_brain_dump("buy groceries", "test-user", db_session)
+        assert result.success is True
+        mock_gemini.detect_brain_dump.assert_called_once()
+
     async def test_skips_empty_content(self, agent_service, mock_gemini, task_service, db_session):
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Real task", "category": "work", "confidence": 0.9},
-            {"content": "", "category": "work", "confidence": 0.9},
-            {"content": "  ", "category": "work", "confidence": 0.9},
+            {"content": "Real task", "category": "career", "confidence": 0.9},
+            {"content": "", "category": "career", "confidence": 0.9},
+            {"content": "  ", "category": "career", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump("real task", "test-user", db_session)
         assert result.success is True
@@ -98,10 +118,10 @@ class TestSubmitBrainDump:
         await make_task_tree(task_service)
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="Buy milk", category="personal",
+                id="temp-1", content="Buy milk", category="home",
             ),
             BrainDumpTaskProposal(
-                id="temp-2", content="Finish report", category="work",
+                id="temp-2", content="Finish report", category="career",
                 priority="high",
             ),
         ]
@@ -119,7 +139,7 @@ class TestSubmitBrainDump:
         tree = await make_task_tree(task_service)
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="Sub-task", category="work",
+                id="temp-1", content="Sub-task", category="career",
                 parent_id=tree["project_alpha"].id,
                 due_date=datetime(2026, 3, 15, 9, 0, 0, tzinfo=timezone.utc),
             ),
@@ -141,7 +161,7 @@ class TestSubmitBrainDump:
         proposals = [
             BrainDumpTaskProposal(
                 id="temp-1", action="complete", content="Project Alpha",
-                category="work", matched_task_id=tree["project_alpha"].id,
+                category="career", matched_task_id=tree["project_alpha"].id,
             ),
         ]
         result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
@@ -155,7 +175,7 @@ class TestSubmitBrainDump:
         proposals = [
             BrainDumpTaskProposal(
                 id="temp-1", action="edit", content="Backend API",
-                category="work", matched_task_id=tree["backend_api"].id,
+                category="career", matched_task_id=tree["backend_api"].id,
                 changes={"priority": "high", "dueDate": "2026-04-01"},
             ),
         ]
@@ -171,7 +191,7 @@ class TestSubmitBrainDump:
         proposals = [
             BrainDumpTaskProposal(
                 id="temp-1", action="move", content="Groceries",
-                category="personal", matched_task_id=tree["groceries"].id,
+                category="home", matched_task_id=tree["groceries"].id,
                 target_parent_id="00000000-0000-0000-0000-000000000099",
             ),
         ]
@@ -184,7 +204,7 @@ class TestSubmitBrainDump:
         await make_task_tree(task_service)
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="Research APIs", category="work",
+                id="temp-1", content="Research APIs", category="career",
                 tags=["backend", "research"], estimated_hours=3.5,
                 confidence=0.85,
             ),
@@ -200,7 +220,7 @@ class TestSubmitBrainDump:
         await make_task_tree(task_service)
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="Stretch goal", category="personal",
+                id="temp-1", content="Stretch goal", category="home",
                 confidence=0.75,
             ),
         ]
@@ -218,12 +238,12 @@ class TestProcessBrainDumpDisambiguation:
         await make_task_tree(task_service)
         # Create a second task with similar name so fuzzy search returns >1
         await task_service.create_task(
-            user_id="test-user", title="Backend API v2", category="work",
+            user_id="test-user", title="Backend API v2", category="career",
             transcription="backend api v2",
             ai_placement={"confidence": 0.9, "reasoning": "test"},
         )
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"action": "complete", "content": "Backend API", "category": "work", "confidence": 0.9},
+            {"action": "complete", "content": "Backend API", "category": "career", "confidence": 0.9},
         ])
         result = await agent_service.process_brain_dump("completed backend api", "test-user", db_session)
         assert result.success is True
@@ -237,7 +257,7 @@ class TestProcessBrainDumpDisambiguation:
         """Tags and estimatedHours from Gemini should appear in proposals."""
         await make_task_tree(task_service)
         mock_gemini.detect_brain_dump = AsyncMock(return_value=[
-            {"content": "Design mockups", "category": "work", "confidence": 0.9,
+            {"content": "Design mockups", "category": "career", "confidence": 0.9,
              "tags": ["design", "ui"], "estimatedHours": 4.0},
         ])
         result = await agent_service.process_brain_dump("design mockups", "test-user", db_session)
@@ -257,7 +277,7 @@ class TestBrainDumpAPI:
         mock_response = BrainDumpResponse(
             success=True,
             tasks=[BrainDumpTaskProposal(
-                id="temp-1", content="Buy groceries", category="personal",
+                id="temp-1", content="Buy groceries", category="home",
             )],
             transcription="buy groceries",
             message="Found 1 tasks",
@@ -289,7 +309,7 @@ class TestBrainDumpAPI:
                     {
                         "id": "temp-1",
                         "content": "Buy milk",
-                        "category": "personal",
+                        "category": "home",
                         "labels": [],
                     },
                 ],

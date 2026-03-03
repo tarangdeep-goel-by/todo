@@ -82,14 +82,14 @@ async def test_agent_end_to_end(user_id: str, tree_size: int) -> List[Dict]:
             start = time.time()
 
             try:
-                response = await agent_service.process_voice_command(prompt, user_id, db)
+                response = await agent_service.process_brain_dump(prompt, user_id, db)
                 duration = time.time() - start
 
                 results.append({
                     "prompt": prompt,
                     "tree_size": tree_size,
                     "success": response.success,
-                    "intent": response.data.get("intent") if hasattr(response, "data") else None,
+                    "action_count": len(response.tasks),
                     "duration_ms": int(duration * 1000)
                 })
             except Exception as e:

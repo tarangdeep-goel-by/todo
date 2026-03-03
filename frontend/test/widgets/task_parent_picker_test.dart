@@ -17,25 +17,25 @@ void main() {
   final workTask1 = createTestTask(
     id: 'work-1',
     title: 'design mockups',
-    category: 'work',
+    category: 'career',
     parentId: null,
   );
   final workTask2 = createTestTask(
     id: 'work-2',
     title: 'refine wireframes',
-    category: 'work',
+    category: 'career',
     parentId: 'work-1',
   );
   final workTask3 = createTestTask(
     id: 'work-3',
     title: 'fix bug',
-    category: 'work',
+    category: 'career',
     parentId: null,
   );
   final personalTask1 = createTestTask(
     id: 'personal-1',
     title: 'buy groceries',
-    category: 'personal',
+    category: 'home',
     parentId: null,
   );
 
@@ -140,7 +140,7 @@ void main() {
       expect(result, isNotNull);
       expect(result!.taskId, 'work-3');
       expect(result!.taskTitle, 'fix bug');
-      expect(result!.category, 'work');
+      expect(result!.category, 'career');
     });
 
     testWidgets('tapping Top level calls onSelect with taskId null',

@@ -98,39 +98,6 @@ class ApiService {
     }
   }
 
-  /// Process voice command with transcribed text
-  Future<AgentResponse> processVoiceCommand(String transcription, String userId) async {
-    try {
-      final response = await _dio.post('/agent/process', data: {
-        'transcription': transcription,
-        'user_id': userId,
-      });
-      return AgentResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  /// Resolve a question response (user picked an option)
-  Future<AgentResponse> resolveQuestion({
-    required String userId,
-    required String action,
-    String? selectedTaskId,
-    Map<String, dynamic>? data,
-  }) async {
-    try {
-      final response = await _dio.post('/agent/resolve', data: {
-        'user_id': userId,
-        'action': action,
-        'selected_task_id': ?selectedTaskId,
-        'data': ?data,
-      });
-      return AgentResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
   /// Process brain dump — extract task proposals from voice transcription
   Future<BrainDumpResponse> processBrainDump({
     required String transcription,
