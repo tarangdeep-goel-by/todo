@@ -5,20 +5,20 @@ void main() {
   group('TaskFilter.copyWith sentinel pattern', () {
     test('set value', () {
       const f = TaskFilter();
-      final updated = f.copyWith(categories: ['work']);
-      expect(updated.categories, ['work']);
+      final updated = f.copyWith(categories: ['career']);
+      expect(updated.categories, ['career']);
     });
 
     test('clear value to null', () {
-      final f = const TaskFilter(categories: ['work']);
+      final f = const TaskFilter(categories: ['career']);
       final cleared = f.copyWith(categories: null);
       expect(cleared.categories, isNull);
     });
 
     test('no change preserves existing', () {
-      const f = TaskFilter(categories: ['work'], priorities: ['high']);
+      const f = TaskFilter(categories: ['career'], priorities: ['high']);
       final same = f.copyWith();
-      expect(same.categories, ['work']);
+      expect(same.categories, ['career']);
       expect(same.priorities, ['high']);
     });
   });
@@ -30,7 +30,7 @@ void main() {
     });
 
     test('true with categories', () {
-      const f = TaskFilter(categories: ['work']);
+      const f = TaskFilter(categories: ['career']);
       expect(f.isActive, true);
     });
 
@@ -48,7 +48,7 @@ void main() {
 
     test('counts multiple filters', () {
       final f = TaskFilter(
-        categories: ['work'],
+        categories: ['career'],
         priorities: ['high'],
         sortOptions: [SortOption('title')],
       );

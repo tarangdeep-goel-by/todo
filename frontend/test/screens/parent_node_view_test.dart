@@ -68,6 +68,14 @@ void main() {
 
     testWidgets('renders DomainCard widgets when domains and tasks exist',
         (tester) async {
+      // Increase viewport to fit 8 domain cards without overflow
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       final palettes = createTestPaletteMap();
 
       // Build with tasks that match a domain
@@ -79,10 +87,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: Scaffold(
-            body: SizedBox(
-              height: 800,
-              child: ParentNodeView(),
-            ),
+            body: ParentNodeView(),
           ),
         ),
       );
@@ -90,7 +95,7 @@ void main() {
       await tester.pumpWidget(widget);
       await tester.pump();
 
-      // With 5 domain palettes, we should see DomainCard widgets
+      // With 8 domain palettes, we should see DomainCard widgets
       expect(find.byType(DomainCard), findsWidgets);
     });
 

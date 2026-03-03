@@ -5,8 +5,8 @@ import '../helpers/test_helpers.dart';
 
 void main() {
   group('DomainColors.palettes', () {
-    test('has length 5', () {
-      expect(DomainColors.palettes, hasLength(5));
+    test('has length 8', () {
+      expect(DomainColors.palettes, hasLength(8));
     });
   });
 
@@ -16,9 +16,9 @@ void main() {
       expect(palette.name, 'Work');
     });
 
-    test('wraps around with modulo (index 5 == index 0 primary)', () {
+    test('wraps around with modulo (index 8 == index 0 primary)', () {
       final palette0 = DomainColors.byIndex(0, 'A');
-      final palette5 = DomainColors.byIndex(5, 'B');
+      final palette5 = DomainColors.byIndex(8, 'B');
       expect(palette5.primary, palette0.primary);
     });
   });
@@ -33,7 +33,7 @@ void main() {
     test('falls back to hash-based index without paletteMap', () {
       final result = DomainColors.getDomain('SomeCategory', true);
       expect(result.name, 'SomeCategory');
-      // Should be one of the 5 palettes (by primary color)
+      // Should be one of the 8 palettes (by primary color)
       final paletteColors =
           DomainColors.palettes.map((p) => p.primary).toList();
       expect(paletteColors, contains(result.primary));

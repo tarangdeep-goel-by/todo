@@ -6,13 +6,13 @@ void main() {
     test('fromJson parses all fields', () {
       final json = {
         'id': 'cat-1',
-        'name': 'work',
+        'name': 'career',
         'position': 0,
         'created_at': '2025-01-15T10:00:00.000',
       };
       final cat = Category.fromJson(json);
       expect(cat.id, 'cat-1');
-      expect(cat.name, 'work');
+      expect(cat.name, 'career');
       expect(cat.position, 0);
       expect(cat.createdAt, DateTime.parse('2025-01-15T10:00:00.000'));
     });
@@ -20,11 +20,11 @@ void main() {
     test('displayName capitalizes first letter', () {
       final cat = Category(
         id: '1',
-        name: 'personal',
+        name: 'home',
         position: 1,
         createdAt: DateTime(2025),
       );
-      expect(cat.displayName, 'Personal');
+      expect(cat.displayName, 'Home');
     });
 
     test('displayName handles single char', () {
@@ -40,13 +40,13 @@ void main() {
     test('fromJson with different positions', () {
       final json = {
         'id': 'cat-5',
-        'name': 'projects',
+        'name': 'recreation',
         'position': 4,
         'created_at': '2025-06-01T00:00:00.000',
       };
       final cat = Category.fromJson(json);
       expect(cat.position, 4);
-      expect(cat.name, 'projects');
+      expect(cat.name, 'recreation');
     });
 
     test('displayName for multi-word names', () {

@@ -7,18 +7,18 @@ from tests.helpers import make_task
 
 class TestFilterByCategory:
     async def test_single_category(self, task_service, db_session):
-        await task_service.create_task(**make_task(title="Work A", category="work"))
-        await task_service.create_task(**make_task(title="Personal A", category="personal"))
-        params = TaskFilterParams(user_id="test-user", category="work")
+        await task_service.create_task(**make_task(title="Work A", category="career"))
+        await task_service.create_task(**make_task(title="Personal A", category="home"))
+        params = TaskFilterParams(user_id="test-user", category="career")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 1
         assert tasks[0].title == "work a"
 
     async def test_multi_category(self, task_service, db_session):
-        await task_service.create_task(**make_task(title="Work A", category="work"))
-        await task_service.create_task(**make_task(title="Personal A", category="personal"))
+        await task_service.create_task(**make_task(title="Work A", category="career"))
+        await task_service.create_task(**make_task(title="Personal A", category="home"))
         await task_service.create_task(**make_task(title="Health A", category="health"))
-        params = TaskFilterParams(user_id="test-user", category="work,personal")
+        params = TaskFilterParams(user_id="test-user", category="career,home")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 2
 
@@ -156,7 +156,7 @@ class TestSorting:
 class TestPagination:
     async def test_limit_offset(self, task_service, db_session):
         for i in range(5):
-            await task_service.create_task(**make_task(title=f"Task {i}", category="work"))
+            await task_service.create_task(**make_task(title=f"Task {i}", category="career"))
         params = TaskFilterParams(user_id="test-user", limit=2, offset=0, sort="title:asc")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert len(tasks) == 2
@@ -164,9 +164,9 @@ class TestPagination:
 
     async def test_count_matches_total(self, task_service, db_session):
         for i in range(3):
-            await task_service.create_task(**make_task(title=f"Work {i}", category="work"))
-        await task_service.create_task(**make_task(title="Personal", category="personal"))
-        params = TaskFilterParams(user_id="test-user", category="work")
+            await task_service.create_task(**make_task(title=f"Work {i}", category="career"))
+        await task_service.create_task(**make_task(title="Personal", category="home"))
+        params = TaskFilterParams(user_id="test-user", category="career")
         tasks, count = await task_service.get_tasks_advanced(params)
         assert count == 3
         assert len(tasks) == 3

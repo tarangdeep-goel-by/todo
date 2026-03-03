@@ -31,6 +31,9 @@ services:
       # Application settings
       APP_ENV: development
       DEBUG: "True"
+
+      # Search engine: "fuzzy" (RapidFuzz) or "pg_native" (pg_trgm)
+      SEARCH_ENGINE: pg_native
     ports:
       - "8001:8000"
     volumes:

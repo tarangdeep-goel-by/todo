@@ -111,7 +111,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   _buildPoint(
                     Icons.mic_none_rounded,
                     'Speak or type commands',
-                    'Say "Add buy milk to personal"\nand AI handles the rest.',
+                    'Say "Add buy milk to home"\nand AI handles the rest.',
                     accentColors[0],
                   ),
                   const SizedBox(height: AppSpacing.lg),

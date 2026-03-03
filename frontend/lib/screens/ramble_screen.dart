@@ -29,11 +29,18 @@ class RambleScreen extends ConsumerStatefulWidget {
   final String? prefilledParentId;
   final String? prefilledParentTitle;
 
+  /// When provided, skip recording/editing and jump straight to proposal review.
+  /// Used by keyboard input flow: text → brain dump API → proposals → review here.
+  final List<BrainDumpTaskProposal>? initialProposals;
+  final String? initialTranscript;
+
   const RambleScreen({
     super.key,
     this.prefilledCategory,
     this.prefilledParentId,
     this.prefilledParentTitle,
+    this.initialProposals,
+    this.initialTranscript,
   });
 
   @override
@@ -72,6 +79,18 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(transcriptionTextProvider.notifier).state = '';
       ref.read(waveformDataProvider.notifier).state = [];
+
+      // Keyboard flow: skip recording, jump to review
+      if (widget.initialProposals != null) {
+        setState(() {
+          _proposals = widget.initialProposals!;
+          _existingProposals = _proposals.where((p) => p.action != 'add').toList();
+          _transcriptController.text = widget.initialTranscript ?? '';
+          _phase = _RamblePhase.reviewing;
+        });
+        return;
+      }
+
       _startRecording();
     });
   }
@@ -411,7 +430,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               id: 'fallback-${DateTime.now().millisecondsSinceEpoch}',
               action: 'add',
               content: text,
-              category: widget.prefilledCategory ?? 'personal',
+              category: widget.prefilledCategory ?? 'home',
               parentId: widget.prefilledParentId,
             ),
           ];
@@ -577,7 +596,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                 final idx = entry.key;
                 final match = entry.value;
                 final matchDomain = DomainColors.getDomain(
-                  match['category'] ?? 'work', true, paletteMap,
+                  match['category'] ?? 'career', true, paletteMap,
                 );
                 final isCurrent = idx == 0;
                 return ListTile(
@@ -679,7 +698,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   Widget build(BuildContext context) {
     final paletteMap = ref.watch(domainPalettesProvider);
     final domain = DomainColors.getDomain(
-      widget.prefilledCategory ?? 'work', true, paletteMap,
+      widget.prefilledCategory ?? 'career', true, paletteMap,
     );
 
     return PopScope(

@@ -10,7 +10,6 @@ import 'package:frontend/services/speech_service.dart';
 import 'package:frontend/services/ramble_websocket_service.dart';
 import 'package:frontend/config/theme.dart';
 import 'package:frontend/models/task.dart';
-import 'package:frontend/models/api_response.dart';
 
 /// Mock Dio for API service tests
 class MockDio extends Mock implements Dio {}
@@ -36,14 +35,17 @@ class MockRambleWebSocketService extends Mock implements RambleWebSocketService 
 /// Mock SpeechService for widget tests
 class MockSpeechService extends Mock implements SpeechService {}
 
-/// Create a test palette map with all 5 domains
+/// Create a test palette map with all 8 domains
 Map<String, DomainPalette> createTestPaletteMap() {
   return {
-    'work': DomainColors.workDark,
-    'personal': DomainColors.personalDark,
+    'career': DomainColors.careerDark,
+    'home': DomainColors.homeDark,
     'health': DomainColors.palettes[2].withName('Health'),
-    'learning': DomainColors.learningDark,
-    'projects': DomainColors.projectsDark,
+    'growth': DomainColors.growthDark,
+    'recreation': DomainColors.recreationDark,
+    'finance': DomainColors.financeDark,
+    'relationships': DomainColors.relationshipsDark,
+    'community': DomainColors.communityDark,
   };
 }
 
@@ -54,7 +56,7 @@ Task createTestTask({
   String title = 'Test Task',
   String? description,
   String? parentId,
-  String category = 'work',
+  String category = 'career',
   String? categoryId,
   String status = 'active',
   DateTime? createdAt,
@@ -84,21 +86,6 @@ Task createTestTask({
     aiPlacementJson: aiPlacementJson,
     priority: priority,
     estimatedHours: estimatedHours,
-  );
-}
-
-/// Factory for a test AgentResponse
-AgentResponse createTestAgentResponse({
-  bool success = true,
-  String message = 'Done',
-  String type = 'confirmation',
-  Map<String, dynamic>? data,
-}) {
-  return AgentResponse(
-    success: success,
-    message: message,
-    type: type,
-    data: data,
   );
 }
 

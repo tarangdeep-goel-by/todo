@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Voice-first AI-powered hierarchical todo app. Flutter mobile frontend communicates with a FastAPI backend via REST API. Users speak voice commands, backend AI (Gemini) transcribes, detects intent (ADD/COMPLETE/EDIT/DELETE/MOVE/QUERY/BREAKDOWN), and executes against a PostgreSQL database. Tasks are organized into 5 domains (Work, Personal, Health, Learning, Projects) with unlimited tree depth.
+Voice-first AI-powered hierarchical todo app. Flutter mobile frontend communicates with a FastAPI backend via REST API. Users input tasks via keyboard or voice, backend AI (Gemini) extracts task proposals (ADD/COMPLETE/EDIT/DELETE/MOVE/BREAKDOWN), user reviews and confirms, then tasks are executed against a PostgreSQL database. Tasks are organized into 8 domains (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) with unlimited tree depth.
 
 ## Quick Start
 
@@ -25,12 +25,13 @@ cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
 ## Commands
 
 ```bash
-# Backend tests (154, inside Docker)
+# Backend tests (inside Docker)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
-docker exec todo-backend python -m pytest tests/test_agent_service.py -v                     # Single file
-docker exec todo-backend python -m pytest tests/test_agent_service.py::TestHandleAdd::test_add_task_basic -v  # Single test
+docker exec todo-backend python -m pytest tests/test_brain_dump.py -v                        # Single file
+docker exec todo-backend python -m pytest tests/test_brain_dump.py::TestBrainDump::test_gibberish_returns_empty_proposals -v  # Single test
+docker exec todo-backend python tests/performance/test_agent_performance.py                  # Performance benchmarks
 
-# Frontend tests (125)
+# Frontend tests
 cd frontend && flutter test                                              # All
 cd frontend && flutter test test/providers/task_store_provider_test.dart  # Single file
 cd frontend && flutter test --name "filters tasks by category"           # By name
@@ -39,11 +40,13 @@ cd frontend && flutter analyze                                           # Lint 
 # Database migrations
 docker exec todo-backend alembic upgrade head                            # Apply
 docker exec todo-backend alembic revision --autogenerate -m "description"  # Create new
+docker exec todo-backend alembic downgrade -1                              # Rollback one
 
-# Intent detection eval (65 cases, ~90s with LLM)
+# Brain dump action detection eval (65 cases, ~90s with LLM)
 docker exec todo-backend python evaluation/run_eval.py                    # Full run
 docker exec todo-backend python evaluation/run_eval.py --filter-id add_01 # Single case
 docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-run (harness only)
+docker exec todo-backend python evaluation/run_eval.py --no-prefilter    # Skip pre-filter, LLM-only
 ```
 
 ## Architecture
@@ -53,11 +56,11 @@ docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-r
 │  Flutter Frontend    │  REST   │  FastAPI Backend                 │
 │  (Riverpod state)    │ ◄─────► │  (async Python)                  │
 │                      │         │                                  │
-│  TaskStoreNotifier   │  WS     │  /api/agent/process  ← voice     │
-│  ├── allTasks        │ ◄─────► │  /api/agent/resolve  ← disambig  │
-│  ├── byCategory      │         │  /api/agent/braindump ← ramble   │
-│  ├── byId            │         │  /ws/ramble           ← stream   │
-│  ├── children        │         │  /api/tasks/*         ← CRUD     │
+│  TaskStoreNotifier   │  WS     │  /api/agent/braindump ← extract  │
+│  ├── allTasks        │ ◄─────► │  /api/agent/braindump/submit     │
+│  ├── byCategory      │         │  /ws/ramble           ← stream   │
+│  ├── byId            │         │  /api/tasks/*         ← CRUD     │
+│  ├── children        │         │                                  │
 │  └── flatFiltered    │         │                                  │
 │                      │         │  AgentService → GeminiService    │
 │  RambleSheet ──────► │         │  RambleService (Gemini Live)     │
@@ -70,14 +73,14 @@ docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-r
                                     └─────────────┘
 ```
 
-### Two Voice Input Modes
+### Two Input Modes (unified brain dump pipeline)
 
-1. **Single Command** (tap mic): Record → upload .m4a → `/api/agent/process` → single intent executed
-2. **Brain Dump / Ramble** (long-press mic): Stream PCM audio via `/ws/ramble` → Gemini Live transcribes in real-time → user reviews transcript → `/api/agent/braindump` extracts multiple task proposals → user reviews/edits → `/api/agent/braindump/submit` creates tasks in batch
+1. **Keyboard** (tap pill): Type text → `POST /api/agent/braindump` → task proposals → RambleScreen review → submit
+2. **Voice / Ramble** (long-press pill): Stream PCM audio via `/ws/ramble` → Gemini Live transcribes in real-time → user reviews transcript → `/api/agent/braindump` extracts task proposals → user reviews/edits → `/api/agent/braindump/submit` creates tasks in batch
 
 ### Detailed Guides
 
-- **Backend**: See [`backend/CLAUDE.md`](backend/CLAUDE.md) — voice command pipeline, services, database schema, API endpoints, testing setup
+- **Backend**: See [`backend/CLAUDE.md`](backend/CLAUDE.md) — brain dump pipeline, services, database schema, API endpoints, testing setup
 - **Frontend**: See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) — TaskStoreNotifier, derived providers, view modes, voice flow, testing patterns
 
 ## Cross-Cutting Concerns
@@ -94,14 +97,15 @@ Both frontend and backend use: `status:asc → due_date:asc → priority:desc �
 ### Optimistic Updates
 Frontend mutations update `TaskStoreNotifier` immediately, then sync to backend async. If backend fails, the store should be reverted.
 
-### 5-Domain Limit
-Categories (Work, Personal, Health, Learning, Projects) are enforced in `agent_service.py`. The frontend defines them in `AppConstants.domainNames`. Adding a 6th is blocked.
+### 8-Domain Limit
+Categories (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) are enforced in `agent_service.py` (max 8). The frontend dynamically creates domain palettes from backend categories.
 
 ## Environment
 
 **Backend** (Docker env in `docker-compose.yml`):
 - `DATABASE_URL`: `postgresql+asyncpg://todo:todo123@postgres:5432/todo_db`
 - `GEMINI_API_KEY`: Google Gemini API key
+- `SEARCH_ENGINE`: `pg_native` (pg_trgm trigram search) or `fuzzy` (RapidFuzz). Default: `fuzzy`
 
 **Frontend** (`frontend/lib/config/constants.dart`):
 - `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)

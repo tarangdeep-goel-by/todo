@@ -10,8 +10,8 @@ import 'package:frontend/config/theme.dart';
 void main() {
   // Provide a default palette map so domainPalettesProvider works
   final testPaletteMap = <String, DomainPalette>{
-    'work': DomainColors.workDark,
-    'personal': DomainColors.personalDark,
+    'career': DomainColors.careerDark,
+    'home': DomainColors.homeDark,
   };
 
   Widget buildSheet({TaskFilter? initialFilter}) {

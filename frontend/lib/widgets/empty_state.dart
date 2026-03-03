@@ -12,7 +12,7 @@ import '../config/spacing.dart';
 ///     title: 'Your world, organized',
 ///     message: 'Speak a task to get started.',
 ///     icon: Icons.auto_awesome,
-///     examples: ['Add groceries to personal'],
+///     examples: ['Add groceries to home'],
 ///     actionLabel: 'Add Domain',
 ///     onAction: () => ...,
 ///   )

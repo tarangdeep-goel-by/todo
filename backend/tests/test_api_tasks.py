@@ -13,7 +13,7 @@ class TestGetTasks:
     async def test_with_data(self, test_client):
         # Create a task first
         await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Task A", "category": "work",
+            "user_id": "u1", "title": "Task A", "category": "career",
             "transcription": "task a",
         })
         resp = await test_client.get("/tasks", params={"user_id": "u1"})
@@ -24,7 +24,7 @@ class TestGetTasks:
 class TestGetTaskById:
     async def test_found(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "T1", "category": "work",
+            "user_id": "u1", "title": "T1", "category": "career",
             "transcription": "t1",
         })
         task_id = create_resp.json()["id"]
@@ -40,12 +40,12 @@ class TestGetTaskById:
 class TestCreateTask:
     async def test_success(self, test_client):
         resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "New Task", "category": "personal",
+            "user_id": "u1", "title": "New Task", "category": "home",
             "transcription": "new task",
         })
         assert resp.status_code == 201
         assert resp.json()["title"] == "new task"
-        assert resp.json()["category"] == "personal"
+        assert resp.json()["category"] == "home"
 
     async def test_validation_error(self, test_client):
         resp = await test_client.post("/tasks", json={
@@ -58,7 +58,7 @@ class TestCreateTask:
 class TestUpdateTask:
     async def test_success(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Old", "category": "work",
+            "user_id": "u1", "title": "Old", "category": "career",
             "transcription": "old",
         })
         task_id = create_resp.json()["id"]
@@ -72,7 +72,7 @@ class TestUpdateTask:
 
     async def test_update_priority(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "T", "category": "work",
+            "user_id": "u1", "title": "T", "category": "career",
             "transcription": "t",
         })
         task_id = create_resp.json()["id"]
@@ -82,7 +82,7 @@ class TestUpdateTask:
 
     async def test_update_tags(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "T", "category": "work",
+            "user_id": "u1", "title": "T", "category": "career",
             "transcription": "t",
         })
         task_id = create_resp.json()["id"]
@@ -92,7 +92,7 @@ class TestUpdateTask:
 
     async def test_update_estimated_hours(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "T", "category": "work",
+            "user_id": "u1", "title": "T", "category": "career",
             "transcription": "t",
         })
         task_id = create_resp.json()["id"]
@@ -104,7 +104,7 @@ class TestUpdateTask:
 class TestCompleteTask:
     async def test_complete(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Do it", "category": "work",
+            "user_id": "u1", "title": "Do it", "category": "career",
             "transcription": "do it",
         })
         task_id = create_resp.json()["id"]
@@ -114,12 +114,12 @@ class TestCompleteTask:
 
     async def test_complete_with_active_children(self, test_client):
         parent = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Parent", "category": "work",
+            "user_id": "u1", "title": "Parent", "category": "career",
             "transcription": "parent",
         })
         parent_id = parent.json()["id"]
         await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Child", "category": "work",
+            "user_id": "u1", "title": "Child", "category": "career",
             "transcription": "child", "parent_id": parent_id,
         })
         resp = await test_client.put(f"/tasks/{parent_id}/complete")
@@ -130,7 +130,7 @@ class TestCompleteTask:
 class TestDeleteTask:
     async def test_delete(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Remove me", "category": "work",
+            "user_id": "u1", "title": "Remove me", "category": "career",
             "transcription": "remove me",
         })
         task_id = create_resp.json()["id"]
@@ -140,7 +140,7 @@ class TestDeleteTask:
 
     async def test_delete_wrong_user(self, test_client):
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Mine", "category": "work",
+            "user_id": "u1", "title": "Mine", "category": "career",
             "transcription": "mine",
         })
         task_id = create_resp.json()["id"]

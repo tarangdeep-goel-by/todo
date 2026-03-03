@@ -16,14 +16,14 @@ docker-compose down                # Stop
 
 ### Testing (always inside Docker — never create local venv)
 ```bash
-# All tests (154 tests, uses real PostgreSQL `todo_test` DB)
+# All tests (uses real PostgreSQL `todo_test` DB)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 
 # Single test file
-docker exec todo-backend python -m pytest tests/test_agent_service.py -v
+docker exec todo-backend python -m pytest tests/test_brain_dump.py -v
 
 # Single test
-docker exec todo-backend python -m pytest tests/test_agent_service.py::TestHandleAdd::test_add_task_basic -v
+docker exec todo-backend python -m pytest tests/test_brain_dump.py::TestBrainDump::test_gibberish_returns_empty_proposals -v
 
 # Performance benchmarks (separate)
 docker exec todo-backend python tests/performance/test_agent_performance.py
@@ -36,12 +36,13 @@ docker exec todo-backend alembic revision --autogenerate -m "description"  # Cre
 docker exec todo-backend alembic downgrade -1           # Rollback one
 ```
 
-### Intent Detection Eval (run after prompt changes)
+### Brain Dump Action Detection Eval (run after prompt changes)
 ```bash
 docker exec todo-backend python evaluation/run_eval.py                          # Full run (65 cases, ~90s)
-docker exec todo-backend python evaluation/run_eval.py --filter-category ADD    # One intent type
+docker exec todo-backend python evaluation/run_eval.py --filter-category add    # One action type
 docker exec todo-backend python evaluation/run_eval.py --filter-id add_01       # Single case
 docker exec todo-backend python evaluation/run_eval.py --no-llm                 # Dry-run (harness only)
+docker exec todo-backend python evaluation/run_eval.py --no-prefilter           # Skip pre-filter, LLM-only
 # Results saved to evaluation/results/ (JSON, auto-timestamped)
 # Baseline: 58/65 (89.2%) — 2026-02-25
 ```
@@ -55,31 +56,27 @@ Client → FastAPI Router → Service → SQLAlchemy AsyncSession → PostgreSQL
                       GeminiService (AI)
 ```
 
-### Voice Command Pipeline (`POST /api/agent/process`)
-1. `GeminiService.refine_transcription()` — cleans up raw transcript
-2. `TaskService.build_full_tree_context()` — builds indented tree string for AI context
-3. `GeminiService.detect_intent()` — returns intent (ADD/COMPLETE/DELETE/EDIT/MOVE/QUERY/BREAKDOWN) + params
-4. Confidence check (rejects < 0.6)
-5. Intent handler executes action, returns `AgentResponse`
-6. Ambiguous commands return `type="question"` with matches → client calls `POST /api/agent/resolve`
-7. Unknown category → returns `select_category` question → user picks → `POST /api/agent/resolve`
-
 ### Brain Dump Pipeline (`POST /api/agent/braindump`)
-Two-step proposal-then-commit flow for multi-task voice input:
-1. Client streams audio via WebSocket (`/ws/ramble`) → Gemini Live transcribes in real-time
-2. Client sends transcript to `/api/agent/braindump` → `GeminiService.detect_brain_dump()` extracts multiple tasks
+Unified proposal-then-commit flow for all input (keyboard text and voice):
+0. `intent_prefilter.prefilter()` — catches gibberish before any Gemini call
+1. `TaskService.build_full_tree_context()` — builds indented tree string for AI context
+2. `GeminiService.detect_brain_dump()` — extracts task proposals (add/complete/edit/delete/move/breakdown) with confidence scores
 3. Returns `BrainDumpResponse` with `List[BrainDumpTaskProposal]` (not yet created)
-4. User reviews/edits proposals in UI → submits via `POST /api/agent/braindump/submit`
-5. `AgentService.submit_brain_dump()` batch-creates tasks
+4. User reviews/edits proposals in RambleScreen → submits via `POST /api/agent/braindump/submit`
+5. `AgentService.submit_brain_dump()` batch-creates/updates/deletes tasks
+
+For voice input: Client streams audio via WebSocket (`/ws/ramble`) → Gemini Live transcribes → then same pipeline above.
 
 ### Key Layers
 - **`routers/`** — API endpoints. Services are instantiated per-request (no DI container). DB session via `Depends(get_db)`.
-- **`services/task_service.py`** — All task CRUD, tree operations (`_get_all_descendants` recursive), completion cascading, category management (5-category limit).
-- **`services/agent_service.py`** — Voice command orchestrator. Uses deterministic UUIDs for root categories (`uuid5` with fixed namespace).
-- **`services/gemini_service.py`** — Gemini 2.5 Flash Lite integration. Sync API calls wrapped in async service. `detect_brain_dump()` extracts multiple tasks from free-form text.
+- **`services/task_service.py`** — All task CRUD, tree operations (`_get_all_descendants` recursive), completion cascading, category management (8-category limit).
+- **`services/intent_prefilter.py`** — Rule-based pre-filter: gibberish detection (vowel ratio + consonant clusters). Runs before LLM to save API calls on nonsense input.
+- **`services/agent_service.py`** — Brain dump orchestrator. `process_brain_dump()` extracts proposals, `submit_brain_dump()` executes them. Uses deterministic UUIDs for root categories (`uuid5` with fixed namespace).
+- **`services/gemini_service.py`** — Gemini 2.5 Flash Lite integration. Sync API calls wrapped in async service. `detect_brain_dump()` extracts task actions from free-form text. `generate_subtasks()` for breakdown action.
 - **`services/ramble_service.py`** — Gemini Live API streaming transcription. `RambleSession` manages WebSocket connection for real-time audio→text. Uses `google-genai` SDK (separate from `google-generativeai` used elsewhere).
 - **`services/query_builder.py`** — Dynamic SQLAlchemy query construction with multi-field filtering/sorting/pagination.
-- **`utils/fuzzy_matcher.py`** — RapidFuzz `token_set_ratio` matching (70% threshold, weighted: title 60%, description 30%, tags 10%).
+- **`services/task_search_service.py`** — PG-native task search using `pg_trgm` trigram similarity. Weighted: title 70% + description 30%. `resolve_single()` returns confident match or ambiguous candidates.
+- **`utils/fuzzy_matcher.py`** — RapidFuzz matching (max of `token_set_ratio`, `partial_ratio`, stripped ratio). Weighted: title 70%, description 30%. Threshold: 60%. Near-exact matches (≥90) suppress weaker results. Used when `SEARCH_ENGINE=fuzzy`.
 - **`utils/date_parser.py`** — Flexible date parsing ("today", "next monday", ISO strings) → timezone-aware UTC.
 
 ### Database
@@ -88,13 +85,28 @@ Two-step proposal-then-commit flow for multi-task voice input:
 - **`categories`**: Persistent domain definitions (id, user_id, name, position). Unique constraint on `(user_id, name)`.
 - **Key columns**: UUID pk, JSONB `ai_placement_json`, ARRAY `tags`, computed `overdue` status (in Pydantic, not DB)
 - **Statuses**: `active` and `completed` only (no `archived`)
-- **Indexes**: `(user_id, category)`, `(user_id, category_id)`, `(user_id, status)`, `parent_id`, `created_at`
+- **Indexes**: `(user_id, category)`, `(user_id, category_id)`, `(user_id, status)`, `parent_id`, `created_at`, `title` (GIN trigram), `description` (GIN trigram)
 
-### Testing Setup
-- Tests use real PostgreSQL (`todo_test` DB), not SQLite — UUID and JSONB types require it
-- `conftest.py`: creates `todo_test` DB once, recreates tables per engine fixture, cleans `tasks` table after each test
-- `GeminiService` is always mocked (`AsyncMock` with passthrough `refine_transcription`)
-- API tests use `httpx.AsyncClient` with `ASGITransport` and FastAPI dependency overrides
+### Key Patterns
+
+**Session Management (`get_db`):** Auto-commits on success, auto-rollbacks on exception. Services call `flush()` for ID generation mid-transaction, `commit()` for final persistence, `refresh()` to reload from DB.
+
+**Multi-Action Processing:** `detect_brain_dump()` returns multiple task proposals. `submit_brain_dump()` executes them via `_execute_action()` (add/complete/edit/delete/move/breakdown).
+
+**Category Auto-Creation:** `_resolve_category_id()` auto-creates categories on first use. 8 default domains: career, finance, health, relationships, growth, recreation, home, community. `max_categories: 8` enforced in both `TaskService` and `AgentService`.
+
+**Tree Safety:** `update_task()` guards against circular references (moving task under itself or its descendants). `_get_all_descendants()` uses BFS with cycle detection. `_activate_ancestor_chain()` walks up parent chain to reactivate completed ancestors when a child becomes active.
+
+**Error Convention:** Services raise `ValueError` for business logic errors → routers catch and return `HTTPException(400)`. Pydantic validation → 422 automatic. Gibberish input → `BrainDumpResponse(success=False, tasks=[])`.
+
+**WebSocket Ramble:** 5-minute session limit with 30-second heartbeats. Client sends `start` → streams base64 PCM `audio` chunks → sends `stop`. Server emits real-time `transcription` events.
+
+### Testing Patterns
+
+- **Test helpers** (`tests/helpers.py`): `make_task()` and `make_task_tree()` factories for creating test data
+- **Mock pattern**: `mock_gemini.detect_brain_dump = AsyncMock(return_value=[{"content": "Buy groceries", "category": "home", "confidence": 0.9}])`
+- **Dependency override**: API tests swap `get_db` via `app.dependency_overrides[get_db]` to share test session
+- **Cleanup**: `conftest.py` deletes all tasks/categories after each test (real DB, not mocks)
 
 ## Environment Variables
 
@@ -106,13 +118,12 @@ All config from Docker environment (no `.env` file). Managed via Pydantic `Setti
 | `GEMINI_API_KEY` | Yes | — |
 | `APP_ENV` | No | `development` |
 | `DEBUG` | No | `True` |
+| `SEARCH_ENGINE` | No | `fuzzy` (`pg_native` or `fuzzy`) |
 
 ## API Endpoints
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/agent/process` | Process voice command |
-| `POST` | `/api/agent/resolve` | Resolve ambiguous command |
 | `GET` | `/api/tasks` | List tasks (advanced filtering/sorting/pagination) |
 | `GET` | `/api/tasks/{id}` | Get single task |
 | `POST` | `/api/tasks` | Create task |

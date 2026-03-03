@@ -5,7 +5,7 @@ import 'package:frontend/widgets/undo_snackbar.dart';
 import 'package:frontend/config/theme.dart';
 
 void main() {
-  const domain = DomainColors.workDark;
+  const domain = DomainColors.careerDark;
 
   Widget buildApp({required Widget child}) {
     return ProviderScope(

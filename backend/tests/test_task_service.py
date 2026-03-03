@@ -49,10 +49,10 @@ class TestGetTasks:
         assert len(tasks) == 1
 
     async def test_filter_by_category(self, task_service):
-        await task_service.create_task(**make_task(category="work"))
-        await task_service.create_task(**make_task(category="personal"))
-        tasks = await task_service.get_tasks("test-user", category="work")
-        assert all(t.category == "work" for t in tasks)
+        await task_service.create_task(**make_task(category="career"))
+        await task_service.create_task(**make_task(category="home"))
+        tasks = await task_service.get_tasks("test-user", category="career")
+        assert all(t.category == "career" for t in tasks)
 
     async def test_filter_by_status(self, task_service):
         t = await task_service.create_task(**make_task())
@@ -107,7 +107,7 @@ class TestBuildTreeContext:
     async def test_build_tree_context(self, task_service):
         await make_task_tree(task_service)
         ctx = await task_service.build_full_tree_context("test-user")
-        assert "Work" in ctx or "WORK" in ctx
+        assert "Career" in ctx or "CAREER" in ctx
         assert "project alpha" in ctx
 
 

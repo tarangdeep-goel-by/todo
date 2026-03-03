@@ -15,7 +15,7 @@ void main() {
     'title': 'Task',
     'description': null,
     'parent_id': null,
-    'category': 'work',
+    'category': 'career',
     'status': 'active',
     'created_at': '2025-01-15T00:00:00.000',
     'updated_at': '2025-01-15T00:00:00.000',
@@ -34,7 +34,7 @@ void main() {
 
   final categoryJson = {
     'id': 'cat-1',
-    'name': 'work',
+    'name': 'career',
     'position': 0,
     'created_at': '2025-01-15T00:00:00.000',
   };
@@ -73,79 +73,8 @@ void main() {
                 'offset': 0,
                 'has_more': false,
               }));
-      final resp = await apiService.getTasksByCategory('u1', 'work');
+      final resp = await apiService.getTasksByCategory('u1', 'career');
       expect(resp.tasks.length, 1);
-    });
-  });
-
-  group('processVoiceCommand', () {
-    test('returns agent response', () async {
-      when(() => mockDio.post('/agent/process', data: any(named: 'data')))
-          .thenAnswer((_) async => ok({
-                'success': true,
-                'message': 'Created',
-                'type': 'confirmation',
-                'data': null,
-              }));
-      final resp = await apiService.processVoiceCommand('add task', 'u1');
-      expect(resp.success, true);
-    });
-  });
-
-  group('resolveQuestion', () {
-    test('success', () async {
-      when(() => mockDio.post('/agent/resolve', data: any(named: 'data')))
-          .thenAnswer((_) async => ok({
-                'success': true,
-                'message': 'Done',
-                'type': 'confirmation',
-                'data': null,
-              }));
-      final resp = await apiService.resolveQuestion(
-        userId: 'u1',
-        action: 'complete',
-        selectedTaskId: 't1',
-      );
-      expect(resp.success, true);
-    });
-
-    test('with data map', () async {
-      when(() => mockDio.post('/agent/resolve', data: any(named: 'data')))
-          .thenAnswer((_) async => ok({
-                'success': true,
-                'message': 'Moved',
-                'type': 'confirmation',
-                'data': null,
-              }));
-      final resp = await apiService.resolveQuestion(
-        userId: 'u1',
-        action: 'move',
-        selectedTaskId: 't1',
-        data: {'targetParentQuery': 'Project'},
-      );
-      expect(resp.message, 'Moved');
-    });
-
-    test('returns question type for chained', () async {
-      when(() => mockDio.post('/agent/resolve', data: any(named: 'data')))
-          .thenAnswer((_) async => ok({
-                'success': false,
-                'message': 'Which one?',
-                'type': 'question',
-                'data': {
-                  'matches': [
-                    {'id': '1', 'title': 'A'}
-                  ],
-                  'action': 'select_parent'
-                },
-              }));
-      final resp = await apiService.resolveQuestion(
-        userId: 'u1',
-        action: 'move',
-        selectedTaskId: 't1',
-        data: {'targetParentQuery': 'Meeting'},
-      );
-      expect(resp.type, 'question');
     });
   });
 
@@ -156,7 +85,7 @@ void main() {
       final req = CreateTaskRequest(
         userId: 'u1',
         title: 'Task',
-        category: 'work',
+        category: 'career',
         transcription: 'task',
       );
       final task = await apiService.createTask(req);
@@ -193,7 +122,7 @@ void main() {
           .thenAnswer((_) async => ok([categoryJson]));
       final cats = await apiService.getCategories('u1');
       expect(cats.length, 1);
-      expect(cats.first.name, 'work');
+      expect(cats.first.name, 'career');
     });
 
     test('throws on error', () async {
@@ -214,8 +143,8 @@ void main() {
     test('returns created category', () async {
       when(() => mockDio.post('/categories', data: any(named: 'data')))
           .thenAnswer((_) async => ok(categoryJson));
-      final cat = await apiService.createCategory('u1', 'work');
-      expect(cat.name, 'work');
+      final cat = await apiService.createCategory('u1', 'career');
+      expect(cat.name, 'career');
     });
   });
 
@@ -243,7 +172,7 @@ void main() {
               }));
       final resp = await apiService.getTasksAdvanced(
         userId: 'u1',
-        category: 'work',
+        category: 'career',
         priority: 'high',
         status: 'active',
         sort: 'priority:desc',
@@ -256,7 +185,7 @@ void main() {
       final captured = verify(
         () => mockDio.get('/tasks', queryParameters: captureAny(named: 'queryParameters')),
       ).captured.single as Map<String, dynamic>;
-      expect(captured['category'], 'work');
+      expect(captured['category'], 'career');
       expect(captured['priority'], 'high');
       expect(captured['limit'], 10);
       expect(captured['offset'], 5);

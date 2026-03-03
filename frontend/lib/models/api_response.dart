@@ -1,29 +1,5 @@
 import 'task.dart';
 
-/// Response from /api/agent/process endpoint
-class AgentResponse {
-  final bool success;
-  final String message;
-  final String type; // "confirmation", "question", "error"
-  final Map<String, dynamic>? data;
-
-  AgentResponse({
-    required this.success,
-    required this.message,
-    required this.type,
-    this.data,
-  });
-
-  factory AgentResponse.fromJson(Map<String, dynamic> json) {
-    return AgentResponse(
-      success: json['success'] as bool,
-      message: json['message'] as String,
-      type: json['type'] as String,
-      data: json['data'] as Map<String, dynamic>?,
-    );
-  }
-}
-
 /// A proposed task from brain dump (not yet created)
 class BrainDumpTaskProposal {
   String id;

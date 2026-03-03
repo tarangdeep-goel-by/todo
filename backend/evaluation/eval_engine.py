@@ -18,10 +18,15 @@ from typing import Any, Dict, List, Optional, Tuple
 # 1. Tree context builder
 # ──────────────────────────────────────────────
 
-def build_tree_context(tasks: List[Dict], user_id: str = "eval-user") -> str:
+def build_tree_context(tasks: List[Dict], user_id: str = "eval-user", compressed: bool = False) -> str:
     """
     Build readable task tree string for Gemini context.
     Replicates TaskService.build_full_tree_context() format exactly.
+
+    Args:
+        tasks: List of task dicts
+        user_id: User ID
+        compressed: If True, omit UUIDs for token reduction
     """
     categories: Dict[str, List[Dict]] = {}
     for task in tasks:
@@ -29,6 +34,9 @@ def build_tree_context(tasks: List[Dict], user_id: str = "eval-user") -> str:
         if cat not in categories:
             categories[cat] = []
         categories[cat].append(task)
+
+    if compressed:
+        return _build_compressed_tree(categories)
 
     tree_str = f"User: {user_id}\n\n"
 
@@ -42,6 +50,31 @@ def build_tree_context(tasks: List[Dict], user_id: str = "eval-user") -> str:
         tree_str += "\n"
 
     return tree_str
+
+
+def _build_compressed_tree(categories: Dict[str, List[Dict]]) -> str:
+    """Build compressed tree without UUIDs."""
+    tree_str = ""
+    for category, cat_tasks in sorted(categories.items()):
+        tree_str += f"{category.upper()}:\n"
+        top_level = [t for t in cat_tasks if t["parent_id"] is None]
+        for task in top_level:
+            status_tag = " [done]" if task["status"] == "completed" else ""
+            tree_str += f"- {task['title']}{status_tag}\n"
+            tree_str += _build_compressed_subtree(cat_tasks, task["id"], indent=1)
+        tree_str += "\n"
+    return tree_str
+
+
+def _build_compressed_subtree(tasks: List[Dict], parent_id: str, indent: int = 0) -> str:
+    """Recursively build compressed tree string."""
+    result = ""
+    children = [t for t in tasks if t["parent_id"] == parent_id]
+    for child in children:
+        status_tag = " [done]" if child["status"] == "completed" else ""
+        result += "  " * indent + f"- {child['title']}{status_tag}\n"
+        result += _build_compressed_subtree(tasks, child["id"], indent + 1)
+    return result
 
 
 def _build_subtree(tasks: List[Dict], parent_id: str, indent: int = 0) -> str:
@@ -136,6 +169,7 @@ def check_entry_result(
     expected: Dict,
     type_field: str = "intent",
     params_field: Optional[str] = "parameters",
+    search_engine: Optional[str] = None,
 ) -> List[CheckResult]:
     """
     Run all checks for a single expected entry against an actual entry.
@@ -145,6 +179,7 @@ def check_entry_result(
         expected: The expected entry with type field and checks
         type_field: Key for the type/action field (e.g. "intent" or "action")
         params_field: Key for nested params (e.g. "parameters"), or None if fields are at top level
+        search_engine: If set, merge mode-specific checks (checks_fuzzy or checks_pg_native)
     """
     results = []
 
@@ -156,8 +191,11 @@ def check_entry_result(
             str(actual_type).upper() == str(expected[type_field]).upper()
         ))
 
-    # Check all field_operator pairs in checks
-    checks = expected.get("checks", {})
+    # Merge shared + mode-specific checks
+    checks = dict(expected.get("checks", {}))
+    if search_engine:
+        mode_checks = expected.get(f"checks_{search_engine}", {})
+        checks.update(mode_checks)
 
     # Resolve params: either nested under params_field or at top level
     if params_field:
@@ -200,6 +238,7 @@ def match_entries(
     type_field: str = "intent",
     content_field: str = "title",
     params_field: Optional[str] = "parameters",
+    search_engine: Optional[str] = None,
 ) -> List[Tuple[Optional[Dict], Dict, List[CheckResult]]]:
     """
     Match expected entries to actual entries.
@@ -211,6 +250,7 @@ def match_entries(
         type_field: Key for the type/action field (e.g. "intent" or "action")
         content_field: Key used for disambiguation when multiple same-type entries exist
         params_field: Key for nested params, or None if fields are at top level
+        search_engine: If set, merge mode-specific checks (checks_fuzzy or checks_pg_native)
     """
     matched = []
     used_actual = set()
@@ -261,7 +301,7 @@ def match_entries(
 
         idx, actual = candidates[0]
         used_actual.add(idx)
-        checks = check_entry_result(actual, expected, type_field=type_field, params_field=params_field)
+        checks = check_entry_result(actual, expected, type_field=type_field, params_field=params_field, search_engine=search_engine)
         matched.append((actual, expected, checks))
 
     return matched

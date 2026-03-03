@@ -16,7 +16,7 @@ void main() {
     });
 
     test('lowercase word is capitalized', () {
-      expect('work'.capitalize, 'Work');
+      expect('career'.capitalize, 'Career');
     });
   });
 }

@@ -177,7 +177,7 @@ class _CenterPttButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor =
-        isProcessing ? DomainColors.workDark.primary : AppColors.darkText;
+        isProcessing ? DomainColors.careerDark.primary : AppColors.darkText;
 
     return GestureDetector(
       onTap: onTap,
