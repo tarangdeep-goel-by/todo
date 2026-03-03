@@ -6,8 +6,8 @@ class AppAnimations {
   static const easeOutQuint = Cubic(0.22, 1.0, 0.36, 1.0);
   static const easeOutCubic = Cubic(0.33, 1.0, 0.68, 1.0);
   // Durations
-  static const cardExpand = Duration(milliseconds: 350);
-  static const cardCollapse = Duration(milliseconds: 350);
+  static const cardExpand = Duration(milliseconds: 550);
+  static const cardCollapse = Duration(milliseconds: 550);
   static const waveformUpdate = Duration(milliseconds: 33); // ~30fps
   static const viewTransition = Duration(milliseconds: 400);
   static const staggerDelay = Duration(milliseconds: 50);
@@ -15,6 +15,8 @@ class AppAnimations {
   static const ctaContract = Duration(milliseconds: 300);
   static const snackbarIn = Duration(milliseconds: 250);
   static const snackbarOut = Duration(milliseconds: 200);
+  static const shimmerSweep = Duration(milliseconds: 750);
+  static const glowSettle = Duration(milliseconds: 600);
 }
 
 /// App-wide constants

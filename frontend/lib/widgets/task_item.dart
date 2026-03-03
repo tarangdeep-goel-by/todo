@@ -180,17 +180,8 @@ class TaskItem extends ConsumerWidget {
       },
       // Complete background (right swipe)
       background: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: 4,
-        ),
-        decoration: BoxDecoration(
-          color: domain.primary,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(AppSpacing.radiusMd),
-            bottomRight: Radius.circular(AppSpacing.radiusMd),
-          ),
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        color: domain.primary,
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: AppSpacing.lg),
         child: Icon(
@@ -201,17 +192,8 @@ class TaskItem extends ConsumerWidget {
       ),
       // Delete background (left swipe)
       secondaryBackground: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: 4,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.deleteAction,
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(AppSpacing.radiusMd),
-            bottomRight: Radius.circular(AppSpacing.radiusMd),
-          ),
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        color: AppColors.deleteAction,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         child: const Icon(
@@ -224,15 +206,17 @@ class TaskItem extends ConsumerWidget {
         onTap: () => _toggleTask(context, ref),
         onLongPress: () => showTaskDetailOverlay(context, taskId: task.id),
         child: Container(
-          margin: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 4,
-          ),
+          margin: const EdgeInsets.symmetric(vertical: 2),
           decoration: BoxDecoration(
-            color: domain.surface,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(AppSpacing.radiusMd),
-              bottomRight: Radius.circular(AppSpacing.radiusMd),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                domain.surface,
+                Color.lerp(domain.surface, domain.darkShade, 0.15)!,
+                domain.surface.withValues(alpha: 0.85),
+              ],
+              stops: const [0.0, 0.5, 1.0],
             ),
             border: Border(
               left: BorderSide(

@@ -31,8 +31,19 @@ class TaskRowTile extends StatelessWidget {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: domain.surface,
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  domain.surface.withValues(alpha: 0.85),
+                  domain.surface.withValues(alpha: 0.55),
+                ],
+              ),
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              border: Border.all(
+                color: domain.primary.withValues(alpha: 0.05),
+                width: 0.5,
+              ),
             ),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.sm,

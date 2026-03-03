@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
@@ -11,6 +12,7 @@ import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../widgets/undo_snackbar.dart';
 import '../widgets/styled_snackbar.dart';
+import '../widgets/glass_card_painter.dart';
 import 'task_detail_overlay.dart';
 import '../utils/string_extensions.dart';
 
@@ -35,23 +37,58 @@ class DomainCard extends ConsumerStatefulWidget {
   ConsumerState<DomainCard> createState() => _DomainCardState();
 }
 
-class _DomainCardState extends ConsumerState<DomainCard> {
+class _DomainCardState extends ConsumerState<DomainCard>
+    with SingleTickerProviderStateMixin {
   DomainPalette get domain => widget.domain;
   List<Task> get tasks => widget.tasks;
   double get height => widget.height;
 
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+  late Animation<double> _glowAnimation;
+  bool _wasFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      duration: AppAnimations.shimmerSweep,
+      vsync: this,
+    );
+    _shimmerAnimation = CurvedAnimation(
+      parent: _shimmerController,
+      curve: AppAnimations.easeOutQuint,
+    );
+    _glowAnimation = CurvedAnimation(
+      parent: _shimmerController,
+      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
+    );
+    _wasFocused = widget.focusProgress > 0.9;
+  }
+
+  @override
+  void didUpdateWidget(DomainCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final isFocused = widget.focusProgress > 0.9;
+    if (isFocused && !_wasFocused) {
+      _shimmerController.forward(from: 0.0);
+    }
+    _wasFocused = isFocused;
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: AppAnimations.cardExpand,
-      curve: AppAnimations.easeOutCubic,
+    return Container(
       width: double.infinity,
       height: height,
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.cardMargin,
-      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final showFocused = constraints.maxHeight > 120;
@@ -190,8 +227,19 @@ class _DomainCardState extends ConsumerState<DomainCard> {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: domain.surface,
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                domain.surface.withValues(alpha: 0.85),
+                domain.surface.withValues(alpha: 0.55),
+              ],
+            ),
             borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            border: Border.all(
+              color: domain.primary.withValues(alpha: 0.05),
+              width: 0.5,
+            ),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
@@ -244,7 +292,7 @@ class _DomainCardState extends ConsumerState<DomainCard> {
   String _formatTaskCount(int count) =>
       '$count ${count == 1 ? 'task' : 'tasks'}';
 
-  /// Focused card: full bleed, domain primary background
+  /// Focused card: glass gradient bg with shimmer + glow
   Widget _buildFocusedCard(BuildContext context) {
     final taskCount = tasks.where((t) => t.isActive).length;
 
@@ -277,87 +325,289 @@ class _DomainCardState extends ConsumerState<DomainCard> {
       });
     final topTasks = displayTasks.take(5).toList();
 
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        color: domain.primary,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusNone),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-              // Domain name and task count row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final glowColor = domain.glow ?? domain.primary.withValues(alpha: 0.2);
+
+    return AnimatedBuilder(
+      animation: _shimmerController,
+      builder: (context, child) {
+        final shimmerVal = _shimmerAnimation.value;
+        final glowVal = _glowAnimation.value;
+
+        // Glow swells during shimmer, then settles
+        final glowAlpha = 0.20 + (0.15 * glowVal * (1.0 - shimmerVal));
+        final glowBlur = 28.0 + (20.0 * glowVal * (1.0 - shimmerVal));
+
+        return RepaintBoundary(
+          child: Container(
+            width: double.infinity,
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              boxShadow: [
+                // Warm color glow (playful, not metallic)
+                BoxShadow(
+                  color: glowColor.withValues(alpha: glowAlpha),
+                  blurRadius: glowBlur,
+                  spreadRadius: 2,
+                ),
+                // Soft depth
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.30),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRect(
+              child: Stack(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => showTaskDetailOverlay(
-                        context,
-                        taskId: '',
-                        domainRoot: domain.name.toLowerCase(),
-                      ),
-                      child: Text(
-                        domain.name,
-                        style: AppTypography.domainTitle(
-                          context,
-                          color: domain.textOnPrimary,
-                        ),
+                  // Glass gradient background
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: GlassCardPainter(
+                        primaryColor: domain.primary,
+                        darkShade: domain.darkShade,
+                        focusProgress: widget.focusProgress,
                       ),
                     ),
                   ),
-                  Text(
-                    _formatTaskCount(taskCount),
-                    style: AppTypography.metadataText(
-                      color: domain.textOnPrimary.withValues(alpha: 0.8),
-                    ).copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+
+                  // Warm color shimmer on focus change (not white/metallic)
+                  if (_shimmerController.isAnimating || shimmerVal > 0)
+                    Positioned.fill(
+                      child: _buildShimmerOverlay(shimmerVal),
+                    ),
+
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Domain name and task count row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => showTaskDetailOverlay(
+                                  context,
+                                  taskId: '',
+                                  domainRoot: domain.name.toLowerCase(),
+                                ),
+                                child: Text(
+                                  domain.name,
+                                  style: AppTypography.domainTitle(
+                                    context,
+                                    color: domain.textOnPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _formatTaskCount(taskCount),
+                              style: AppTypography.metadataText(
+                                color: domain.textOnPrimary.withValues(alpha: 0.8),
+                              ).copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: AppSpacing.md),
+
+                        // Dark inset task preview or empty state
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            clipBehavior: Clip.hardEdge,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF080604),
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                              border: Border.all(
+                                color: domain.primary.withValues(alpha: 0.08),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: topTasks.isEmpty
+                                ? _buildEmptyState()
+                                : ListView.separated(
+                                    padding: const EdgeInsets.all(AppSpacing.sm),
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: topTasks.length,
+                                    separatorBuilder: (_, _) =>
+                                        const SizedBox(height: 4),
+                                    itemBuilder: (_, i) =>
+                                        _buildTaskRow(topTasks[i]),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: AppSpacing.md),
-
-              // Dark inset task preview
-              if (topTasks.isNotEmpty)
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: AppColors.darkBg,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                    ),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: topTasks.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 4),
-                      itemBuilder: (_, i) => _buildTaskRow(topTasks[i]),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
+        );
+      },
     );
   }
 
-  /// Compressed card: surface background, left accent bar
+  /// Warm color sweep on focus change — uses domain primary, not white
+  Widget _buildShimmerOverlay(double progress) {
+    final translateX = -1.0 + (2.0 * progress);
+    return Transform.translate(
+      offset: Offset(translateX * 200, 0),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              domain.primary.withValues(alpha: 0.0),
+              domain.primary.withValues(alpha: 0.10),
+              domain.primary.withValues(alpha: 0.20),
+              domain.primary.withValues(alpha: 0.10),
+              domain.primary.withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.3, 0.5, 0.7, 1.0],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Zen empty state with ambient bloom orbs, constellation dots,
+  /// horizon arcs, and "All clear" text
+  Widget _buildEmptyState() {
+    final rng = math.Random(domain.name.hashCode);
+
+    // OLED-inspired: tiny vivid color particles against deep black
+    // Like 4K OLED demo reels — pure saturated specks in darkness
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        // Micro bloom spots — small, vivid, scattered
+        ...List.generate(6, (i) {
+          final x = rng.nextDouble() * 0.8 + 0.1;
+          final y = rng.nextDouble() * 0.7 + 0.1;
+          final useDark = i % 3 == 0;
+          final color = useDark ? domain.darkShade : domain.primary;
+          final alpha = 0.25 + rng.nextDouble() * 0.20;
+          final blur = 8.0 + rng.nextDouble() * 12.0;
+          final spread = 2.0 + rng.nextDouble() * 4.0;
+          final size = 6.0 + rng.nextDouble() * 10.0;
+          return Align(
+            alignment: Alignment(x * 2 - 1, y * 2 - 1),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: alpha),
+                    blurRadius: blur,
+                    spreadRadius: spread,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        // Vivid pinpoint particles — bright against black
+        ...List.generate(18, (i) {
+          final x = rng.nextDouble() * 0.92 + 0.04;
+          final y = rng.nextDouble() * 0.85 + 0.05;
+          final useDark = i % 4 == 0;
+          final color = useDark ? domain.darkShade : domain.primary;
+          final alpha = 0.40 + rng.nextDouble() * 0.50;
+          final size = 1.0 + rng.nextDouble() * 2.5;
+          return Align(
+            alignment: Alignment(x * 2 - 1, y * 2 - 1),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withValues(alpha: alpha),
+                boxShadow: size > 2.0
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: alpha * 0.5),
+                          blurRadius: 3,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
+              ),
+            ),
+          );
+        }),
+
+        // "All clear" text — crisp against black
+        Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'All clear',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: domain.primary.withValues(alpha: 0.60),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: 20,
+                  height: 0.5,
+                  color: domain.primary.withValues(alpha: 0.30),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'AT PEACE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w400,
+                    color: domain.primary.withValues(alpha: 0.30),
+                    letterSpacing: 2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compressed card: gradient bg, subtle glow, hairline edge
   Widget _buildCompressedCard(BuildContext context) {
     final taskCount = tasks.where((t) => t.isActive).length;
+    // Strong primary tint for colorful, playful compressed strips
+    final tintedSurface = Color.lerp(domain.surface, domain.primary, 0.40)!;
+    final blendedMid = Color.lerp(tintedSurface, domain.darkShade, 0.25)!;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: domain.surface,
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(AppSpacing.radiusMd),
-          bottomRight: Radius.circular(AppSpacing.radiusMd),
+        gradient: LinearGradient(
+          begin: const Alignment(-1.0, -0.1), // ~95°
+          end: const Alignment(1.0, 0.1),
+          colors: [
+            tintedSurface,
+            blendedMid,
+            tintedSurface.withValues(alpha: 0.85),
+          ],
+          stops: const [0.0, 0.5, 1.0],
         ),
         border: Border(
           left: BorderSide(
@@ -365,34 +615,63 @@ class _DomainCardState extends ConsumerState<DomainCard> {
             width: AppSpacing.leftAccentBar,
           ),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: domain.primary.withValues(alpha: 0.15),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Domain name (smaller)
-          Flexible(
-            child: Text(
-              domain.name,
-              style: AppTypography.ctaLabelText(color: domain.primary).copyWith(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+          // Top hairline
+          Container(
+            height: 0.5,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  domain.primary.withValues(alpha: 0.0),
+                  domain.primary.withValues(alpha: 0.10),
+                  domain.primary.withValues(alpha: 0.0),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Domain name (smaller)
+                  Flexible(
+                    child: Text(
+                      domain.name,
+                      style: AppTypography.ctaLabelText(color: domain.primary).copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
 
-          // Task count (right aligned, bolder)
-          Text(
-            _formatTaskCount(taskCount),
-            style: AppTypography.metadataText(
-              color: domain.primary.withValues(alpha: 0.8),
-            ).copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
+                  // Task count (right aligned, bolder)
+                  Text(
+                    _formatTaskCount(taskCount),
+                    style: AppTypography.metadataText(
+                      color: domain.primary.withValues(alpha: 0.8),
+                    ).copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

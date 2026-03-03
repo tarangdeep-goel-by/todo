@@ -25,8 +25,14 @@ class ParentNodeView extends ConsumerStatefulWidget {
   ConsumerState<ParentNodeView> createState() => _ParentNodeViewState();
 }
 
-class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
+class _ParentNodeViewState extends ConsumerState<ParentNodeView>
+    with SingleTickerProviderStateMixin {
   int _focusedIndex = 0;
+  int _previousFocusedIndex = 0;
+
+  // Smooth focus transition
+  late AnimationController _focusAnimController;
+  late Animation<double> _focusAnimation;
 
   // Pointer tracking for vertical drag (using Listener to avoid gesture arena
   // conflict with Dismissible's horizontal swipe)
@@ -39,6 +45,34 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
   double _overscrollDistance = 0.0;
   bool _overscrollLocked = false;
   static const double _overscrollThreshold = 80.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusAnimController = AnimationController(
+      duration: AppAnimations.cardExpand,
+      vsync: this,
+    );
+    _focusAnimation = CurvedAnimation(
+      parent: _focusAnimController,
+      curve: AppAnimations.easeOutQuint,
+    );
+    _focusAnimController.value = 1.0; // Start settled
+  }
+
+  @override
+  void dispose() {
+    _focusAnimController.dispose();
+    super.dispose();
+  }
+
+  /// Smoothly transition focus to a new index
+  void _setFocusedIndex(int newIndex) {
+    if (newIndex == _focusedIndex) return;
+    _previousFocusedIndex = _focusedIndex;
+    _focusedIndex = newIndex;
+    _focusAnimController.forward(from: 0.0);
+  }
 
   /// Get ordered domain palettes from the canonical provider.
   List<DomainPalette> _getDomains() {
@@ -72,17 +106,13 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
 
     if (dragDistance > threshold && _focusedIndex > 0) {
       HapticService.selection();
-      setState(() {
-        _focusedIndex--;
-        _pointerStartY = event.position.dy;
-      });
+      _pointerStartY = event.position.dy;
+      _setFocusedIndex(_focusedIndex - 1);
     } else if (dragDistance < -threshold &&
         _focusedIndex < domainCount - 1) {
       HapticService.selection();
-      setState(() {
-        _focusedIndex++;
-        _pointerStartY = event.position.dy;
-      });
+      _pointerStartY = event.position.dy;
+      _setFocusedIndex(_focusedIndex + 1);
     } else if (dragDistance < -threshold &&
         _focusedIndex == domainCount - 1 &&
         domainCount < 8) {
@@ -433,65 +463,6 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
         final showAddZone =
             domains.length < 8 && _overscrollDistance > 0;
 
-        // Build domain cards
-        final cards = List.generate(domains.length, (index) {
-          final domain = domains[index];
-
-          final domainTasks = tasks
-              .where((task) =>
-                  task.category.toLowerCase() ==
-                  domain.name.toLowerCase())
-              .toList();
-
-          final distance = (index - _focusedIndex).abs();
-          final focusProgress =
-              distance == 0 ? 1.0 : (1.0 / (distance + 1));
-
-          final height = index == _focusedIndex
-              ? liquidFocus.focusedHeight
-              : liquidFocus.compressedHeight;
-
-          return SizedBox(
-            height: height,
-            child: GestureDetector(
-              onTap: () {
-                if (index != _focusedIndex) {
-                  HapticService.selection();
-                  setState(() {
-                    _focusedIndex = index;
-                  });
-                }
-              },
-              child: Dismissible(
-                key: Key('domain-${domain.name}'),
-                direction: DismissDirection.endToStart,
-                confirmDismiss: (_) async {
-                  await _deleteDomain(domain, domainTasks);
-                  return false;
-                },
-                background: Container(
-                  color: AppColors.deleteAction,
-                  alignment: Alignment.centerRight,
-                  padding:
-                      const EdgeInsets.only(right: AppSpacing.lg),
-                  child: const Icon(
-                    Icons.delete_forever,
-                    color: AppColors.darkBg,
-                    size: 32,
-                  ),
-                ),
-                child: DomainCard(
-                  domain: domain,
-                  tasks: domainTasks,
-                  isDark: true,
-                  focusProgress: focusProgress,
-                  height: height,
-                ),
-              ),
-            ),
-          );
-        });
-
         return SizedBox(
           width: double.infinity,
           height: double.infinity,
@@ -506,9 +477,78 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
             child: ClipRect(
               child: Stack(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: cards,
+                  // Animated card column
+                  AnimatedBuilder(
+                    animation: _focusAnimation,
+                    builder: (context, _) {
+                      final t = _focusAnimation.value;
+
+                      final cards = List.generate(domains.length, (index) {
+                        final domain = domains[index];
+                        final domainTasks = tasks
+                            .where((task) =>
+                                task.category.toLowerCase() ==
+                                domain.name.toLowerCase())
+                            .toList();
+
+                        // Compute animated height: lerp between previous and target
+                        final prevHeight = index == _previousFocusedIndex
+                            ? liquidFocus.focusedHeight
+                            : liquidFocus.compressedHeight;
+                        final targetHeight = index == _focusedIndex
+                            ? liquidFocus.focusedHeight
+                            : liquidFocus.compressedHeight;
+                        final height = prevHeight + (targetHeight - prevHeight) * t;
+
+                        // Focus progress for visual effects
+                        final prevFocus = index == _previousFocusedIndex ? 1.0 : 0.0;
+                        final targetFocus = index == _focusedIndex ? 1.0 : 0.0;
+                        final focusProgress = prevFocus + (targetFocus - prevFocus) * t;
+
+                        return SizedBox(
+                          height: height,
+                          child: GestureDetector(
+                            onTap: () {
+                              if (index != _focusedIndex) {
+                                HapticService.selection();
+                                _setFocusedIndex(index);
+                              }
+                            },
+                            child: Dismissible(
+                              key: Key('domain-${domain.name}'),
+                              direction: DismissDirection.endToStart,
+                              confirmDismiss: (_) async {
+                                await _deleteDomain(domain, domainTasks);
+                                return false;
+                              },
+                              background: Container(
+                                color: AppColors.deleteAction,
+                                alignment: Alignment.centerRight,
+                                padding:
+                                    const EdgeInsets.only(right: AppSpacing.lg),
+                                child: const Icon(
+                                  Icons.delete_forever,
+                                  color: AppColors.darkBg,
+                                  size: 32,
+                                ),
+                              ),
+                              child: DomainCard(
+                                domain: domain,
+                                tasks: domainTasks,
+                                isDark: true,
+                                focusProgress: focusProgress,
+                                height: height,
+                              ),
+                            ),
+                          ),
+                        );
+                      });
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: cards,
+                      );
+                    },
                   ),
                   // Add-domain zone — overlays at bottom, only during overscroll
                   if (showAddZone)
@@ -520,9 +560,6 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
                         opacity: overscrollProgress,
                         child: Container(
                           height: 56,
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.cardMargin,
-                          ),
                           decoration: BoxDecoration(
                             color: _overscrollLocked
                                 ? DomainColors.defaultPalette.primary
