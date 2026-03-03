@@ -51,7 +51,7 @@ void main() {
     testWidgets('badge shows count when filter has categories set',
         (tester) async {
       await tester.pumpWidget(buildFilterButton(
-        filter: const TaskFilter(categories: ['work']),
+        filter: const TaskFilter(categories: ['career']),
       ));
 
       expect(find.text('1'), findsOneWidget);

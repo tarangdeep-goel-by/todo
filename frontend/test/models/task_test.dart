@@ -9,7 +9,7 @@ void main() {
     'title': 'Buy groceries',
     'description': 'Milk and eggs',
     'parent_id': 'parent-1',
-    'category': 'personal',
+    'category': 'home',
     'status': 'active',
     'created_at': now.toIso8601String(),
     'updated_at': now.toIso8601String(),
@@ -29,7 +29,7 @@ void main() {
       expect(task.title, 'Buy groceries');
       expect(task.description, 'Milk and eggs');
       expect(task.parentId, 'parent-1');
-      expect(task.category, 'personal');
+      expect(task.category, 'home');
       expect(task.status, 'active');
       expect(task.priority, 'high');
     });

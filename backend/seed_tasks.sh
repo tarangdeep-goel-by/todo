@@ -33,24 +33,24 @@ EOF
     fi
 }
 
-# Work tasks
-create_task "Review project proposal" "Work"
-create_task "Update API documentation" "Work"
-create_task "Fix authentication bug" "Work"
-create_task "Deploy staging environment" "Work"
-create_task "Code review for PR #123" "Work"
-create_task "Prepare quarterly report" "Work"
-create_task "Schedule team meeting" "Work"
-create_task "Refactor user service" "Work"
+# Career tasks
+create_task "Review project proposal" "Career"
+create_task "Update API documentation" "Career"
+create_task "Fix authentication bug" "Career"
+create_task "Deploy staging environment" "Career"
+create_task "Code review for PR #123" "Career"
+create_task "Prepare quarterly report" "Career"
+create_task "Schedule team meeting" "Career"
+create_task "Refactor user service" "Career"
 
-# Personal tasks
-create_task "Buy groceries" "Personal"
-create_task "Schedule dentist appointment" "Personal"
-create_task "Call mom" "Personal"
-create_task "Pay electricity bill" "Personal"
-create_task "Organize garage" "Personal"
-create_task "Book vacation tickets" "Personal"
-create_task "Return library books" "Personal"
+# Home tasks
+create_task "Buy groceries" "Home"
+create_task "Schedule dentist appointment" "Home"
+create_task "Call mom" "Home"
+create_task "Pay electricity bill" "Home"
+create_task "Organize garage" "Home"
+create_task "Book vacation tickets" "Home"
+create_task "Return library books" "Home"
 
 # Health tasks
 create_task "Morning jog" "Health"
@@ -61,24 +61,24 @@ create_task "Yoga session" "Health"
 create_task "Track water intake" "Health"
 create_task "Sleep before 11pm" "Health"
 
-# Learning tasks
-create_task "Complete React tutorial" "Learning"
-create_task "Read chapter 3 of design book" "Learning"
-create_task "Practice Spanish vocabulary" "Learning"
-create_task "Watch ML course lecture" "Learning"
-create_task "Solve 3 LeetCode problems" "Learning"
-create_task "Learn about OKLCH colors" "Learning"
-create_task "Study Flutter animations" "Learning"
+# Growth tasks
+create_task "Complete React tutorial" "Growth"
+create_task "Read chapter 3 of design book" "Growth"
+create_task "Practice Spanish vocabulary" "Growth"
+create_task "Watch ML course lecture" "Growth"
+create_task "Solve 3 LeetCode problems" "Growth"
+create_task "Learn about OKLCH colors" "Growth"
+create_task "Study Flutter animations" "Growth"
 
-# Projects tasks
-create_task "Design new landing page" "Projects"
-create_task "Build portfolio website" "Projects"
-create_task "Write blog post about AI" "Projects"
-create_task "Create side project roadmap" "Projects"
-create_task "Sketch app wireframes" "Projects"
-create_task "Record podcast episode" "Projects"
-create_task "Edit YouTube video" "Projects"
+# Recreation tasks
+create_task "Design new landing page" "Recreation"
+create_task "Build portfolio website" "Recreation"
+create_task "Write blog post about AI" "Recreation"
+create_task "Create side project roadmap" "Recreation"
+create_task "Sketch app wireframes" "Recreation"
+create_task "Record podcast episode" "Recreation"
+create_task "Edit YouTube video" "Recreation"
 
 echo ""
-echo "✅ Done! Created tasks across all 5 domains"
+echo "✅ Done! Created tasks across all 8 domains"
 echo "📱 Pull down to refresh your app to see the tasks!"

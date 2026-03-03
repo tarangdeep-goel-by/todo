@@ -14,22 +14,22 @@ async def search_env(db_session, task_service):
     tasks = await make_task_tree(task_service, USER_ID)
 
     # Add more tasks for richer search testing
-    work_cat = tasks["_work_cat"]
+    work_cat = tasks["_career_cat"]
     tasks["safe_drop"] = await task_service.create_task(
-        user_id=USER_ID, title="safe drop", category="work",
+        user_id=USER_ID, title="safe drop", category="career",
         category_id=work_cat.id, parent_id=None,
         transcription="safe drop",
         ai_placement={"confidence": 0.9, "reasoning": "test"},
     )
     tasks["tech_spec"] = await task_service.create_task(
-        user_id=USER_ID, title="tech spec", category="work",
+        user_id=USER_ID, title="tech spec", category="career",
         category_id=work_cat.id, parent_id=tasks["safe_drop"].id,
         transcription="tech spec",
         ai_placement={"confidence": 0.9, "reasoning": "test"},
     )
     tasks["meal_prep"] = await task_service.create_task(
-        user_id=USER_ID, title="meal prep for the week", category="personal",
-        category_id=tasks["_personal_cat"].id, parent_id=None,
+        user_id=USER_ID, title="meal prep for the week", category="home",
+        category_id=tasks["_home_cat"].id, parent_id=None,
         transcription="meal prep",
         ai_placement={"confidence": 0.9, "reasoning": "test"},
     )

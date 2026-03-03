@@ -163,7 +163,7 @@ void main() {
               showStyledSnackbar(context,
                   message: 'Custom',
                   style: SnackbarStyle.success,
-                  domain: DomainColors.personalDark);
+                  domain: DomainColors.homeDark);
             },
             child: const Text('Show'),
           );

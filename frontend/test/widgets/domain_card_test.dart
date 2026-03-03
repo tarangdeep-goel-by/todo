@@ -16,7 +16,7 @@ void main() {
   });
 
   final testPaletteMap = <String, DomainPalette>{
-    'work': DomainColors.workDark,
+    'career': DomainColors.careerDark,
   };
 
   Widget buildCard({
@@ -53,23 +53,23 @@ void main() {
   group('DomainCard', () {
     testWidgets('shows domain name in focused mode', (tester) async {
       await tester.pumpWidget(buildCard(
-        domain: DomainColors.workDark,
-        tasks: [createTestTask(title: 'task 1', category: 'work')],
+        domain: DomainColors.careerDark,
+        tasks: [createTestTask(title: 'task 1', category: 'career')],
         height: 400,
       ));
 
-      expect(find.text('Work'), findsOneWidget);
+      expect(find.text('Career'), findsOneWidget);
     });
 
     testWidgets('shows "N tasks" formatting for multiple active tasks',
         (tester) async {
       final tasks = [
-        createTestTask(id: 'id-1', title: 't1', category: 'work'),
-        createTestTask(id: 'id-2', title: 't2', category: 'work'),
-        createTestTask(id: 'id-3', title: 't3', category: 'work'),
+        createTestTask(id: 'id-1', title: 't1', category: 'career'),
+        createTestTask(id: 'id-2', title: 't2', category: 'career'),
+        createTestTask(id: 'id-3', title: 't3', category: 'career'),
       ];
       await tester.pumpWidget(buildCard(
-        domain: DomainColors.workDark,
+        domain: DomainColors.careerDark,
         tasks: tasks,
         height: 400,
       ));
@@ -79,10 +79,10 @@ void main() {
 
     testWidgets('shows "1 task" singular', (tester) async {
       final tasks = [
-        createTestTask(id: 'id-1', title: 't1', category: 'work'),
+        createTestTask(id: 'id-1', title: 't1', category: 'career'),
       ];
       await tester.pumpWidget(buildCard(
-        domain: DomainColors.workDark,
+        domain: DomainColors.careerDark,
         tasks: tasks,
         height: 400,
       ));
@@ -92,12 +92,12 @@ void main() {
 
     testWidgets('shows domain name in compressed mode', (tester) async {
       await tester.pumpWidget(buildCard(
-        domain: DomainColors.workDark,
-        tasks: [createTestTask(title: 'task 1', category: 'work')],
+        domain: DomainColors.careerDark,
+        tasks: [createTestTask(title: 'task 1', category: 'career')],
         height: 60, // small height triggers compressed
       ));
 
-      expect(find.text('Work'), findsOneWidget);
+      expect(find.text('Career'), findsOneWidget);
     });
 
     testWidgets('shows capitalized priority in task rows', (tester) async {
@@ -105,12 +105,12 @@ void main() {
         createTestTask(
           id: 'id-1',
           title: 'urgent task',
-          category: 'work',
+          category: 'career',
           priority: 'high',
         ),
       ];
       await tester.pumpWidget(buildCard(
-        domain: DomainColors.workDark,
+        domain: DomainColors.careerDark,
         tasks: tasks,
         height: 400,
       ));

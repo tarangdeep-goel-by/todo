@@ -77,7 +77,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         textColor: AppColors.darkText,
         icon: Icons.task_alt,
         examples: [
-          'Add meeting prep to work',
+          'Add meeting prep to career',
           'Buy milk, high priority, due tomorrow',
         ],
       );

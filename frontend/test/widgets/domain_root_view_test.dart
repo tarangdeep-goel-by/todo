@@ -15,7 +15,7 @@ void main() {
   });
 
   Widget buildView({
-    String category = 'work',
+    String category = 'career',
     List<Override> extra = const [],
     VoidCallback? onClose,
     void Function(String)? onTaskTap,
@@ -40,13 +40,13 @@ void main() {
 
   group('DomainRootView', () {
     testWidgets('shows category name capitalized', (tester) async {
-      await tester.pumpWidget(buildView(category: 'work'));
-      expect(find.text('Work'), findsOneWidget);
+      await tester.pumpWidget(buildView(category: 'career'));
+      expect(find.text('Career'), findsOneWidget);
     });
 
     testWidgets('shows No tasks in this domain when no matching tasks',
         (tester) async {
-      await tester.pumpWidget(buildView(category: 'work'));
+      await tester.pumpWidget(buildView(category: 'career'));
       expect(find.text('No tasks in this domain'), findsOneWidget);
     });
 
@@ -54,12 +54,12 @@ void main() {
       final task1 = createTestTask(
         id: 'id-1',
         title: 'Design mockups',
-        category: 'work',
+        category: 'career',
       );
       final task2 = createTestTask(
         id: 'id-2',
         title: 'Fix bug',
-        category: 'work',
+        category: 'career',
       );
       // Task in different category should not appear
       final task3 = createTestTask(
@@ -69,7 +69,7 @@ void main() {
       );
 
       await tester.pumpWidget(buildView(
-        category: 'work',
+        category: 'career',
         extra: [
           allTasksProvider.overrideWith((ref) => [task1, task2, task3]),
         ],
@@ -81,11 +81,11 @@ void main() {
     });
 
     testWidgets('shows task count text', (tester) async {
-      final task1 = createTestTask(id: 'id-1', title: 'T1', category: 'work');
-      final task2 = createTestTask(id: 'id-2', title: 'T2', category: 'work');
+      final task1 = createTestTask(id: 'id-1', title: 'T1', category: 'career');
+      final task2 = createTestTask(id: 'id-2', title: 'T2', category: 'career');
 
       await tester.pumpWidget(buildView(
-        category: 'work',
+        category: 'career',
         extra: [
           allTasksProvider.overrideWith((ref) => [task1, task2]),
         ],
@@ -98,7 +98,7 @@ void main() {
       var closeCalled = false;
 
       await tester.pumpWidget(buildView(
-        category: 'work',
+        category: 'career',
         onClose: () => closeCalled = true,
       ));
 
@@ -113,11 +113,11 @@ void main() {
       final task = createTestTask(
         id: 'tap-id-1',
         title: 'Tappable task',
-        category: 'work',
+        category: 'career',
       );
 
       await tester.pumpWidget(buildView(
-        category: 'work',
+        category: 'career',
         onTaskTap: (id) => tappedId = id,
         extra: [
           allTasksProvider.overrideWith((ref) => [task]),

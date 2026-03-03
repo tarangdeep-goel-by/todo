@@ -29,7 +29,7 @@ void main() {
       notifier.upsertTask(createTestTask(
         id: s['id'] as String,
         title: s['title'] as String? ?? s['id'] as String,
-        category: s['category'] as String? ?? 'work',
+        category: s['category'] as String? ?? 'career',
         status: s['status'] as String? ?? 'active',
         priority: s['priority'] as String?,
         parentId: s['parentId'] as String?,
@@ -176,20 +176,20 @@ void main() {
   group('tasksByCategoryProvider', () {
     test('filters by category case-insensitive', () {
       seedStore([
-        {'id': 'w1', 'category': 'work'},
-        {'id': 'w2', 'category': 'Work'},
-        {'id': 'p1', 'category': 'personal'},
+        {'id': 'w1', 'category': 'career'},
+        {'id': 'w2', 'category': 'Career'},
+        {'id': 'p1', 'category': 'home'},
       ]);
 
-      final work = container.read(tasksByCategoryProvider('work'));
+      final work = container.read(tasksByCategoryProvider('career'));
       expect(work.length, 2);
 
-      final personal = container.read(tasksByCategoryProvider('Personal'));
+      final personal = container.read(tasksByCategoryProvider('Home'));
       expect(personal.length, 1);
     });
 
     test('returns empty for unknown category', () {
-      seedStore([{'id': 'w1', 'category': 'work'}]);
+      seedStore([{'id': 'w1', 'category': 'career'}]);
 
       expect(container.read(tasksByCategoryProvider('health')), isEmpty);
     });
@@ -242,17 +242,17 @@ void main() {
 
     test('filter by category', () {
       seedStore([
-        {'id': 'w1', 'category': 'work'},
-        {'id': 'p1', 'category': 'personal'},
-        {'id': 'w2', 'category': 'work'},
+        {'id': 'w1', 'category': 'career'},
+        {'id': 'p1', 'category': 'home'},
+        {'id': 'w2', 'category': 'career'},
       ]);
 
       container.read(taskFilterProvider.notifier).state =
-          const TaskFilter(categories: ['work']);
+          const TaskFilter(categories: ['career']);
 
       final result = container.read(flatViewTasksProvider);
       expect(result.length, 2);
-      expect(result.every((t) => t.category == 'work'), true);
+      expect(result.every((t) => t.category == 'career'), true);
     });
 
     test('filter by priority', () {
@@ -286,13 +286,13 @@ void main() {
 
     test('filter by multiple dimensions (AND)', () {
       seedStore([
-        {'id': 't1', 'category': 'work', 'priority': 'high', 'status': 'active'},
-        {'id': 't2', 'category': 'work', 'priority': 'low', 'status': 'active'},
-        {'id': 't3', 'category': 'personal', 'priority': 'high', 'status': 'active'},
+        {'id': 't1', 'category': 'career', 'priority': 'high', 'status': 'active'},
+        {'id': 't2', 'category': 'career', 'priority': 'low', 'status': 'active'},
+        {'id': 't3', 'category': 'home', 'priority': 'high', 'status': 'active'},
       ]);
 
       container.read(taskFilterProvider.notifier).state =
-          const TaskFilter(categories: ['work'], priorities: ['high']);
+          const TaskFilter(categories: ['career'], priorities: ['high']);
 
       final result = container.read(flatViewTasksProvider);
       expect(result.length, 1);
@@ -544,25 +544,25 @@ void main() {
       expect(container.read(allTasksProvider), isEmpty);
 
       container.read(taskStoreProvider.notifier).upsertTask(
-        createTestTask(id: 'r1', category: 'work'),
+        createTestTask(id: 'r1', category: 'career'),
       );
 
       expect(container.read(allTasksProvider).length, 1);
-      expect(container.read(tasksByCategoryProvider('work')).length, 1);
+      expect(container.read(tasksByCategoryProvider('career')).length, 1);
       expect(container.read(taskByIdProvider('r1')), isNotNull);
       expect(container.read(flatViewTasksProvider).length, 1);
     });
 
     test('filter change updates flatViewTasksProvider', () {
       seedStore([
-        {'id': 'w1', 'category': 'work'},
-        {'id': 'p1', 'category': 'personal'},
+        {'id': 'w1', 'category': 'career'},
+        {'id': 'p1', 'category': 'home'},
       ]);
 
       expect(container.read(flatViewTasksProvider).length, 2);
 
       container.read(taskFilterProvider.notifier).state =
-          const TaskFilter(categories: ['work']);
+          const TaskFilter(categories: ['career']);
 
       expect(container.read(flatViewTasksProvider).length, 1);
 
@@ -765,12 +765,12 @@ void main() {
 
     test('parent hidden even when children filtered out by category', () {
       seedStore([
-        {'id': 'parent', 'title': 'Work Parent', 'category': 'work'},
-        {'id': 'child', 'parentId': 'parent', 'status': 'active', 'category': 'personal'},
+        {'id': 'parent', 'title': 'Career Parent', 'category': 'career'},
+        {'id': 'child', 'parentId': 'parent', 'status': 'active', 'category': 'home'},
       ]);
 
       container.read(taskFilterProvider.notifier).state =
-          const TaskFilter(categories: ['work']);
+          const TaskFilter(categories: ['career']);
 
       final result = container.read(flatViewTasksProvider);
       // parent is hidden because child is active (uses unfiltered list)

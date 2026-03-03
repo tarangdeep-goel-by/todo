@@ -8,7 +8,7 @@ class Task {
   final String title;
   final String? description;
   final String? parentId;
-  final String category; // work, personal, health, learning, projects
+  final String category; // career, home, health, growth, recreation, finance, relationships, community
   final String? categoryId;
   final String status; // active, completed
   final DateTime createdAt;

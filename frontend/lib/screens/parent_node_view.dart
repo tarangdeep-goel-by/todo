@@ -85,7 +85,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
       });
     } else if (dragDistance < -threshold &&
         _focusedIndex == domainCount - 1 &&
-        domainCount < 5) {
+        domainCount < 8) {
       // Overscroll past last card — reveal add-domain zone
       final overscroll =
           (-dragDistance - threshold).clamp(0.0, _overscrollThreshold * 1.5);
@@ -100,7 +100,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
   }
 
   void _onPointerUp(PointerUpEvent event, int domainCount) {
-    if (_overscrollLocked && domainCount < 5) {
+    if (_overscrollLocked && domainCount < 8) {
       _showAddDomainSheet(domainCount);
     }
     setState(() {
@@ -407,8 +407,8 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
         textColor: AppColors.darkText,
         icon: Icons.auto_awesome,
         examples: const [
-          'Add buy groceries to personal',
-          'Schedule standup for work',
+          'Add buy groceries to home',
+          'Schedule standup for career',
         ],
         actionLabel: 'Add Domain',
         onAction: () => _showAddDomainSheet(0),
@@ -431,7 +431,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView> {
         final overscrollProgress =
             (_overscrollDistance / _overscrollThreshold).clamp(0.0, 1.0);
         final showAddZone =
-            domains.length < 5 && _overscrollDistance > 0;
+            domains.length < 8 && _overscrollDistance > 0;
 
         // Build domain cards
         final cards = List.generate(domains.length, (index) {
