@@ -59,13 +59,13 @@ Client → FastAPI Router → Service → SQLAlchemy AsyncSession → PostgreSQL
 ### Brain Dump Pipeline (`POST /api/agent/braindump`)
 Unified proposal-then-commit flow for all input (keyboard text and voice):
 0. `intent_prefilter.prefilter()` — catches gibberish before any Gemini call
-1. `TaskService.build_full_tree_context()` — builds indented tree string for AI context
+1. `TaskService.build_full_tree_context()` — always builds full indented tree string for AI context (compressed tree was removed — full tree works better for LLM)
 2. `GeminiService.detect_brain_dump()` — extracts task proposals (add/complete/edit/delete/move/breakdown) with confidence scores
 3. Returns `BrainDumpResponse` with `List[BrainDumpTaskProposal]` (not yet created)
 4. User reviews/edits proposals in RambleScreen → submits via `POST /api/agent/braindump/submit`
 5. `AgentService.submit_brain_dump()` batch-creates/updates/deletes tasks
 
-For voice input: Client streams audio via WebSocket (`/ws/ramble`) → Gemini Live transcribes → then same pipeline above.
+For voice input: Client streams audio via WebSocket (`/ws/ramble`) → Sarvam AI (`saaras:v3`, `translate` mode) transcribes to English → then same pipeline above.
 
 ### Key Layers
 - **`routers/`** — API endpoints. Services are instantiated per-request (no DI container). DB session via `Depends(get_db)`.
@@ -73,7 +73,7 @@ For voice input: Client streams audio via WebSocket (`/ws/ramble`) → Gemini Li
 - **`services/intent_prefilter.py`** — Rule-based pre-filter: gibberish detection (vowel ratio + consonant clusters). Runs before LLM to save API calls on nonsense input.
 - **`services/agent_service.py`** — Brain dump orchestrator. `process_brain_dump()` extracts proposals, `submit_brain_dump()` executes them. Uses deterministic UUIDs for root categories (`uuid5` with fixed namespace).
 - **`services/gemini_service.py`** — Gemini 2.5 Flash Lite integration. Sync API calls wrapped in async service. `detect_brain_dump()` extracts task actions from free-form text. `generate_subtasks()` for breakdown action.
-- **`services/ramble_service.py`** — Gemini Live API streaming transcription. `RambleSession` manages WebSocket connection for real-time audio→text. Uses `google-genai` SDK (separate from `google-generativeai` used elsewhere).
+- **`services/ramble_service.py`** — Sarvam AI streaming STT (`saaras:v3`). `RambleSession` manages WebSocket connection for real-time audio→text. Uses `sarvamai` SDK with `translate` mode — outputs English directly (no separate transliteration step).
 - **`services/query_builder.py`** — Dynamic SQLAlchemy query construction with multi-field filtering/sorting/pagination.
 - **`services/task_search_service.py`** — PG-native task search using `pg_trgm` trigram similarity. Weighted: title 70% + description 30%. `resolve_single()` returns confident match or ambiguous candidates.
 - **`utils/fuzzy_matcher.py`** — RapidFuzz matching (max of `token_set_ratio`, `partial_ratio`, stripped ratio). Weighted: title 70%, description 30%. Threshold: 60%. Near-exact matches (≥90) suppress weaker results. Used when `SEARCH_ENGINE=fuzzy`.
@@ -97,9 +97,11 @@ For voice input: Client streams audio via WebSocket (`/ws/ramble`) → Gemini Li
 
 **Tree Safety:** `update_task()` guards against circular references (moving task under itself or its descendants). `_get_all_descendants()` uses BFS with cycle detection. `_activate_ancestor_chain()` walks up parent chain to reactivate completed ancestors when a child becomes active.
 
+**Search Dispatch:** `AgentService._search_tasks()` is the single entry point for task matching. Delegates to `TaskSearchService` (pg_trgm) or `FuzzyMatcher` based on `SEARCH_ENGINE` setting. Returns `(match, confidence, alternates)`.
+
 **Error Convention:** Services raise `ValueError` for business logic errors → routers catch and return `HTTPException(400)`. Pydantic validation → 422 automatic. Gibberish input → `BrainDumpResponse(success=False, tasks=[])`.
 
-**WebSocket Ramble:** 5-minute session limit with 30-second heartbeats. Client sends `start` → streams base64 PCM `audio` chunks → sends `stop`. Server emits real-time `transcription` events.
+**WebSocket Ramble:** 5-minute session limit with 30-second heartbeats. Client sends `start` → streams base64 PCM `audio` chunks → sends `stop`. Server emits real-time `transcription` events. Uses Sarvam AI `saaras:v3` in `translate` mode — speech in any supported language is output as English text (no separate transliteration).
 
 ### Testing Patterns
 
@@ -116,9 +118,10 @@ All config from Docker environment (no `.env` file). Managed via Pydantic `Setti
 |---|---|---|
 | `DATABASE_URL` | Yes | — |
 | `GEMINI_API_KEY` | Yes | — |
+| `SARVAM_API_KEY` | Yes | — |
 | `APP_ENV` | No | `development` |
 | `DEBUG` | No | `True` |
-| `SEARCH_ENGINE` | No | `fuzzy` (`pg_native` or `fuzzy`) |
+| `SEARCH_ENGINE` | No | `fuzzy` (code), `pg_native` (Docker compose) |
 
 ## API Endpoints
 

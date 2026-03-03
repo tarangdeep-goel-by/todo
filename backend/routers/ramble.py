@@ -80,14 +80,14 @@ async def ramble_websocket(websocket: WebSocket):
 
             if msg_type == "start":
                 session = RambleSession(
-                    api_key=settings.gemini_api_key,
+                    api_key=settings.sarvam_api_key,
                 )
                 try:
                     await session.start()
-                    logger.info("[Ramble WS] Gemini session started")
+                    logger.info("[Ramble WS] Sarvam STT session started")
                 except Exception as e:
-                    logger.error("[Ramble WS] Failed to start Gemini session: %s", e, exc_info=True)
-                    await send_to_client({"type": "error", "message": f"Gemini session failed: {e}"})
+                    logger.error("[Ramble WS] Failed to start Sarvam STT session: %s", e, exc_info=True)
+                    await send_to_client({"type": "error", "message": f"Sarvam STT session failed: {e}"})
                     break
 
                 receive_task = asyncio.create_task(

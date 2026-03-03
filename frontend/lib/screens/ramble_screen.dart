@@ -509,6 +509,34 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     }
   }
 
+  /// Resolve the L1 (root) ancestor task name for a proposal.
+  /// For ADD: walks up from parentId. For COMPLETE/EDIT/DELETE/MOVE: walks up
+  /// from the matched task itself. Returns null if no parent found.
+  String? _resolveL1ParentName(BrainDumpTaskProposal proposal) {
+    final tasks = ref.read(taskStoreProvider).tasks;
+    // Determine starting task ID based on action
+    String? startId;
+    if (proposal.action == 'add') {
+      startId = proposal.parentId;
+    } else {
+      // For complete/edit/delete/move — start from the matched task
+      startId = proposal.matchedTaskId;
+    }
+    if (startId == null) return null;
+    // Walk up to L1 root
+    String? currentId = startId;
+    String? rootName;
+    final visited = <String>{};
+    while (currentId != null && !visited.contains(currentId)) {
+      visited.add(currentId);
+      final task = tasks[currentId];
+      if (task == null) break;
+      rootName = task.title;
+      currentId = task.parentId;
+    }
+    return rootName;
+  }
+
   void _toggleProposal(String id) {
     setState(() {
       if (_deselectedIds.contains(id)) {
@@ -620,13 +648,29 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                           isCurrent ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
-                  subtitle: Text(
-                    (match['category'] ?? '').toString().toUpperCase() +
-                        (isCurrent ? '  (current)' : ''),
-                    style: AppTypography.metadataText(
-                      color: AppColors.darkText.withValues(alpha: 0.5),
-                    ).copyWith(fontSize: 11),
-                  ),
+                  subtitle: Builder(builder: (_) {
+                    // Resolve L1 parent name from matched task ID
+                    final taskId = match['id'] ?? '';
+                    final tasks = ref.read(taskStoreProvider).tasks;
+                    String? l1Name;
+                    String? cid = taskId;
+                    final visited = <String>{};
+                    while (cid != null && cid.isNotEmpty && !visited.contains(cid)) {
+                      visited.add(cid);
+                      final t = tasks[cid];
+                      if (t == null) break;
+                      l1Name = t.title;
+                      cid = t.parentId;
+                    }
+                    final label = l1Name ??
+                        (match['category'] ?? '').toString().toUpperCase();
+                    return Text(
+                      label + (isCurrent ? '  (current)' : ''),
+                      style: AppTypography.metadataText(
+                        color: AppColors.darkText.withValues(alpha: 0.5),
+                      ).copyWith(fontSize: 11),
+                    );
+                  }),
                   onTap: () {
                     final updated = BrainDumpTaskProposal(
                       id: proposal.id,
@@ -817,7 +861,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         subtitle = 'Extracting tasks from your ramble.';
       case _RamblePhase.reviewing:
         title = 'Review tasks';
-        subtitle = 'Tap to toggle, long-press to edit.';
+        subtitle = 'Tap to edit, long-press to toggle.';
     }
 
     return Container(
@@ -1025,9 +1069,10 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     bool isSelected,
     DomainPalette domain,
   ) {
+    final l1Name = _resolveL1ParentName(proposal);
     return GestureDetector(
-      onTap: () => _toggleProposal(proposal.id),
-      onLongPress: () => _editProposal(proposal),
+      onTap: () => _editProposal(proposal),
+      onLongPress: () => _toggleProposal(proposal.id),
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
         opacity: isSelected ? 1.0 : 0.4,
@@ -1081,8 +1126,9 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                           _actionColor(proposal.action, domain),
                         ),
                         _buildChip(
-                          proposal.category[0].toUpperCase() +
-                              proposal.category.substring(1),
+                          l1Name ??
+                              (proposal.category[0].toUpperCase() +
+                                  proposal.category.substring(1)),
                           domain.primary,
                         ),
                         if (proposal.priority != null &&
@@ -1127,30 +1173,36 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Checkbox
-              Container(
-                width: 22,
-                height: 22,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? domain.primary
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: domain.primary.withValues(
-                      alpha: isSelected ? 1.0 : 0.4,
+              // Checkbox — tap to toggle selection
+              GestureDetector(
+                onTap: () => _toggleProposal(proposal.id),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? domain.primary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: domain.primary.withValues(
+                          alpha: isSelected ? 1.0 : 0.4,
+                        ),
+                        width: 2,
+                      ),
                     ),
-                    width: 2,
+                    child: isSelected
+                        ? Icon(
+                            Icons.check_rounded,
+                            size: 14,
+                            color: domain.textOnPrimary,
+                          )
+                        : null,
                   ),
                 ),
-                child: isSelected
-                    ? Icon(
-                        Icons.check_rounded,
-                        size: 14,
-                        color: domain.textOnPrimary,
-                      )
-                    : null,
               ),
             ],
           ),
