@@ -188,7 +188,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
                 Text(
                   '(${tasks.length})',
                   style: AppTypography.metadataText(
-                    color: AppColors.darkText.withValues(alpha: 0.4),
+                    color: AppColors.secondaryText,
                   ).copyWith(fontSize: 12),
                 ),
                 const SizedBox(width: 4),

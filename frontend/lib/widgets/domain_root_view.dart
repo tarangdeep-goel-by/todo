@@ -26,7 +26,7 @@ class DomainRootView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final domain = DomainColors.getDomain(category, true, ref.read(domainPalettesProvider));
+    final domain = DomainColors.getDomain(category, true, ref.watch(domainPalettesProvider));
     final allTasks = ref.watch(allTasksProvider);
     final l1Tasks = allTasks
         .where((t) => t.parentId == null && t.category.toLowerCase() == category.toLowerCase())
@@ -96,7 +96,7 @@ class DomainRootView extends ConsumerWidget {
                         child: Text(
                           'No tasks in this domain',
                           style: AppTypography.metadataText(
-                            color: domain.primary.withValues(alpha: 0.3),
+                            color: domain.primary.withValues(alpha: 0.5),
                           ).copyWith(fontSize: 14),
                         ),
                       )
@@ -105,6 +105,7 @@ class DomainRootView extends ConsumerWidget {
                         itemCount: l1Tasks.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 4),
                         itemBuilder: (_, i) => TaskRowTile(
+                          key: ValueKey(l1Tasks[i].id),
                           domain: domain,
                           task: l1Tasks[i],
                           onTap: () => onTaskTap(l1Tasks[i].id),

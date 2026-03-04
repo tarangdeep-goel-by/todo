@@ -89,15 +89,10 @@ class _DomainCardState extends ConsumerState<DomainCard>
       height: height,
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final showFocused = constraints.maxHeight > 120;
-          return ClipRect(
-            child: showFocused
-                ? _buildFocusedCard(context)
-                : _buildCompressedCard(context),
-          );
-        },
+      child: ClipRect(
+        child: widget.height > 120
+            ? _buildFocusedCard(context)
+            : _buildCompressedCard(context),
       ),
     );
   }
@@ -424,7 +419,7 @@ class _DomainCardState extends ConsumerState<DomainCard>
                             width: double.infinity,
                             clipBehavior: Clip.hardEdge,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF080604),
+                              color: AppColors.cardInset,
                               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                               border: Border.all(
                                 color: domain.primary.withValues(alpha: 0.08),

@@ -17,6 +17,12 @@ class AppAnimations {
   static const snackbarOut = Duration(milliseconds: 200);
   static const shimmerSweep = Duration(milliseconds: 750);
   static const glowSettle = Duration(milliseconds: 600);
+  static const overlayFade = Duration(milliseconds: 500);
+  static const coachingCycle = Duration(seconds: 4);
+  static const coachingSwitch = Duration(milliseconds: 600);
+  static const tutorialBounce = Duration(milliseconds: 1200);
+  static const hintBounce = Duration(milliseconds: 900);
+  static const voicePulse = Duration(milliseconds: 1800);
 }
 
 /// App-wide constants

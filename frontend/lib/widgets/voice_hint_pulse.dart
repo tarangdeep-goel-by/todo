@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/theme.dart';
 
 /// Breathing glow ring + "Hold for voice" label above the PTT button.
@@ -27,7 +28,7 @@ class _VoiceHintPulseState extends State<VoiceHintPulse>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: AppAnimations.voicePulse,
     );
     _animation = CurvedAnimation(
       parent: _controller,

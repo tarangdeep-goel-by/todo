@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -25,7 +26,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: AppAnimations.overlayFade,
     );
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
@@ -93,7 +94,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                     style: AppTypography.domainTitle(
                       context,
                       color: AppColors.darkText,
-                    ).copyWith(fontSize: 48),
+                    ).copyWith(fontSize: AppTypography.emptyStateDisplay),
                   ),
 
                   const SizedBox(height: AppSpacing.sm),
@@ -101,7 +102,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   Text(
                     'Your voice, organized.',
                     style: AppTypography.ctaLabelText(
-                      color: AppColors.darkText.withValues(alpha: 0.5),
+                      color: AppColors.secondaryText,
                     ).copyWith(fontSize: 16),
                   ),
 
@@ -153,15 +154,19 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   const SizedBox(height: AppSpacing.md),
 
                   // Skip option
-                  GestureDetector(
-                    onTap: _dismiss,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        "I'll explore on my own",
-                        style: AppTypography.metadataText(
-                          color: AppColors.darkText.withValues(alpha: 0.3),
-                        ).copyWith(fontSize: 13),
+                  Semantics(
+                    button: true,
+                    label: 'Skip onboarding',
+                    child: GestureDetector(
+                      onTap: _dismiss,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(
+                          "I'll explore on my own",
+                          style: AppTypography.metadataText(
+                            color: AppColors.secondaryText,
+                          ).copyWith(fontSize: 13),
+                        ),
                       ),
                     ),
                   ),
@@ -208,7 +213,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
               Text(
                 desc,
                 style: AppTypography.metadataText(
-                  color: AppColors.darkText.withValues(alpha: 0.45),
+                  color: AppColors.secondaryText,
                 ).copyWith(fontSize: 13, height: 1.4),
               ),
             ],

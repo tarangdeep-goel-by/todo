@@ -13,6 +13,30 @@ class AppColors {
   static const priorityLow = Color(0xFF66BB6A); // Green
   static const completed = Color(0xFF66BB6A); // Same as priorityLow
   static const deleteAction = Color(0xFFE84878); // Crimson rose
+
+  // Structural colors
+  static const navBg = Color(0xFF1A1816);
+  static const cardInset = Color(0xFF080604);
+
+  // Text hierarchy (WCAG-aware alphas on darkText)
+  static const secondaryText = Color(0x99F0EBE5); // 0.6 alpha — WCAG AA floor
+  static const tertiaryText = Color(0x80F0EBE5);  // 0.5 alpha — decorative only
+
+  // Snackbar palettes
+  static const snackbarError = DomainPalette(
+    name: 'Error',
+    primary: Color(0xFFE84878),
+    darkShade: Color(0xFF8A1A45),
+    surface: Color(0xFF1F0D14),
+    textOnPrimary: darkBg,
+  );
+  static const snackbarInfo = DomainPalette(
+    name: 'Info',
+    primary: Color(0xFFB0A99E),
+    darkShade: Color(0xFF3A3530),
+    surface: Color(0xFF1A1815),
+    textOnPrimary: darkBg,
+  );
 }
 
 /// Domain color palette for a single domain

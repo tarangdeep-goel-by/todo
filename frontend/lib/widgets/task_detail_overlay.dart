@@ -709,7 +709,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       );
     }
 
-    final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
+    final domain = DomainColors.getDomain(task.category, true, ref.watch(domainPalettesProvider));
     final ancestors = _buildAncestorChain(task, allTasks);
 
     return PopScope(
@@ -733,6 +733,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   ),
                   child: IconButton(
                     icon: Icon(Icons.close, color: domain.primary, size: 28),
+                    tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -746,15 +747,19 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   child: Row(
                     children: [
                       // Category as first breadcrumb — tappable to navigate to domain root
-                      GestureDetector(
-                        onTap: () => _navigateToDomainRoot(task.category),
-                        child: Text(
-                          task.category,
-                          style: AppTypography.metadataText(
-                            color: domain.primary.withValues(alpha: 0.7),
-                          ).copyWith(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                      Semantics(
+                        button: true,
+                        label: 'Navigate to ${task.category}',
+                        child: GestureDetector(
+                          onTap: () => _navigateToDomainRoot(task.category),
+                          child: Text(
+                            task.category,
+                            style: AppTypography.metadataText(
+                              color: domain.primary.withValues(alpha: 0.7),
+                            ).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
@@ -768,20 +773,24 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                             color: domain.primary.withValues(alpha: 0.3),
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () => _navigateTo(ancestors[i].id),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 120),
-                            child: Text(
-                              ancestors[i].title,
-                              style: AppTypography.metadataText(
-                                color: domain.primary.withValues(alpha: 0.7),
-                              ).copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                        Semantics(
+                          button: true,
+                          label: 'Navigate to ${ancestors[i].title}',
+                          child: GestureDetector(
+                            onTap: () => _navigateTo(ancestors[i].id),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 120),
+                              child: Text(
+                                ancestors[i].title,
+                                style: AppTypography.metadataText(
+                                  color: domain.primary.withValues(alpha: 0.7),
+                                ).copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -857,14 +866,18 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       );
     }
 
-    return GestureDetector(
-      onTap: () => _startEditingTitle(task),
-      child: Text(
-        task.sentenceTitle,
-        style: AppTypography.domainTitle(context, color: domain.primary)
-            .copyWith(fontSize: 28),
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+    return Semantics(
+      button: true,
+      label: 'Edit title',
+      child: GestureDetector(
+        onTap: () => _startEditingTitle(task),
+        child: Text(
+          task.sentenceTitle,
+          style: AppTypography.domainTitle(context, color: domain.primary)
+              .copyWith(fontSize: 28),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -898,7 +911,11 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       ),
     );
     if (onTap == null) return child;
-    return GestureDetector(onTap: onTap, child: child);
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(onTap: onTap, child: child),
+    );
   }
 
   Widget _buildChipRow(DomainPalette domain, Task task) {
@@ -1040,7 +1057,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     return Text(
       title,
       style: AppTypography.metadataText(
-        color: AppColors.darkText.withValues(alpha: 0.4),
+        color: AppColors.secondaryText,
       ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
     );
   }
@@ -1099,7 +1116,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
             style: AppTypography.metadataText(
               color: task.description?.isNotEmpty == true
                   ? domain.primary
-                  : domain.primary.withValues(alpha: 0.3),
+                  : domain.primary.withValues(alpha: 0.5),
             ).copyWith(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
@@ -1196,7 +1213,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
             width: AppSpacing.leftAccentBar,
             height: 28,
             decoration: BoxDecoration(
-              color: domain.primary.withValues(alpha: 0.4),
+              color: domain.primary.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1211,7 +1228,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 border: InputBorder.none,
                 hintText: 'New subtask...',
                 hintStyle: AppTypography.metadataText(
-                  color: domain.primary.withValues(alpha: 0.3),
+                  color: domain.primary.withValues(alpha: 0.5),
                 ).copyWith(fontSize: 14),
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -1253,14 +1270,22 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  GestureDetector(
-                    onTap: () => _launchRambleSubtasks(task),
-                    child: Icon(Icons.mic_none_rounded, size: 20, color: domain.primary),
+                  Semantics(
+                    button: true,
+                    label: 'Add subtask with voice',
+                    child: GestureDetector(
+                      onTap: () => _launchRambleSubtasks(task),
+                      child: Icon(Icons.mic_none_rounded, size: 20, color: domain.primary),
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: _startAddingSubtask,
-                    child: Icon(Icons.add, size: 20, color: domain.primary),
+                  Semantics(
+                    button: true,
+                    label: 'Add subtask with text',
+                    child: GestureDetector(
+                      onTap: _startAddingSubtask,
+                      child: Icon(Icons.add, size: 20, color: domain.primary),
+                    ),
                   ),
                 ],
               ),
@@ -1272,7 +1297,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           Text(
             'No subtasks',
             style: AppTypography.metadataText(
-              color: domain.primary.withValues(alpha: 0.3),
+              color: domain.primary.withValues(alpha: 0.5),
             ).copyWith(fontSize: 13),
           ),
 

@@ -6,23 +6,11 @@ import 'base_snackbar_overlay.dart';
 /// Snackbar style variants.
 enum SnackbarStyle { success, error, info }
 
-/// Error palette (crimson rose).
-const _errorPalette = DomainPalette(
-  name: 'Error',
-  primary: Color(0xFFE84878),
-  darkShade: Color(0xFF8A1A45),
-  surface: Color(0xFF1F0D14),
-  textOnPrimary: AppColors.darkBg,
-);
+/// Error palette (crimson rose) — canonical source in AppColors.snackbarError.
+const _errorPalette = AppColors.snackbarError;
 
-/// Info palette (neutral warm).
-const _infoPalette = DomainPalette(
-  name: 'Info',
-  primary: Color(0xFFB0A99E),
-  darkShade: Color(0xFF3A3530),
-  surface: Color(0xFF1A1815),
-  textOnPrimary: AppColors.darkBg,
-);
+/// Info palette (neutral warm) — canonical source in AppColors.snackbarInfo.
+const _infoPalette = AppColors.snackbarInfo;
 
 /// Shows a styled snackbar matching the app's design language.
 /// For success, pass a [domain] palette. For errors/info, palette is resolved

@@ -16,7 +16,6 @@ class AppSpacing {
   static const double compressedCardInset = 16.0; // Horizontal inset for compressed cards
   static const double focusedCardInset = 32.0; // Horizontal inset at edges
   static const double leftAccentBar = 4.0; // Compressed card left bar
-  static const double flatViewLeftBar = 6.0; // Flat view task item left bar
 
   // CTA button
   static const double ctaBottomMargin = 32.0; // Distance from bottom safe area
@@ -30,7 +29,6 @@ class AppSpacing {
 
   // Bottom nav
   static const double bottomNavHeight = 72.0;
-  static const double bottomNavPttSize = 56.0;
   static const double bottomNavMarginH = 16.0;
   static const double bottomNavMarginBottom = 12.0;
   static const double bottomNavRadius = 24.0;
@@ -41,4 +39,9 @@ class AppSpacing {
   static const double radiusMd = 16.0;
   static const double radiusLg = 18.0; // Full pill for toggle
   static const double radiusPill = 100.0; // Full pill for CTA
+
+  // Touch targets
+  static const double pttButtonHeight = 46.0;
+  static const double sendButtonSize = 44.0;
+  static const double minTouchTarget = 44.0;
 }

@@ -280,7 +280,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
                     Text(
                       widget.parentName!.capitalize,
                       style: AppTypography.metadataText(
-                        color: domain.primary.withValues(alpha: 0.4),
+                        color: domain.primary.withValues(alpha: 0.6),
                       ).copyWith(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,

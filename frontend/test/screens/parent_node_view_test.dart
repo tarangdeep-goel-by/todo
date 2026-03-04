@@ -52,13 +52,6 @@ void main() {
       expect(find.text('Your world, organized'), findsOneWidget);
     });
 
-    testWidgets('shows Add Domain action when no domains', (tester) async {
-      await tester.pumpWidget(buildParentNodeView());
-      await tester.pump();
-
-      expect(find.text('Add Domain'), findsOneWidget);
-    });
-
     testWidgets('shows EmptyState widget when no domains', (tester) async {
       await tester.pumpWidget(buildParentNodeView());
       await tester.pump();

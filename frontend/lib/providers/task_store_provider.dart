@@ -161,7 +161,7 @@ final domainPalettesProvider = Provider<Map<String, DomainPalette>>((ref) {
 });
 
 /// Tasks filtered by category (for domain cards).
-final tasksByCategoryProvider = Provider.family<List<Task>, String>((ref, category) {
+final tasksByCategoryProvider = Provider.autoDispose.family<List<Task>, String>((ref, category) {
   final all = ref.watch(allTasksProvider);
   return all
       .where((t) => t.category.toLowerCase() == category.toLowerCase())
@@ -174,7 +174,7 @@ final taskByIdProvider = Provider.family<Task?, String>((ref, id) {
 });
 
 /// Children of a given task (for overlay subtasks).
-final childTasksProvider = Provider.family<List<Task>, String>((ref, parentId) {
+final childTasksProvider = Provider.autoDispose.family<List<Task>, String>((ref, parentId) {
   final all = ref.watch(allTasksProvider);
   return all.where((t) => t.parentId == parentId).toList();
 });
@@ -198,24 +198,26 @@ final flatViewTasksProvider = Provider<List<Task>>((ref) {
 });
 
 /// Maps task ID → L1 (root) parent title for subtitle display.
+/// Uses memoized root-finding with path compression for O(n) amortized.
 final l1ParentNamesProvider = Provider<Map<String, String>>((ref) {
   final tasks = ref.watch(taskStoreProvider).tasks;
+  final rootCache = <String, String?>{}; // taskId → root title (cached)
+
+  String? findRoot(String id) {
+    if (rootCache.containsKey(id)) return rootCache[id];
+    final task = tasks[id];
+    if (task == null) { rootCache[id] = null; return null; }
+    if (task.parentId == null) { rootCache[id] = task.title; return task.title; }
+    final parentRoot = findRoot(task.parentId!);
+    rootCache[id] = parentRoot;
+    return parentRoot;
+  }
+
   final result = <String, String>{};
   for (final task in tasks.values) {
     if (task.parentId == null) continue;
-    // Walk to root ancestor
-    String? currentId = task.parentId;
-    final visited = <String>{};
-    Task? root;
-    while (currentId != null) {
-      if (visited.contains(currentId)) break;
-      visited.add(currentId);
-      final parent = tasks[currentId];
-      if (parent == null) break;
-      root = parent;
-      currentId = parent.parentId;
-    }
-    if (root != null) result[task.id] = root.title;
+    final rootTitle = findRoot(task.parentId!);
+    if (rootTitle != null) result[task.id] = rootTitle;
   }
   return result;
 });
@@ -223,42 +225,46 @@ final l1ParentNamesProvider = Provider<Map<String, String>>((ref) {
 // --- Client-side filter + sort ---
 
 List<Task> _filterAndSort(List<Task> tasks, TaskFilter filter) {
-  var result = tasks.toList();
+  // Chain .where() predicates without intermediate .toList()
+  Iterable<Task> filtered = tasks;
 
   // Filter by category
   if (filter.categories != null && filter.categories!.isNotEmpty) {
     final cats = filter.categories!.map((c) => c.toLowerCase()).toSet();
-    result = result.where((t) => cats.contains(t.category.toLowerCase())).toList();
+    filtered = filtered.where((t) => cats.contains(t.category.toLowerCase()));
   }
 
   // Filter by priority
   if (filter.priorities != null && filter.priorities!.isNotEmpty) {
     final pris = filter.priorities!.map((p) => p.toLowerCase()).toSet();
-    result = result.where((t) => t.priority != null && pris.contains(t.priority!.toLowerCase())).toList();
+    filtered = filtered.where((t) => t.priority != null && pris.contains(t.priority!.toLowerCase()));
   }
 
   // Filter by status (overdue is computed: active + past due)
   if (filter.statuses != null && filter.statuses!.isNotEmpty) {
     final stats = filter.statuses!.map((s) => s.toLowerCase()).toSet();
-    result = result.where((t) {
+    filtered = filtered.where((t) {
       final displayStatus = _computeDisplayStatus(t);
       return stats.contains(displayStatus);
-    }).toList();
+    });
   }
 
   // Filter by date ranges
   if (filter.createdAtGte != null) {
-    result = result.where((t) => !t.createdAt.isBefore(filter.createdAtGte!)).toList();
+    filtered = filtered.where((t) => !t.createdAt.isBefore(filter.createdAtGte!));
   }
   if (filter.createdAtLte != null) {
-    result = result.where((t) => !t.createdAt.isAfter(filter.createdAtLte!)).toList();
+    filtered = filtered.where((t) => !t.createdAt.isAfter(filter.createdAtLte!));
   }
   if (filter.dueDateGte != null) {
-    result = result.where((t) => t.dueDate != null && !t.dueDate!.isBefore(filter.dueDateGte!)).toList();
+    filtered = filtered.where((t) => t.dueDate != null && !t.dueDate!.isBefore(filter.dueDateGte!));
   }
   if (filter.dueDateLte != null) {
-    result = result.where((t) => t.dueDate != null && !t.dueDate!.isAfter(filter.dueDateLte!)).toList();
+    filtered = filtered.where((t) => t.dueDate != null && !t.dueDate!.isAfter(filter.dueDateLte!));
   }
+
+  // Single materialization before sort
+  final result = filtered.toList();
 
   // Sort — default: status asc, due_date asc, priority desc, created_at desc
   if (filter.sortOptions.isNotEmpty) {

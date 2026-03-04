@@ -98,11 +98,14 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   }
 
   Widget _buildIdleContent(Color textColor) {
-    return GestureDetector(
-      onTap: _activateKeyboard,
-      onLongPress: _launchRamble,
-      behavior: HitTestBehavior.opaque,
-      child: Center(
+    return Semantics(
+      button: true,
+      label: 'Input. Tap to type, hold to talk',
+      child: GestureDetector(
+        onTap: _activateKeyboard,
+        onLongPress: _launchRamble,
+        behavior: HitTestBehavior.opaque,
+        child: Center(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -112,6 +115,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
                 style: AppTypography.ctaLabelText(color: textColor)),
           ],
         ),
+      ),
       ),
     );
   }
@@ -145,15 +149,19 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       child: Row(
         children: [
           // Close button
-          GestureDetector(
-            onTap: _cancelTyping,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Icon(
-                Icons.close_rounded,
-                size: 20,
-                color: textColor.withValues(alpha: 0.5),
+          Semantics(
+            button: true,
+            label: 'Cancel',
+            child: GestureDetector(
+              onTap: _cancelTyping,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 20,
+                  color: textColor.withValues(alpha: 0.5),
+                ),
               ),
             ),
           ),
@@ -178,20 +186,24 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
             ),
           ),
           // Send button
-          GestureDetector(
-            onTap: _submitText,
-            child: Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(right: 4),
-              decoration: BoxDecoration(
-                color: textColor,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_upward_rounded,
-                size: 18,
-                color: AppColors.darkText,
+          Semantics(
+            button: true,
+            label: 'Submit',
+            child: GestureDetector(
+              onTap: _submitText,
+              child: Container(
+                width: AppSpacing.sendButtonSize,
+                height: AppSpacing.sendButtonSize,
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: textColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_upward_rounded,
+                  size: 18,
+                  color: AppColors.darkText,
+                ),
               ),
             ),
           ),

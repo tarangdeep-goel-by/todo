@@ -207,12 +207,12 @@ class _TaskParentPickerState extends ConsumerState<TaskParentPicker> {
             decoration: InputDecoration(
               hintText: 'Search tasks...',
               hintStyle: AppTypography.metadataText(
-                color: AppColors.darkText.withValues(alpha: 0.3),
+                color: AppColors.tertiaryText,
               ).copyWith(fontSize: 14),
               prefixIcon: Icon(
                 Icons.search,
                 size: 18,
-                color: AppColors.darkText.withValues(alpha: 0.4),
+                color: AppColors.tertiaryText,
               ),
               filled: true,
               fillColor: AppColors.darkText.withValues(alpha: 0.05),
@@ -249,29 +249,31 @@ class _TaskParentPickerState extends ConsumerState<TaskParentPicker> {
         child: Text(
           'No matching tasks',
           style: AppTypography.metadataText(
-            color: AppColors.darkText.withValues(alpha: 0.4),
+            color: AppColors.tertiaryText,
           ).copyWith(fontSize: 14),
         ),
       );
     }
 
-    return ListView(
+    // Pre-compute flat item list for ListView.builder
+    final items = <Widget>[];
+    for (final cat in categories) {
+      if (grouped.containsKey(cat)) {
+        items.add(_buildDomainHeader(cat, paletteMap));
+        items.add(_buildTopLevelRow(cat, paletteMap));
+        if (grouped[cat] != null) {
+          for (final entry in grouped[cat]!) {
+            items.add(_buildTaskRow(entry, cat, paletteMap));
+          }
+        }
+        items.add(const SizedBox(height: AppSpacing.md));
+      }
+    }
+
+    return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      children: [
-        for (final cat in categories) ...[
-          if (grouped.containsKey(cat)) ...[
-            // Domain header
-            _buildDomainHeader(cat, paletteMap),
-            // "Top level" row — move to root of this domain
-            _buildTopLevelRow(cat, paletteMap),
-            // Task rows
-            if (grouped[cat] != null)
-              for (final entry in grouped[cat]!)
-                _buildTaskRow(entry, cat, paletteMap),
-            const SizedBox(height: AppSpacing.md),
-          ],
-        ],
-      ],
+      itemCount: items.length,
+      itemBuilder: (_, i) => items[i],
     );
   }
 
@@ -284,7 +286,7 @@ class _TaskParentPickerState extends ConsumerState<TaskParentPicker> {
           Container(
             width: 20,
             height: 2,
-            color: domain.primary.withValues(alpha: 0.4),
+            color: domain.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(width: 8),
           Text(

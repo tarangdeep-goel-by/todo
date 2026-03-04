@@ -509,7 +509,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       Navigator.pop(context);
                     },
                     child: Container(
-                      height: 48,
+                      constraints: const BoxConstraints(minHeight: 48),
                       decoration: BoxDecoration(
                         color: AppColors.darkBg,
                         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -534,7 +534,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                   child: GestureDetector(
                     onTap: _applyFilters,
                     child: Container(
-                      height: 48,
+                      constraints: const BoxConstraints(minHeight: 48),
                       decoration: BoxDecoration(
                         color: accentColor,
                         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),

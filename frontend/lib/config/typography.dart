@@ -17,6 +17,12 @@ class AppTypography {
   static const double metadata = 11.0;
   static const double ctaLabel = 14.0;
   static const double domainPill = 11.0;
+  static const double navLabelSize = 10.0;
+  static const double sectionHeader = 20.0;
+  static const double bodyLg = 16.0;
+  static const double bodySm = 15.0;
+  static const double bodyBase = 13.0;
+  static const double emptyStateDisplay = 48.0;
 
   // Text styles
   static TextStyle domainTitle(BuildContext context, {Color? color}) =>
@@ -54,7 +60,7 @@ class AppTypography {
       );
 
   static TextStyle navLabel({Color? color}) => GoogleFonts.dmSans(
-        fontSize: 10.0,
+        fontSize: navLabelSize,
         fontWeight: FontWeight.w600,
         color: color,
       );
@@ -64,6 +70,6 @@ class AppTypography {
         fontSize: 16.0,
         fontWeight: FontWeight.w400,
         height: 1.4,
-        color: color?.withValues(alpha: 0.8),
+        color: color,
       );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/spacing.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
@@ -35,7 +36,7 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: AppAnimations.tutorialBounce,
     )..repeat(reverse: true);
     _slideAnimation = CurvedAnimation(
       parent: _controller,
