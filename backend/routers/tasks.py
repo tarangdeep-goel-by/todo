@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import datetime
 from database import get_db
-from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse
+from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse
 from services.task_service import TaskService
 from models.task import Task
 
@@ -32,6 +32,16 @@ def task_to_response(task: Task) -> TaskResponse:
         tags=task.tags,
         estimated_hours=task.estimated_hours
     )
+
+
+@router.get("/stats", response_model=TaskStatsResponse)
+async def get_task_stats(
+    user_id: str = Query(..., description="User ID"),
+    db: AsyncSession = Depends(get_db)
+) -> TaskStatsResponse:
+    """Get aggregate task statistics for a user."""
+    task_service = TaskService(db)
+    return await task_service.get_task_stats(user_id)
 
 
 @router.get("", response_model=TaskListResponse)
