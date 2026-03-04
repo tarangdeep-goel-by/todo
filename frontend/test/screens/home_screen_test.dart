@@ -23,8 +23,11 @@ void main() {
     mockApi = MockApiService();
     mockSpeech = MockSpeechService();
 
-    // Bypass the welcome overlay
-    SharedPreferences.setMockInitialValues({'onboarding_welcome_seen': true});
+    // Bypass the welcome overlay and swipe tutorial
+    SharedPreferences.setMockInitialValues({
+      'onboarding_welcome_seen': true,
+      'onboarding_swipe_tutorial_step': 3,
+    });
 
     // Stub API calls that happen in initState via fetchAll()
     when(() => mockApi.getTasksAdvanced(

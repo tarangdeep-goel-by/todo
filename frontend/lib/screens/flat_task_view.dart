@@ -6,10 +6,19 @@ import '../config/theme.dart';
 import '../widgets/task_item.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/swipe_tutorial_overlay.dart';
+import '../services/onboarding_service.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
-  const FlatTaskView({super.key});
+  final bool tutorialActive;
+  final VoidCallback? onTutorialComplete;
+
+  const FlatTaskView({
+    super.key,
+    this.tutorialActive = false,
+    this.onTutorialComplete,
+  });
 
   @override
   ConsumerState<FlatTaskView> createState() => _FlatTaskViewState();
@@ -18,11 +27,32 @@ class FlatTaskView extends ConsumerStatefulWidget {
 class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   final ScrollController _scrollController = ScrollController();
   int _displayCount = 50;
+  int _swipeTutorialStep = 0;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    if (widget.tutorialActive) {
+      _loadTutorialStep();
+    }
+  }
+
+  Future<void> _loadTutorialStep() async {
+    final step = await OnboardingService.getSwipeTutorialStep();
+    if (mounted) {
+      setState(() => _swipeTutorialStep = step);
+    }
+  }
+
+  void _onTutorialStepComplete(int nextStep) async {
+    await OnboardingService.setSwipeTutorialStep(nextStep);
+    if (mounted) {
+      setState(() => _swipeTutorialStep = nextStep);
+    }
+    if (nextStep >= 3) {
+      widget.onTutorialComplete?.call();
+    }
   }
 
   void _onScroll() {
@@ -73,7 +103,8 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     if (allFiltered.isEmpty) {
       return const EmptyState(
         title: 'All clear',
-        message: 'Your tasks will appear here.\nSpeak or type a command below to get started.',
+        message:
+            'Your tasks will appear here.\nSpeak or type a command below to get started.',
         textColor: AppColors.darkText,
         icon: Icons.task_alt,
         examples: [
@@ -85,6 +116,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
     final displayTasks = allFiltered.take(_displayCount).toList();
     final hasMore = _displayCount < allFiltered.length;
+    final isTutorial = widget.tutorialActive && _swipeTutorialStep < 3;
 
     return RefreshIndicator(
       color: AppColors.darkText,
@@ -108,11 +140,37 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
               ),
             );
           }
-          return TaskItem(
-            task: displayTasks[index],
+
+          final task = displayTasks[index];
+          final isDemoTask = task.id == OnboardingService.demoTaskId;
+          final paletteMap = ref.watch(domainPalettesProvider);
+          final domain =
+              DomainColors.getDomain(task.category, true, paletteMap);
+
+          final taskItem = TaskItem(
+            task: task,
             isDark: true,
-            parentName: parentNames[displayTasks[index].id],
+            parentName: parentNames[task.id],
+            onTutorialStepComplete:
+                isDemoTask ? _onTutorialStepComplete : null,
           );
+
+          // Wrap demo task with tutorial overlay
+          if (isDemoTask && isTutorial) {
+            return Stack(
+              children: [
+                taskItem,
+                Positioned.fill(
+                  child: SwipeTutorialOverlay(
+                    step: _swipeTutorialStep,
+                    domainColor: domain.primary,
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return taskItem;
         },
       ),
     );
