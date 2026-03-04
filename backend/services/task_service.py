@@ -41,7 +41,7 @@ class TaskService:
             title=title.lower(),
             description=description,
             parent_id=parent_id,
-            category=category,
+            category=category or "uncategorized",
             category_id=category_id,
             transcription=transcription,
             due_date=due_date,
@@ -66,6 +66,8 @@ class TaskService:
 
     async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
         """Look up category ID from category name string. Auto-creates valid domains."""
+        if not category:
+            return None
         name = category.lower().strip()
         result = await self.db.execute(
             select(Category.id)
@@ -426,10 +428,16 @@ class TaskService:
 
         base_filter = Task.user_id == user_id
 
+        # Active excludes overdue (mutually exclusive partition)
+        is_active_not_overdue = and_(
+            Task.status == "active",
+            ~is_overdue,
+        )
+
         # --- Totals + by_status + due_soon in one query ---
         totals_query = select(
             func.count().label("total"),
-            func.count().filter(Task.status == "active").label("active"),
+            func.count().filter(is_active_not_overdue).label("active"),
             func.count().filter(Task.status == "completed").label("completed"),
             func.count().filter(is_overdue).label("overdue"),
             func.count().filter(is_due_soon).label("due_soon"),
@@ -457,7 +465,7 @@ class TaskService:
             Task.category_id,
             func.coalesce(Category.name, literal("Uncategorized")).label("category_name"),
             func.count().label("total"),
-            func.count().filter(Task.status == "active").label("active"),
+            func.count().filter(is_active_not_overdue).label("active"),
             func.count().filter(Task.status == "completed").label("completed"),
             func.count().filter(is_overdue).label("overdue"),
         ).outerjoin(Category, Task.category_id == Category.id).where(
