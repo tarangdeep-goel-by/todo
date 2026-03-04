@@ -1,6 +1,7 @@
 """Task service for CRUD operations and tree queries."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, case, and_, literal
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
 from models.task import Task
 from models.category import Category
@@ -426,3 +427,93 @@ class TaskService:
         total_count = count_result.scalar_one()
 
         return tasks, total_count
+
+    async def get_task_stats(self, user_id: str) -> Dict:
+        """Get aggregate task statistics using SQL-level aggregation."""
+        now = datetime.now(timezone.utc)
+        soon = now + timedelta(hours=48)
+
+        is_overdue = and_(
+            Task.status == 'active',
+            Task.due_date.isnot(None),
+            Task.due_date < now,
+        )
+        is_due_soon = and_(
+            Task.status == 'active',
+            Task.due_date.isnot(None),
+            Task.due_date >= now,
+            Task.due_date < soon,
+        )
+
+        base_filter = Task.user_id == user_id
+
+        # --- Total + by_status + due_soon in one query ---
+        totals_query = select(
+            func.count(Task.id).label('total'),
+            func.count().filter(Task.status == 'active').label('active'),
+            func.count().filter(Task.status == 'completed').label('completed'),
+            func.count().filter(is_overdue).label('overdue'),
+            func.count().filter(is_due_soon).label('due_soon'),
+        ).where(base_filter)
+
+        totals = (await self.db.execute(totals_query)).one()
+
+        # --- by_priority ---
+        priority_query = select(
+            func.count().filter(Task.priority == 'high').label('high'),
+            func.count().filter(Task.priority == 'medium').label('medium'),
+            func.count().filter(Task.priority == 'low').label('low'),
+            func.count().filter(
+                (Task.priority.is_(None)) | (Task.priority.notin_(['high', 'medium', 'low']))
+            ).label('none'),
+        ).where(base_filter)
+
+        priorities = (await self.db.execute(priority_query)).one()
+
+        # --- by_category (GROUP BY with LEFT JOIN for category name) ---
+        cat_name = func.coalesce(Category.name, literal('Uncategorized')).label('category_name')
+        cat_id = Category.id.label('category_id')
+
+        cat_query = (
+            select(
+                cat_id,
+                cat_name,
+                func.count(Task.id).label('total'),
+                func.count().filter(Task.status == 'active').label('active'),
+                func.count().filter(Task.status == 'completed').label('completed'),
+                func.count().filter(is_overdue).label('overdue'),
+            )
+            .select_from(Task)
+            .outerjoin(Category, Task.category_id == Category.id)
+            .where(base_filter)
+            .group_by(Category.id, Category.name)
+        )
+
+        cat_rows = (await self.db.execute(cat_query)).all()
+
+        return {
+            "total_tasks": totals.total,
+            "by_status": {
+                "active": totals.active,
+                "completed": totals.completed,
+                "overdue": totals.overdue,
+            },
+            "by_priority": {
+                "high": priorities.high,
+                "medium": priorities.medium,
+                "low": priorities.low,
+                "none": priorities.none,
+            },
+            "by_category": [
+                {
+                    "category_id": row.category_id,
+                    "category_name": row.category_name,
+                    "total": row.total,
+                    "active": row.active,
+                    "completed": row.completed,
+                    "overdue": row.overdue,
+                }
+                for row in cat_rows
+            ],
+            "due_soon_count": totals.due_soon,
+        }
