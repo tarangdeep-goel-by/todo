@@ -232,6 +232,25 @@ class TaskListResponse(BaseModel):
     has_more: bool
 
 
+class CategoryStatsEntry(BaseModel):
+    """Per-category task statistics."""
+    category_id: Optional[str]
+    category_name: str
+    total: int
+    active: int
+    completed: int
+    overdue: int
+
+
+class TaskStatsResponse(BaseModel):
+    """Response schema for aggregate task statistics."""
+    total_tasks: int
+    by_status: Dict[str, int]
+    by_priority: Dict[str, int]
+    by_category: List[CategoryStatsEntry]
+    due_soon_count: int
+
+
 class CategoryResponse(BaseModel):
     """Response schema for category."""
     id: str

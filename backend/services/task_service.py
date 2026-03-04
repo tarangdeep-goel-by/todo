@@ -1,6 +1,6 @@
 """Task service for CRUD operations and tree queries."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, case, and_
 from typing import List, Optional, Dict
 from models.task import Task
 from models.category import Category
@@ -402,6 +402,92 @@ class TaskService:
         )
         await self.db.commit()
         return result.rowcount > 0
+
+    async def get_task_stats(self, user_id: str) -> dict:
+        """Get aggregate task statistics for a user."""
+        from datetime import datetime, timezone, timedelta
+
+        now = datetime.now(timezone.utc)
+        soon = now + timedelta(hours=48)
+
+        # Overdue condition: active + has due_date + due_date < now
+        is_overdue = and_(
+            Task.status == "active",
+            Task.due_date.isnot(None),
+            Task.due_date < now,
+        )
+        # Due soon condition: active + due_date within 48h + not overdue
+        is_due_soon = and_(
+            Task.status == "active",
+            Task.due_date.isnot(None),
+            Task.due_date >= now,
+            Task.due_date < soon,
+        )
+
+        base_filter = Task.user_id == user_id
+
+        # --- Totals + by_status + due_soon in one query ---
+        totals_query = select(
+            func.count().label("total"),
+            func.count().filter(Task.status == "active").label("active"),
+            func.count().filter(Task.status == "completed").label("completed"),
+            func.count().filter(is_overdue).label("overdue"),
+            func.count().filter(is_due_soon).label("due_soon"),
+        ).where(base_filter)
+
+        totals = (await self.db.execute(totals_query)).one()
+
+        # --- by_priority ---
+        priority_query = select(
+            Task.priority,
+            func.count().label("count"),
+        ).where(base_filter).group_by(Task.priority)
+
+        priority_rows = (await self.db.execute(priority_query)).all()
+        by_priority = {"high": 0, "medium": 0, "low": 0, "none": 0}
+        for row in priority_rows:
+            key = row.priority if row.priority else "none"
+            if key in by_priority:
+                by_priority[key] = row.count
+
+        # --- by_category (join categories for name, handle nulls) ---
+        from sqlalchemy import literal
+
+        cat_query = select(
+            Task.category_id,
+            func.coalesce(Category.name, literal("Uncategorized")).label("category_name"),
+            func.count().label("total"),
+            func.count().filter(Task.status == "active").label("active"),
+            func.count().filter(Task.status == "completed").label("completed"),
+            func.count().filter(is_overdue).label("overdue"),
+        ).outerjoin(Category, Task.category_id == Category.id).where(
+            base_filter
+        ).group_by(Task.category_id, Category.name)
+
+        cat_rows = (await self.db.execute(cat_query)).all()
+        by_category = [
+            {
+                "category_id": row.category_id,
+                "category_name": row.category_name,
+                "total": row.total,
+                "active": row.active,
+                "completed": row.completed,
+                "overdue": row.overdue,
+            }
+            for row in cat_rows
+        ]
+
+        return {
+            "total_tasks": totals.total,
+            "by_status": {
+                "active": totals.active,
+                "completed": totals.completed,
+                "overdue": totals.overdue,
+            },
+            "by_priority": by_priority,
+            "by_category": by_category,
+            "due_soon_count": totals.due_soon,
+        }
 
     async def get_tasks_advanced(
         self,
