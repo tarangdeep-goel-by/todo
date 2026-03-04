@@ -1039,7 +1039,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
             Text(
               'Try re-recording with more detail',
               style: AppTypography.metadataText(
-                color: AppColors.darkText.withValues(alpha: 0.4),
+                color: AppColors.tertiaryText,
               ).copyWith(fontSize: 13),
             ),
           ],
@@ -1275,45 +1275,53 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Pause / Resume button
-              GestureDetector(
-                onTap: _canStopListening ? _togglePause : null,
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: _isPaused
-                        ? domain.primary.withValues(alpha: 0.15)
-                        : AppColors.darkText.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: domain.primary.withValues(alpha: 0.4),
+              Semantics(
+                button: true,
+                label: 'Pause recording',
+                child: GestureDetector(
+                  onTap: _canStopListening ? _togglePause : null,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _isPaused
+                          ? domain.primary.withValues(alpha: 0.15)
+                          : AppColors.darkText.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: domain.primary.withValues(alpha: 0.5),
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                    size: 24,
-                    color: domain.primary,
+                    child: Icon(
+                      _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      size: 24,
+                      color: domain.primary,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 24),
               // Stop button
-              GestureDetector(
-                onTap: _canStopListening ? _stopAndEdit : null,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: domain.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: domain.glow != null
-                        ? [BoxShadow(color: domain.glow!, blurRadius: 16, spreadRadius: 4)]
-                        : null,
-                  ),
-                  child: Icon(
-                    Icons.stop_rounded,
-                    size: 32,
-                    color: domain.textOnPrimary,
+              Semantics(
+                button: true,
+                label: 'Stop recording',
+                child: GestureDetector(
+                  onTap: _canStopListening ? _stopAndEdit : null,
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: domain.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: domain.glow != null
+                          ? [BoxShadow(color: domain.glow!, blurRadius: 16, spreadRadius: 4)]
+                          : null,
+                    ),
+                    child: Icon(
+                      Icons.stop_rounded,
+                      size: 32,
+                      color: domain.textOnPrimary,
+                    ),
                   ),
                 ),
               ),
@@ -1323,7 +1331,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
           Text(
             _isPaused ? 'Paused — tap play to resume' : 'Tap to stop',
             style: AppTypography.metadataText(
-              color: AppColors.darkText.withValues(alpha: 0.4),
+              color: AppColors.tertiaryText,
             ).copyWith(fontSize: 12),
           ),
         ],
@@ -1343,12 +1351,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
             child: GestureDetector(
               onTap: _reRecord,
               child: Container(
-                height: 48,
+                constraints: const BoxConstraints(minHeight: 48),
                 decoration: BoxDecoration(
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   border: Border.all(
-                    color: domain.primary.withValues(alpha: 0.4),
+                    color: domain.primary.withValues(alpha: 0.5),
                   ),
                 ),
                 child: Row(
@@ -1372,7 +1380,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
             child: GestureDetector(
               onTap: _processBrainDump,
               child: Container(
-                height: 48,
+                constraints: const BoxConstraints(minHeight: 48),
                 decoration: BoxDecoration(
                   color: domain.primary,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -1420,7 +1428,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: domain.primary.withValues(alpha: 0.4),
+                  color: domain.primary.withValues(alpha: 0.5),
                 ),
               ),
               child: Icon(Icons.edit_rounded, size: 20, color: domain.primary),
@@ -1436,7 +1444,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: domain.primary.withValues(alpha: 0.4),
+                  color: domain.primary.withValues(alpha: 0.5),
                 ),
               ),
               child: Icon(Icons.mic_none_rounded, size: 20, color: domain.primary),
@@ -1451,7 +1459,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                 duration: const Duration(milliseconds: 200),
                 opacity: canSubmit ? 1.0 : 0.4,
                 child: Container(
-                  height: 48,
+                  constraints: const BoxConstraints(minHeight: 48),
                   decoration: BoxDecoration(
                     color: domain.primary,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -1947,7 +1955,7 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
                           child: Text(
                             'Long-press to clear',
                             style: AppTypography.metadataText(
-                              color: AppColors.darkText.withValues(alpha: 0.3),
+                              color: AppColors.tertiaryText,
                             ).copyWith(fontSize: 11),
                           ),
                         ),

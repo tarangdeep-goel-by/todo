@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/typography.dart';
 
 /// Bouncing downward arrow + "See all tasks" text, positioned above the bottom nav.
@@ -22,7 +23,7 @@ class _FlatViewNudgeState extends State<FlatViewNudge>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: AppAnimations.hintBounce,
     )..repeat(reverse: true);
     _bounceAnimation = CurvedAnimation(
       parent: _controller,

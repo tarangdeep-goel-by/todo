@@ -13,10 +13,8 @@ import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/styled_snackbar.dart';
-import '../widgets/overscroll_hint_indicator.dart';
 import '../utils/liquid_focus_scroll.dart';
 import '../services/haptic_service.dart';
-import '../services/onboarding_service.dart';
 
 /// Parent node view with liquid focus domain cards
 /// All cards visible at once, scrolling changes focus
@@ -43,12 +41,6 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
   bool _isVerticalDrag = false;
   bool _directionDecided = false;
 
-  // Overscroll state for add-domain gesture
-  double _overscrollDistance = 0.0;
-  bool _overscrollLocked = false;
-  static const double _overscrollThreshold = 80.0;
-  bool _overscrollHintSeen = true;
-
   @override
   void initState() {
     super.initState();
@@ -61,15 +53,6 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       curve: AppAnimations.easeOutQuint,
     );
     _focusAnimController.value = 1.0; // Start settled
-    _loadOverscrollHint();
-  }
-
-  Future<void> _loadOverscrollHint() async {
-    final seen = await OnboardingService.hasSeenHint(
-        OnboardingService.overscrollHintKey);
-    if (mounted) {
-      setState(() => _overscrollHintSeen = seen);
-    }
   }
 
   @override
@@ -125,185 +108,14 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       HapticService.selection();
       _pointerStartY = event.position.dy;
       _setFocusedIndex(_focusedIndex + 1);
-    } else if (dragDistance < -threshold &&
-        _focusedIndex == domainCount - 1 &&
-        domainCount < 8) {
-      // Overscroll past last card — reveal add-domain zone
-      final overscroll =
-          (-dragDistance - threshold).clamp(0.0, _overscrollThreshold * 1.5);
-      setState(() {
-        _overscrollDistance = overscroll;
-        if (!_overscrollLocked && overscroll >= _overscrollThreshold) {
-          _overscrollLocked = true;
-          HapticService.medium();
-          if (!_overscrollHintSeen) {
-            OnboardingService.markHintSeen(
-                OnboardingService.overscrollHintKey);
-            _overscrollHintSeen = true;
-          }
-        }
-      });
     }
   }
 
   void _onPointerUp(PointerUpEvent event, int domainCount) {
-    if (_overscrollLocked && domainCount < 8) {
-      _showAddDomainSheet(domainCount);
-    }
     setState(() {
-      _overscrollDistance = 0.0;
-      _overscrollLocked = false;
       _isVerticalDrag = false;
       _directionDecided = false;
     });
-  }
-
-  /// Returns an error string if [name] is invalid for a domain, or null if valid.
-  /// Checks: empty, too long (>30 chars), duplicate (case-insensitive).
-  String? _validateDomainName(String name, Set<String> existing) {
-    if (name.isEmpty) return 'Name cannot be empty';
-    if (name.length > 30) return 'Name is too long (max 30 characters)';
-    if (existing.contains(name.toLowerCase())) return 'Domain already exists';
-    return null;
-  }
-
-  Future<void> _showAddDomainSheet(int currentCount) async {
-    final controller = TextEditingController();
-    final existingNames = _getDomains()
-        .map((d) => d.name.toLowerCase())
-        .toSet();
-
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.darkBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusMd)),
-      ),
-      builder: (ctx) {
-        String? errorText;
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.lg,
-                right: AppSpacing.lg,
-                top: AppSpacing.lg,
-                bottom:
-                    MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.lg,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'New Domain',
-                    style: AppTypography.ctaLabelText(
-                      color: AppColors.darkText,
-                    ).copyWith(fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    style: AppTypography.ctaLabelText(
-                            color: AppColors.darkText)
-                        .copyWith(fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Domain name',
-                      hintStyle: AppTypography.ctaLabelText(
-                        color:
-                            AppColors.darkText.withValues(alpha: 0.4),
-                      ).copyWith(fontSize: 16),
-                      errorText: errorText,
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.darkText
-                              .withValues(alpha: 0.3),
-                        ),
-                      ),
-                      focusedBorder: const UnderlineInputBorder(
-                        borderSide:
-                            BorderSide(color: AppColors.darkText),
-                      ),
-                    ),
-                    onSubmitted: (value) {
-                      final name = value.trim();
-                      final error = _validateDomainName(name, existingNames);
-                      if (error != null) {
-                        setSheetState(() => errorText = error);
-                        return;
-                      }
-                      Navigator.pop(ctx, name);
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: () {
-                        final name = controller.text.trim();
-                        final error = _validateDomainName(name, existingNames);
-                        if (error != null) {
-                          setSheetState(() => errorText = error);
-                          return;
-                        }
-                        Navigator.pop(ctx, name);
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor:
-                            DomainColors.defaultPalette.primary,
-                        foregroundColor:
-                            DomainColors.defaultPalette.textOnPrimary,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusSm),
-                        ),
-                      ),
-                      child: Text(
-                        'Create',
-                        style: AppTypography.ctaLabelText(
-                          color: DomainColors
-                              .defaultPalette.textOnPrimary,
-                        ).copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (result != null && mounted) {
-      _createDomain(result);
-    }
-  }
-
-  Future<void> _createDomain(String name) async {
-    final cat = name.toLowerCase();
-    final apiService = ref.read(apiServiceProvider);
-    try {
-      final category = await apiService.createCategory(
-        AppConstants.defaultUserId, cat,
-      );
-      ref.read(categoriesProvider.notifier).update((s) => [...s, category]);
-      HapticService.light();
-    } catch (e) {
-      if (mounted) {
-        showStyledSnackbar(context,
-          message: 'Couldn\'t create domain. Try again.',
-          style: SnackbarStyle.error,
-        );
-      }
-    }
   }
 
   Future<void> _deleteDomain(
@@ -457,8 +269,6 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
           'Add buy groceries to home',
           'Schedule standup for career',
         ],
-        actionLabel: 'Add Domain',
-        onAction: () => _showAddDomainSheet(0),
       );
     }
 
@@ -474,12 +284,6 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
           availableHeight: constraints.maxHeight,
         );
 
-        // Overscroll progress (0.0 to 1.0) for the add-domain zone
-        final overscrollProgress =
-            (_overscrollDistance / _overscrollThreshold).clamp(0.0, 1.0);
-        final showAddZone =
-            domains.length < 8 && _overscrollDistance > 0;
-
         return SizedBox(
           width: double.infinity,
           height: double.infinity,
@@ -494,19 +298,26 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
             child: ClipRect(
               child: Stack(
                 children: [
-                  // Animated card column
-                  AnimatedBuilder(
-                    animation: _focusAnimation,
-                    builder: (context, _) {
-                      final t = _focusAnimation.value;
+                  // Animated card column — pre-compute per-domain tasks
+                  // outside the builder to avoid filtering at 60fps.
+                  Builder(builder: (context) {
+                    final domainTaskMap = <int, List<Task>>{};
+                    for (int i = 0; i < domains.length; i++) {
+                      final domain = domains[i];
+                      domainTaskMap[i] = tasks
+                          .where((task) =>
+                              task.category.toLowerCase() ==
+                              domain.name.toLowerCase())
+                          .toList();
+                    }
+                    return AnimatedBuilder(
+                      animation: _focusAnimation,
+                      builder: (context, _) {
+                        final t = _focusAnimation.value;
 
-                      final cards = List.generate(domains.length, (index) {
-                        final domain = domains[index];
-                        final domainTasks = tasks
-                            .where((task) =>
-                                task.category.toLowerCase() ==
-                                domain.name.toLowerCase())
-                            .toList();
+                        final cards = List.generate(domains.length, (index) {
+                          final domain = domains[index];
+                          final domainTasks = domainTaskMap[index]!;
 
                         // Compute animated height: lerp between previous and target
                         final prevHeight = index == _previousFocusedIndex
@@ -561,75 +372,13 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
                         );
                       });
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: cards,
-                      );
-                    },
-                  ),
-                  // Overscroll hint — bouncing arrow at bottom
-                  if (!_overscrollHintSeen &&
-                      _focusedIndex == domains.length - 1 &&
-                      domains.length < 8 &&
-                      !showAddZone)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 12,
-                      child: OverscrollHintIndicator(
-                        domainColor: domains[_focusedIndex].primary,
-                      ),
-                    ),
-                  // Add-domain zone — overlays at bottom, only during overscroll
-                  if (showAddZone)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: -56 + (56 * overscrollProgress),
-                      child: Opacity(
-                        opacity: overscrollProgress,
-                        child: Container(
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: _overscrollLocked
-                                ? DomainColors.defaultPalette.primary
-                                    .withValues(alpha: 0.3)
-                                : DomainColors.defaultPalette.surface,
-                            border: Border.all(
-                              color: DomainColors
-                                  .defaultPalette.primary
-                                  .withValues(alpha: 0.4),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.add_circle_outline,
-                                color: DomainColors
-                                    .defaultPalette.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(
-                                _overscrollLocked
-                                    ? 'Release to add'
-                                    : 'New Domain',
-                                style: AppTypography.ctaLabelText(
-                                  color: DomainColors
-                                      .defaultPalette.primary,
-                                ).copyWith(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: cards,
+                        );
+                      },
+                    );
+                  }),
                 ],
               ),
             ),

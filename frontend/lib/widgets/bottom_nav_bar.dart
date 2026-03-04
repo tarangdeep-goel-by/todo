@@ -74,7 +74,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
       child: Container(
         height: AppSpacing.bottomNavHeight,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1816),
+          color: AppColors.navBg,
           borderRadius: BorderRadius.circular(AppSpacing.bottomNavRadius),
           boxShadow: [
             BoxShadow(
@@ -181,16 +181,21 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive ? activeColor : inactiveColor;
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 24, color: color),
-            const SizedBox(height: 4),
-            Text(label, style: AppTypography.navLabel(color: color)),
-          ],
+      child: Semantics(
+        button: true,
+        selected: isActive,
+        label: '$label tab',
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 24, color: color),
+              const SizedBox(height: 4),
+              Text(label, style: AppTypography.navLabel(color: color)),
+            ],
+          ),
         ),
       ),
     );
@@ -215,36 +220,40 @@ class _CenterPttButton extends StatelessWidget {
     final bgColor =
         isProcessing ? DomainColors.careerDark.primary : AppColors.darkText;
 
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(23),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.mic_rounded,
-              size: 20,
-              color: isProcessing ? AppColors.darkText : AppColors.darkBg,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                showVoiceHint ? 'Hold to talk' : 'Type or talk',
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.navLabel(
-                  color: isProcessing ? AppColors.darkText : AppColors.darkBg,
-                ).copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+    return Semantics(
+      button: true,
+      label: 'Input. Tap to type, hold to talk',
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          height: AppSpacing.pttButtonHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(23),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.mic_rounded,
+                size: 20,
+                color: isProcessing ? AppColors.darkText : AppColors.darkBg,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  showVoiceHint ? 'Hold to talk' : 'Type or talk',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.navLabel(
+                    color: isProcessing ? AppColors.darkText : AppColors.darkBg,
+                  ).copyWith(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

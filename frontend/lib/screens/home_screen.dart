@@ -181,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             // Coaching hint — rotating examples when few tasks exist
             // Hide during tutorial to avoid visual clutter
-            if (taskCount < 5 && !_tutorialActive)
+            if (taskCount == 0 && !_tutorialActive)
               Positioned(
                 left: 0,
                 right: 0,

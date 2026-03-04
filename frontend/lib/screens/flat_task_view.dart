@@ -80,6 +80,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     final storeState = ref.watch(taskStoreProvider);
     final allFiltered = ref.watch(flatViewTasksProvider);
     final parentNames = ref.watch(l1ParentNamesProvider);
+    final paletteMap = ref.watch(domainPalettesProvider);
 
     // Reset display count when filter changes
     ref.listen(taskFilterProvider, (prev, next) {
@@ -145,11 +146,9 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
           final task = displayTasks[index];
           final isDemoTask = task.id == OnboardingService.demoTaskId;
-          final paletteMap = ref.watch(domainPalettesProvider);
-          final domain =
-              DomainColors.getDomain(task.category, true, paletteMap);
 
           final taskItem = TaskItem(
+            key: ValueKey(task.id),
             task: task,
             isDark: true,
             parentName: parentNames[task.id],
@@ -159,6 +158,8 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
           // Wrap demo task with tutorial overlay
           if (isDemoTask && isTutorial) {
+            final domain =
+                DomainColors.getDomain(task.category, true, paletteMap);
             return Stack(
               children: [
                 taskItem,

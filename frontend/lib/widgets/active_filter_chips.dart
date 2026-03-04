@@ -34,10 +34,20 @@ class ActiveFilterChips extends ConsumerWidget {
               style: AppTypography.metadataText(color: color)
                   .copyWith(fontSize: 12, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(width: 4),
-            GestureDetector(
-              onTap: onRemove,
-              child: Icon(Icons.close, size: 14, color: color),
+            Semantics(
+              button: true,
+              label: 'Remove $label filter',
+              child: GestureDetector(
+                onTap: onRemove,
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  width: AppSpacing.minTouchTarget,
+                  height: AppSpacing.minTouchTarget,
+                  child: Center(
+                    child: Icon(Icons.close, size: 14, color: color),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

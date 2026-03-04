@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
 
@@ -27,7 +28,7 @@ class _CoachingHintState extends State<CoachingHint> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+    _timer = Timer.periodic(AppAnimations.coachingCycle, (_) {
       if (mounted) {
         setState(() => _currentIndex = (_currentIndex + 1) % _hints.length);
       }
@@ -43,14 +44,14 @@ class _CoachingHintState extends State<CoachingHint> {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
+      duration: AppAnimations.coachingSwitch,
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       child: Text(
         'Try: "${_hints[_currentIndex]}"',
         key: ValueKey(_currentIndex),
         style: AppTypography.metadataText(
-          color: AppColors.darkText.withValues(alpha: 0.4),
+          color: AppColors.tertiaryText,
         ).copyWith(
           fontSize: 14,
           fontStyle: FontStyle.italic,
