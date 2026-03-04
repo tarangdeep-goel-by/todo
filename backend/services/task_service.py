@@ -1,7 +1,8 @@
 """Task service for CRUD operations and tree queries."""
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, case, and_, or_
 from typing import List, Optional, Dict
+from datetime import datetime, timezone, timedelta
 from models.task import Task
 from models.category import Category
 from utils.fuzzy_matcher import FuzzyMatcher
@@ -245,6 +246,72 @@ class TaskService:
             )
 
         return activated_ids
+
+    async def get_task_stats(self, user_id: str) -> dict:
+        """Return aggregate task statistics for a user, broken down by category."""
+        now = datetime.now(timezone.utc)
+        soon = now + timedelta(hours=48)
+
+        overdue_cond = and_(Task.status == 'active', Task.due_date.isnot(None), Task.due_date < now)
+        active_cond = and_(Task.status == 'active', or_(Task.due_date.is_(None), Task.due_date >= now))
+        due_soon_cond = and_(Task.status == 'active', Task.due_date.isnot(None), Task.due_date >= now, Task.due_date < soon)
+
+        overall = await self.db.execute(
+            select(
+                func.count(Task.id).label("total"),
+                func.sum(case((active_cond, 1), else_=0)).label("active"),
+                func.sum(case((Task.status == 'completed', 1), else_=0)).label("completed"),
+                func.sum(case((overdue_cond, 1), else_=0)).label("overdue"),
+                func.sum(case((Task.priority == 'high', 1), else_=0)).label("high"),
+                func.sum(case((Task.priority == 'medium', 1), else_=0)).label("medium"),
+                func.sum(case((Task.priority == 'low', 1), else_=0)).label("low"),
+                func.sum(case((or_(Task.priority.is_(None), Task.priority.notin_(['high', 'medium', 'low'])), 1), else_=0)).label("none"),
+                func.sum(case((due_soon_cond, 1), else_=0)).label("due_soon"),
+            ).where(Task.user_id == user_id)
+        )
+        row = overall.one()
+
+        cat_result = await self.db.execute(
+            select(
+                Task.category_id,
+                Task.category,
+                func.count(Task.id).label("total"),
+                func.sum(case((active_cond, 1), else_=0)).label("active"),
+                func.sum(case((Task.status == 'completed', 1), else_=0)).label("completed"),
+                func.sum(case((overdue_cond, 1), else_=0)).label("overdue"),
+            )
+            .where(Task.user_id == user_id)
+            .group_by(Task.category_id, Task.category)
+        )
+
+        by_category = [
+            {
+                "category_id": r.category_id,
+                "category_name": r.category if r.category else "uncategorized",
+                "total": r.total or 0,
+                "active": r.active or 0,
+                "completed": r.completed or 0,
+                "overdue": r.overdue or 0,
+            }
+            for r in cat_result.all()
+        ]
+
+        return {
+            "total_tasks": row.total or 0,
+            "by_status": {
+                "active": row.active or 0,
+                "completed": row.completed or 0,
+                "overdue": row.overdue or 0,
+            },
+            "by_priority": {
+                "high": row.high or 0,
+                "medium": row.medium or 0,
+                "low": row.low or 0,
+                "none": row.none or 0,
+            },
+            "by_category": by_category,
+            "due_soon_count": row.due_soon or 0,
+        }
 
     async def build_full_tree_context(self, user_id: str, compressed: bool = False) -> str:
         """

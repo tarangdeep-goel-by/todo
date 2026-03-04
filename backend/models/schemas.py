@@ -247,3 +247,22 @@ class CreateCategoryRequest(BaseModel):
     """Request schema for creating a category."""
     user_id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1, max_length=50)
+
+
+class CategoryStats(BaseModel):
+    """Stats for a single category."""
+    category_id: Optional[str]
+    category_name: str
+    total: int
+    active: int
+    completed: int
+    overdue: int
+
+
+class TaskStatsResponse(BaseModel):
+    """Response schema for task statistics."""
+    total_tasks: int
+    by_status: Dict[str, int]
+    by_priority: Dict[str, int]
+    by_category: List[CategoryStats]
+    due_soon_count: int
