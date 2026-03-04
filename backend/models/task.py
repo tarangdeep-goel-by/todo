@@ -32,7 +32,7 @@ class Task(Base):
     )
 
     # Category and status
-    category = Column(String(50), nullable=False)
+    category = Column(String(50), nullable=True)
     category_id = Column(
         UUID(as_uuid=False),
         ForeignKey("categories.id", ondelete="SET NULL"),

@@ -66,8 +66,10 @@ class TaskService:
 
     VALID_DOMAINS = {"career", "finance", "health", "relationships", "growth", "recreation", "home", "community"}
 
-    async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
+    async def _resolve_category_id(self, user_id: str, category: Optional[str]) -> Optional[str]:
         """Look up category ID from category name string. Auto-creates valid domains."""
+        if not category:
+            return None
         name = category.lower().strip()
         result = await self.db.execute(
             select(Category.id)
@@ -134,7 +136,7 @@ class TaskService:
         agg_query = (
             select(
                 func.count(Task.id).label("total"),
-                func.count().filter(Task.status == "active").label("active"),
+                func.count().filter(and_(Task.status == "active", ~is_overdue)).label("active"),
                 func.count().filter(Task.status == "completed").label("completed"),
                 func.count().filter(is_overdue).label("overdue"),
                 func.count().filter(is_due_soon).label("due_soon"),
@@ -155,7 +157,7 @@ class TaskService:
                 Task.category_id,
                 func.coalesce(Category.name, "Uncategorized").label("category_name"),
                 func.count(Task.id).label("total"),
-                func.count().filter(Task.status == "active").label("active"),
+                func.count().filter(and_(Task.status == "active", ~is_overdue)).label("active"),
                 func.count().filter(Task.status == "completed").label("completed"),
                 func.count().filter(is_overdue).label("overdue"),
             )
