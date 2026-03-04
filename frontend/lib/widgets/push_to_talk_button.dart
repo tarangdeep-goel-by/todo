@@ -287,7 +287,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       _resetState();
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to process: $e',
+          message: 'Couldn\'t process your input. Try again.',
           style: SnackbarStyle.error,
         );
       }

@@ -103,7 +103,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       if (context.mounted) {
         showStyledSnackbar(
           context,
-          message: 'Failed to update task: $e',
+          message: 'Couldn\'t update task. Check your connection.',
           style: SnackbarStyle.error,
         );
       }
@@ -129,7 +129,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       if (context.mounted) {
         showStyledSnackbar(
           context,
-          message: 'Undo failed: $e',
+          message: 'Couldn\'t undo. Check your connection.',
           style: SnackbarStyle.error,
         );
       }
@@ -175,7 +175,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       if (context.mounted) {
         showStyledSnackbar(
           context,
-          message: 'Failed to delete task: $e',
+          message: 'Couldn\'t delete task. Check your connection.',
           style: SnackbarStyle.error,
         );
       }
@@ -220,9 +220,13 @@ class _TaskItemState extends ConsumerState<TaskItem> {
     final isOverdue = task.isOverdue;
     final isDueSoon = task.isDueSoon;
 
+    // During tutorial, disable tap/long-press to prevent bypassing swipe steps
+    final isTutorialMode = widget.onTutorialStepComplete != null;
+
     Widget taskContent = GestureDetector(
-      onTap: () => _toggleTask(context),
-      onLongPress: () => showTaskDetailOverlay(context, taskId: task.id),
+      onTap: isTutorialMode ? null : () => _toggleTask(context),
+      onLongPress:
+          isTutorialMode ? null : () => showTaskDetailOverlay(context, taskId: task.id),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
         decoration: BoxDecoration(

@@ -46,6 +46,8 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   }
 
   void _onTutorialStepComplete(int nextStep) async {
+    // Only advance sequentially — prevents regression from wrong swipe direction
+    if (nextStep != _swipeTutorialStep + 1) return;
     await OnboardingService.setSwipeTutorialStep(nextStep);
     if (mounted) {
       setState(() => _swipeTutorialStep = nextStep);
@@ -93,7 +95,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
     if (storeState.error != null && allFiltered.isEmpty) {
       return EmptyState(
-        message: 'Unable to load tasks\n${storeState.error}',
+        message: 'Something went wrong loading your tasks.',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
         onRetry: () => ref.read(taskStoreProvider.notifier).fetchAll(),
@@ -104,7 +106,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       return const EmptyState(
         title: 'All clear',
         message:
-            'Your tasks will appear here.\nSpeak or type a command below to get started.',
+            'Your tasks will appear here.\nSpeak or type below to add your first task.',
         textColor: AppColors.darkText,
         icon: Icons.task_alt,
         examples: [

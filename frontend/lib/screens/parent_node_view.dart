@@ -13,8 +13,10 @@ import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/styled_snackbar.dart';
+import '../widgets/overscroll_hint_indicator.dart';
 import '../utils/liquid_focus_scroll.dart';
 import '../services/haptic_service.dart';
+import '../services/onboarding_service.dart';
 
 /// Parent node view with liquid focus domain cards
 /// All cards visible at once, scrolling changes focus
@@ -45,6 +47,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
   double _overscrollDistance = 0.0;
   bool _overscrollLocked = false;
   static const double _overscrollThreshold = 80.0;
+  bool _overscrollHintSeen = true;
 
   @override
   void initState() {
@@ -58,6 +61,15 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       curve: AppAnimations.easeOutQuint,
     );
     _focusAnimController.value = 1.0; // Start settled
+    _loadOverscrollHint();
+  }
+
+  Future<void> _loadOverscrollHint() async {
+    final seen = await OnboardingService.hasSeenHint(
+        OnboardingService.overscrollHintKey);
+    if (mounted) {
+      setState(() => _overscrollHintSeen = seen);
+    }
   }
 
   @override
@@ -124,6 +136,11 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
         if (!_overscrollLocked && overscroll >= _overscrollThreshold) {
           _overscrollLocked = true;
           HapticService.medium();
+          if (!_overscrollHintSeen) {
+            OnboardingService.markHintSeen(
+                OnboardingService.overscrollHintKey);
+            _overscrollHintSeen = true;
+          }
         }
       });
     }
@@ -282,7 +299,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
     } catch (e) {
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to create domain: $e',
+          message: 'Couldn\'t create domain. Try again.',
           style: SnackbarStyle.error,
         );
       }
@@ -401,7 +418,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       }
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to delete domain: $e',
+          message: 'Couldn\'t delete domain. Try again.',
           style: SnackbarStyle.error,
         );
       }
@@ -422,7 +439,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
 
     if (storeState.error != null && domains.isEmpty) {
       return EmptyState(
-        message: 'Unable to load tasks',
+        message: 'Something went wrong loading your tasks.',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
         onRetry: () => ref.read(taskStoreProvider.notifier).fetchAll(),
@@ -433,7 +450,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       return EmptyState(
         title: 'Your world, organized',
         message:
-            'Speak a task and VOKL creates domains automatically.\nOr add one manually below.',
+            'Say or type a task — VOKL creates\ndomains for you automatically.',
         textColor: AppColors.darkText,
         icon: Icons.auto_awesome,
         examples: const [
@@ -550,6 +567,19 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
                       );
                     },
                   ),
+                  // Overscroll hint — bouncing arrow at bottom
+                  if (!_overscrollHintSeen &&
+                      _focusedIndex == domains.length - 1 &&
+                      domains.length < 8 &&
+                      !showAddZone)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: OverscrollHintIndicator(
+                        domainColor: domains[_focusedIndex].primary,
+                      ),
+                    ),
                   // Add-domain zone — overlays at bottom, only during overscroll
                   if (showAddZone)
                     Positioned(

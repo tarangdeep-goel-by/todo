@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../config/spacing.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
 
 /// Overlay on top of a task card during the swipe tutorial.
 /// Shows animated arrow + instruction text for each step.
 ///
-/// Step 0: right arrow → "Swipe right to complete"
-/// Step 1: left arrow → "Swipe left to restore"
-/// Step 2: left arrow → "Swipe left to delete" (red tint)
+/// Step 0: right arrow → "Swipe to complete"
+/// Step 1: left arrow → "Swipe to undo"
+/// Step 2: left arrow → "Swipe to delete" (red tint)
 ///
 /// Touches pass through to the Dismissible beneath.
 class SwipeTutorialOverlay extends StatefulWidget {
@@ -58,15 +59,15 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
     final IconData icon;
     switch (widget.step) {
       case 0:
-        text = 'Swipe right to complete';
+        text = 'Swipe to complete';
         icon = Icons.arrow_forward_rounded;
         break;
       case 1:
-        text = 'Swipe left to restore';
+        text = 'Swipe to undo';
         icon = Icons.arrow_back_rounded;
         break;
       case 2:
-        text = 'Swipe left to delete';
+        text = 'Swipe to delete';
         icon = Icons.arrow_back_rounded;
         break;
       default:
@@ -75,6 +76,7 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
 
     return IgnorePointer(
       child: Container(
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.7),
         ),
@@ -97,7 +99,7 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
               if (!isRightSwipe)
                 Icon(icon, color: color, size: 24),
               if (!isRightSwipe)
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
               Text(
                 text,
                 style: AppTypography.ctaLabelText(
@@ -108,7 +110,7 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
                 ),
               ),
               if (isRightSwipe)
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
               if (isRightSwipe)
                 Icon(icon, color: color, size: 24),
             ],

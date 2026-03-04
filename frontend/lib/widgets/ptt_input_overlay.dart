@@ -219,7 +219,7 @@ class _PttInputOverlayState extends ConsumerState<PttInputOverlay> {
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to process: $e',
+          message: 'Couldn\'t process your input. Try again.',
           style: SnackbarStyle.error,
         );
       }

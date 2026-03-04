@@ -50,9 +50,9 @@ class _CoachingHintState extends State<CoachingHint> {
         'Try: "${_hints[_currentIndex]}"',
         key: ValueKey(_currentIndex),
         style: AppTypography.metadataText(
-          color: AppColors.darkText.withValues(alpha: 0.3),
+          color: AppColors.darkText.withValues(alpha: 0.4),
         ).copyWith(
-          fontSize: 12,
+          fontSize: 14,
           fontStyle: FontStyle.italic,
         ),
         textAlign: TextAlign.center,

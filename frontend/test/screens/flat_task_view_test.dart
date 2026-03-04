@@ -45,7 +45,7 @@ void main() {
 
       expect(
         find.text(
-            'Your tasks will appear here.\nSpeak or type a command below to get started.'),
+            'Your tasks will appear here.\nSpeak or type below to add your first task.'),
         findsOneWidget,
       );
     });

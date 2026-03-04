@@ -302,7 +302,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       store.upsertTask(currentTask);
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to update: $e',
+          message: 'Couldn\'t save changes. Try again.',
           style: SnackbarStyle.error,
         );
       }
@@ -443,7 +443,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         await store.fetchAll();
         if (mounted) {
           showStyledSnackbar(context,
-            message: 'Failed to complete: $e',
+            message: 'Couldn\'t complete task. Try again.',
             style: SnackbarStyle.error,
           );
         }
@@ -544,7 +544,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       store.upsertTask(task);
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to move: $e',
+          message: 'Couldn\'t move task. Try again.',
           style: SnackbarStyle.error,
         );
       }
@@ -595,7 +595,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       if (mounted) {
         setState(() => _savingSubtask = false);
         showStyledSnackbar(context,
-          message: 'Failed to add subtask: $e',
+          message: 'Couldn\'t add subtask. Try again.',
           style: SnackbarStyle.error,
         );
       }
