@@ -282,7 +282,8 @@ class TestBrainDumpAPI:
             transcription="buy groceries",
             message="Found 1 tasks",
         )
-        with patch("routers.agent.AgentService") as MockAgent:
+        with patch("services.gemini_service.genai.Client"), \
+             patch("routers.agent.AgentService") as MockAgent:
             instance = MockAgent.return_value
             instance.process_brain_dump = AsyncMock(return_value=mock_response)
             response = await test_client.post("/agent/braindump", json={
@@ -300,7 +301,8 @@ class TestBrainDumpAPI:
             success=True, created_count=1,
             created_task_ids=["real-id-1"], message="Created 1 tasks",
         )
-        with patch("routers.agent.AgentService") as MockAgent:
+        with patch("services.gemini_service.genai.Client"), \
+             patch("routers.agent.AgentService") as MockAgent:
             instance = MockAgent.return_value
             instance.submit_brain_dump = AsyncMock(return_value=mock_response)
             response = await test_client.post("/agent/braindump/submit", json={

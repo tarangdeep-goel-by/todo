@@ -20,7 +20,7 @@ class TaskService:
         self,
         user_id: str,
         title: str,
-        category: str,
+        category: Optional[str],
         transcription: str,
         parent_id: Optional[str] = None,
         description: Optional[str] = None,
@@ -33,7 +33,7 @@ class TaskService:
         category_id: Optional[str] = None,
     ) -> Task:
         """Create a new task. Resolves category_id from category string if not provided."""
-        if not category_id:
+        if not category_id and category:
             category_id = await self._resolve_category_id(user_id, category)
 
         task = Task(
@@ -67,6 +67,8 @@ class TaskService:
 
     async def _resolve_category_id(self, user_id: str, category: str) -> Optional[str]:
         """Look up category ID from category name string. Auto-creates valid domains."""
+        if not category:
+            return None
         name = category.lower().strip()
         result = await self.db.execute(
             select(Category.id)

@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock
 
 # Set env vars before any app imports
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
-os.environ.setdefault("GEMINI_API_KEY", "test-key")
+os.environ["GEMINI_API_KEY"] = "test-key-for-testing"
+os.environ.setdefault("SARVAM_API_KEY", "test-sarvam-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
 
 # Add backend to path
@@ -15,6 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import text
+
+from config import get_settings
+# Clear cached settings so env vars above take effect
+get_settings.cache_clear()
 
 from database import Base, get_db
 from models.task import Task  # noqa: F401 — registers model on Base
