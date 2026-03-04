@@ -6,15 +6,60 @@ import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/onboarding_service.dart';
 import '../screens/ramble_screen.dart';
 import 'styled_snackbar.dart';
+import 'voice_hint_pulse.dart';
 
 /// Zomato-style 5-item bottom nav: Home | Flat | PTT (center FAB) | Calendar | Profile
-class BottomNavBar extends ConsumerWidget {
+class BottomNavBar extends ConsumerStatefulWidget {
   const BottomNavBar({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BottomNavBar> createState() => _BottomNavBarState();
+}
+
+class _BottomNavBarState extends ConsumerState<BottomNavBar> {
+  bool _voiceHintSeen = true; // default true = no hint
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVoiceHint();
+  }
+
+  Future<void> _loadVoiceHint() async {
+    final seen =
+        await OnboardingService.hasSeenHint(OnboardingService.voiceHintKey);
+    if (mounted) {
+      setState(() => _voiceHintSeen = seen);
+    }
+  }
+
+  Future<void> _onLongPress(BuildContext context) async {
+    HapticService.medium();
+    final result = await Navigator.push<({bool success, String message})>(
+      context,
+      MaterialPageRoute(builder: (_) => const RambleScreen()),
+    );
+
+    // Mark voice hint seen after first voice session
+    if (!_voiceHintSeen) {
+      await OnboardingService.markHintSeen(OnboardingService.voiceHintKey);
+      if (mounted) setState(() => _voiceHintSeen = true);
+    }
+
+    if (result != null && context.mounted) {
+      showStyledSnackbar(
+        context,
+        message: result.message,
+        style: result.success ? SnackbarStyle.success : SnackbarStyle.error,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final viewMode = ref.watch(viewModeProvider);
     final recordingState = ref.watch(recordingStateProvider);
     final activeColor = AppColors.darkText;
@@ -41,85 +86,74 @@ class BottomNavBar extends ConsumerWidget {
         ),
         child: Row(
           children: [
-          // Home
-          _NavItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
-            isActive: viewMode == ViewMode.node,
-            activeColor: activeColor,
-            inactiveColor: inactiveColor,
-            onTap: () {
-              HapticService.selection();
-              ref.read(viewModeProvider.notifier).state = ViewMode.node;
-            },
-          ),
-          // Flat
-          _NavItem(
-            icon: Icons.list_rounded,
-            label: 'Flat',
-            isActive: viewMode == ViewMode.flat,
-            activeColor: activeColor,
-            inactiveColor: inactiveColor,
-            onTap: () {
-              HapticService.selection();
-              ref.read(viewModeProvider.notifier).state = ViewMode.flat;
-            },
-          ),
-          // Center PTT
-          Expanded(
-            flex: 2,
-            child: _CenterPttButton(
-              isProcessing: recordingState == RecordingState.processing,
+            // Home
+            _NavItem(
+              icon: Icons.home_rounded,
+              label: 'Home',
+              isActive: viewMode == ViewMode.node,
+              activeColor: activeColor,
+              inactiveColor: inactiveColor,
               onTap: () {
-                HapticService.light();
-                ref.read(recordingStateProvider.notifier).state =
-                    RecordingState.typing;
-              },
-              onLongPress: () async {
-                HapticService.medium();
-                final result =
-                    await Navigator.push<({bool success, String message})>(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RambleScreen()),
-                );
-                if (result != null && context.mounted) {
-                  showStyledSnackbar(
-                    context,
-                    message: result.message,
-                    style: result.success
-                        ? SnackbarStyle.success
-                        : SnackbarStyle.error,
-                  );
-                }
+                HapticService.selection();
+                ref.read(viewModeProvider.notifier).state = ViewMode.node;
               },
             ),
-          ),
-          // Calendar
-          _NavItem(
-            icon: Icons.calendar_today_rounded,
-            label: 'Cal',
-            isActive: viewMode == ViewMode.calendar,
-            activeColor: activeColor,
-            inactiveColor: inactiveColor,
-            onTap: () {
-              HapticService.selection();
-              ref.read(viewModeProvider.notifier).state = ViewMode.calendar;
-            },
-          ),
-          // Profile
-          _NavItem(
-            icon: Icons.person_outline_rounded,
-            label: 'Profile',
-            isActive: false,
-            activeColor: activeColor,
-            inactiveColor: inactiveColor,
-            onTap: () {
-              HapticService.light();
-              showStyledSnackbar(context,
-                  message: 'Coming soon', style: SnackbarStyle.info);
-            },
-          ),
-        ],
+            // Flat
+            _NavItem(
+              icon: Icons.list_rounded,
+              label: 'Flat',
+              isActive: viewMode == ViewMode.flat,
+              activeColor: activeColor,
+              inactiveColor: inactiveColor,
+              onTap: () {
+                HapticService.selection();
+                ref.read(viewModeProvider.notifier).state = ViewMode.flat;
+              },
+            ),
+            // Center PTT with optional voice hint
+            Expanded(
+              flex: 2,
+              child: VoiceHintPulse(
+                isActive: !_voiceHintSeen,
+                child: _CenterPttButton(
+                  isProcessing:
+                      recordingState == RecordingState.processing,
+                  showVoiceHint: !_voiceHintSeen,
+                  onTap: () {
+                    HapticService.light();
+                    ref.read(recordingStateProvider.notifier).state =
+                        RecordingState.typing;
+                  },
+                  onLongPress: () => _onLongPress(context),
+                ),
+              ),
+            ),
+            // Calendar
+            _NavItem(
+              icon: Icons.calendar_today_rounded,
+              label: 'Cal',
+              isActive: viewMode == ViewMode.calendar,
+              activeColor: activeColor,
+              inactiveColor: inactiveColor,
+              onTap: () {
+                HapticService.selection();
+                ref.read(viewModeProvider.notifier).state = ViewMode.calendar;
+              },
+            ),
+            // Profile
+            _NavItem(
+              icon: Icons.person_outline_rounded,
+              label: 'Profile',
+              isActive: false,
+              activeColor: activeColor,
+              inactiveColor: inactiveColor,
+              onTap: () {
+                HapticService.light();
+                showStyledSnackbar(context,
+                    message: 'Coming soon', style: SnackbarStyle.info);
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -165,6 +199,7 @@ class _NavItem extends StatelessWidget {
 
 class _CenterPttButton extends StatelessWidget {
   final bool isProcessing;
+  final bool showVoiceHint;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -172,6 +207,7 @@ class _CenterPttButton extends StatelessWidget {
     required this.isProcessing,
     required this.onTap,
     required this.onLongPress,
+    this.showVoiceHint = false,
   });
 
   @override
@@ -201,7 +237,7 @@ class _CenterPttButton extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                'Type or talk',
+                showVoiceHint ? 'Hold to talk' : 'Type or talk',
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.navLabel(
                   color: isProcessing ? AppColors.darkText : AppColors.darkBg,

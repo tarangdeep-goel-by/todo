@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/typography.dart';
 
-/// Bouncing downward arrow + "Tap Flat" text, positioned above the bottom nav.
+/// Bouncing downward arrow + "See all tasks" text, positioned above the bottom nav.
 /// Dismissed when user switches to flat view.
 class FlatViewNudge extends StatefulWidget {
   final Color domainColor;
@@ -53,7 +53,7 @@ class _FlatViewNudgeState extends State<FlatViewNudge>
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Tap Flat',
+            'See all tasks',
             style: AppTypography.ctaLabelText(
               color: color,
             ).copyWith(

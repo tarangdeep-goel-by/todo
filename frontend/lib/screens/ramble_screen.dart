@@ -217,7 +217,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         debugPrint('[Ramble] Server error: $error');
         if (mounted && _phase == _RamblePhase.recording) {
           showStyledSnackbar(context,
-            message: 'Stream error: $error',
+            message: 'Voice connection interrupted. Try again.',
             style: SnackbarStyle.error,
           );
         }
@@ -276,7 +276,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         _resetProviders();
         Navigator.pop(context);
         showStyledSnackbar(context,
-          message: 'Failed to start: $e',
+          message: 'Couldn\'t start recording. Check your microphone.',
           style: SnackbarStyle.error,
         );
       }
@@ -314,7 +314,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
           _resetProviders();
           Navigator.pop(context);
           showStyledSnackbar(context,
-            message: 'Nothing heard. Try again.',
+            message: 'Didn\'t catch anything. Hold and speak clearly.',
             style: SnackbarStyle.info,
           );
         }
@@ -329,7 +329,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         _resetProviders();
         Navigator.pop(context);
         showStyledSnackbar(context,
-          message: 'Failed to stop: $e',
+          message: 'Something went wrong. Try again.',
           style: SnackbarStyle.error,
         );
       }
@@ -379,7 +379,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       debugPrint('[Ramble] Resume FAILED: $e');
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to resume: $e',
+          message: 'Couldn\'t resume recording. Try again.',
           style: SnackbarStyle.error,
         );
       }
@@ -451,7 +451,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       debugPrint('[Ramble] _processBrainDump FAILED: $e');
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to process: $e',
+          message: 'Couldn\'t process your input. Try again.',
           style: SnackbarStyle.error,
         );
         setState(() => _phase = _RamblePhase.editing);
@@ -502,7 +502,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       if (mounted) {
         setState(() => _isSubmitting = false);
         showStyledSnackbar(context,
-          message: 'Failed to submit: $e',
+          message: 'Couldn\'t save tasks. Check your connection.',
           style: SnackbarStyle.error,
         );
       }

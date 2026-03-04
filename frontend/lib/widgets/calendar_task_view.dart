@@ -38,7 +38,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
 
     if (storeState.error != null && allTasks.isEmpty) {
       return EmptyState(
-        message: 'Unable to load tasks\n${storeState.error}',
+        message: 'Something went wrong loading your tasks.',
         textColor: AppColors.darkText,
         icon: Icons.error_outline,
         onRetry: () => ref.read(taskStoreProvider.notifier).fetchAll(),
@@ -54,7 +54,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     if (datedTasks.isEmpty && undatedTasks.isEmpty) {
       return const EmptyState(
         title: 'Timeline is clear',
-        message: 'Tasks with due dates appear here\non a chronological timeline.',
+        message: 'Add a due date to any task\nand it will show up here.',
         textColor: AppColors.darkText,
         icon: Icons.calendar_today,
         examples: [
@@ -258,7 +258,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
       store.upsertTask(task);
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to update task: $e',
+          message: 'Couldn\'t update task. Check your connection.',
           style: SnackbarStyle.error,
         );
       }

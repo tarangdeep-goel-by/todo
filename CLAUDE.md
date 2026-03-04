@@ -60,7 +60,7 @@ docker exec todo-backend python evaluation/run_eval.py --no-prefilter    # Skip 
 │  ├── allTasks        │ ◄─────► │  /api/agent/braindump/submit     │
 │  ├── byCategory      │         │  /ws/ramble           ← stream   │
 │  ├── byId            │         │  /api/tasks/*         ← CRUD     │
-│  ├── children        │         │                                  │
+│  ├── children        │         │  /api/categories/*    ← domains  │
 │  └── flatFiltered    │         │                                  │
 │                      │         │  AgentService → GeminiService    │
 │  RambleSheet ──────► │         │  RambleService (Gemini Live)     │
@@ -105,7 +105,7 @@ Categories (Career, Finance, Health, Relationships, Growth, Recreation, Home, Co
 **Backend** (Docker env in `docker-compose.yml`):
 - `DATABASE_URL`: `postgresql+asyncpg://todo:todo123@postgres:5432/todo_db`
 - `GEMINI_API_KEY`: Google Gemini API key
-- `SEARCH_ENGINE`: `pg_native` (pg_trgm trigram search) or `fuzzy` (RapidFuzz). Default: `fuzzy`
+- `SEARCH_ENGINE`: `pg_native` (pg_trgm trigram search) or `fuzzy` (RapidFuzz). Code default: `fuzzy`, Docker default: `pg_native`
 
 **Frontend** (`frontend/lib/config/constants.dart`):
 - `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)

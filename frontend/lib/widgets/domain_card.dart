@@ -144,7 +144,7 @@ class _DomainCardState extends ConsumerState<DomainCard>
       store.upsertTask(task);
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Failed to update task: $e',
+          message: 'Couldn\'t update task. Check your connection.',
           style: SnackbarStyle.error,
         );
       }
@@ -167,7 +167,7 @@ class _DomainCardState extends ConsumerState<DomainCard>
     } catch (e) {
       if (mounted) {
         showStyledSnackbar(context,
-          message: 'Undo failed: $e',
+          message: 'Couldn\'t undo. Check your connection.',
           style: SnackbarStyle.error,
         );
       }

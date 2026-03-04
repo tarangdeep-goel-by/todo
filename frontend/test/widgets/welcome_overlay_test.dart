@@ -26,9 +26,8 @@ void main() {
         buildTestApp(WelcomeOverlay(onDismiss: () {})),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Speak or type commands'), findsOneWidget);
-      expect(find.text('AI organizes everything'), findsOneWidget);
-      expect(find.text('Swipe to act'), findsOneWidget);
+      expect(find.text('Say it, done.'), findsOneWidget);
+      expect(find.text('AI handles the rest'), findsOneWidget);
     });
 
     testWidgets('shows Get Started button text', (tester) async {

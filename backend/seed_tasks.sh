@@ -35,49 +35,51 @@ EOF
 
 # Career tasks
 create_task "Review project proposal" "Career"
-create_task "Update API documentation" "Career"
-create_task "Fix authentication bug" "Career"
-create_task "Deploy staging environment" "Career"
-create_task "Code review for PR #123" "Career"
 create_task "Prepare quarterly report" "Career"
 create_task "Schedule team meeting" "Career"
-create_task "Refactor user service" "Career"
+create_task "Update resume" "Career"
 
-# Home tasks
-create_task "Buy groceries" "Home"
-create_task "Schedule dentist appointment" "Home"
-create_task "Call mom" "Home"
-create_task "Pay electricity bill" "Home"
-create_task "Organize garage" "Home"
-create_task "Book vacation tickets" "Home"
-create_task "Return library books" "Home"
+# Finance tasks
+create_task "Review monthly budget" "Finance"
+create_task "File tax documents" "Finance"
+create_task "Set up automatic savings transfer" "Finance"
+create_task "Cancel unused subscriptions" "Finance"
 
 # Health tasks
 create_task "Morning jog" "Health"
 create_task "Meal prep for the week" "Health"
-create_task "Take vitamins" "Health"
 create_task "Schedule annual checkup" "Health"
-create_task "Yoga session" "Health"
 create_task "Track water intake" "Health"
-create_task "Sleep before 11pm" "Health"
+
+# Relationships tasks
+create_task "Call mom" "Relationships"
+create_task "Plan date night" "Relationships"
+create_task "Write thank you note to mentor" "Relationships"
+create_task "Catch up with college friends" "Relationships"
 
 # Growth tasks
-create_task "Complete React tutorial" "Growth"
 create_task "Read chapter 3 of design book" "Growth"
 create_task "Practice Spanish vocabulary" "Growth"
 create_task "Watch ML course lecture" "Growth"
-create_task "Solve 3 LeetCode problems" "Growth"
-create_task "Learn about OKLCH colors" "Growth"
-create_task "Study Flutter animations" "Growth"
+create_task "Complete online certification module" "Growth"
 
 # Recreation tasks
-create_task "Design new landing page" "Recreation"
-create_task "Build portfolio website" "Recreation"
-create_task "Write blog post about AI" "Recreation"
-create_task "Create side project roadmap" "Recreation"
-create_task "Sketch app wireframes" "Recreation"
-create_task "Record podcast episode" "Recreation"
-create_task "Edit YouTube video" "Recreation"
+create_task "Plan weekend hiking trip" "Recreation"
+create_task "Try new restaurant downtown" "Recreation"
+create_task "Finish reading novel" "Recreation"
+create_task "Book movie tickets" "Recreation"
+
+# Home tasks
+create_task "Buy groceries" "Home"
+create_task "Organize garage" "Home"
+create_task "Fix leaky kitchen faucet" "Home"
+create_task "Deep clean bathroom" "Home"
+
+# Community tasks
+create_task "Sign up for neighborhood cleanup" "Community"
+create_task "Volunteer at food bank Saturday" "Community"
+create_task "Attend town hall meeting" "Community"
+create_task "Donate old clothes" "Community"
 
 echo ""
 echo "✅ Done! Created tasks across all 8 domains"

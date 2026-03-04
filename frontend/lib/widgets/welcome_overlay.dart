@@ -110,23 +110,16 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   // Teaching points
                   _buildPoint(
                     Icons.mic_none_rounded,
-                    'Speak or type commands',
-                    'Say "Add buy milk to home"\nand AI handles the rest.',
+                    'Say it, done.',
+                    'Just speak \u2014 VOKL finds the right\ndomain and creates the task.',
                     accentColors[0],
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   _buildPoint(
                     Icons.auto_awesome,
-                    'AI organizes everything',
-                    'Tasks are sorted into color-coded\ndomains automatically.',
+                    'AI handles the rest',
+                    'Swipe, long-press, hold the mic \u2014\nyou\u2019ll discover as you go.',
                     accentColors[1],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildPoint(
-                    Icons.swipe_rounded,
-                    'Swipe to act',
-                    'Swipe right to complete, left to delete.\nTap to toggle status.',
-                    accentColors[2],
                   ),
 
                   const Spacer(),
