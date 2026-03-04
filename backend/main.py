@@ -1,4 +1,5 @@
 """Main FastAPI application."""
+from datetime import datetime, timezone
 import logging
 
 logging.basicConfig(
@@ -43,7 +44,8 @@ async def health():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "environment": settings.app_env
+        "environment": settings.app_env,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
