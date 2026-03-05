@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import datetime
 from database import get_db
+from auth import get_current_user
 from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse, TaskSearchResult, TaskSearchResponse
 from services.task_service import TaskService
 from models.task import Task
@@ -36,8 +37,8 @@ def task_to_response(task: Task) -> TaskResponse:
 
 @router.get("", response_model=TaskListResponse)
 async def get_tasks(
-    # Required
-    user_id: str = Query(..., description="User ID"),
+    # Auth
+    user_id: str = Depends(get_current_user),
 
     # Exact match filters
     category: Optional[str] = Query(None, description="Filter by category (comma-separated)"),
@@ -107,7 +108,7 @@ async def get_tasks(
 
 @router.get("/stats", response_model=TaskStatsResponse)
 async def get_task_stats(
-    user_id: str = Query(..., description="User ID"),
+    user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskStatsResponse:
     """Get aggregate task statistics for a user."""
@@ -118,8 +119,8 @@ async def get_task_stats(
 
 @router.get("/search", response_model=TaskSearchResponse)
 async def search_tasks(
-    q: str = Query(..., min_length=1),
-    user_id: str = Query(...),
+    q: str = Query(..., min_length=1, max_length=500),
+    user_id: str = Depends(get_current_user),
     limit: int = Query(10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ) -> TaskSearchResponse:
@@ -152,6 +153,7 @@ async def search_tasks(
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: str,
+    user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Get a specific task by ID."""
@@ -161,18 +163,31 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     return task_to_response(task)
 
 
 @router.post("", response_model=TaskResponse, status_code=201)
 async def create_task(
     request: CreateTaskRequest,
+    user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Create a new task."""
     task_service = TaskService(db)
+
+    # Validate parent ownership
+    if request.parent_id:
+        parent = await task_service.get_task(request.parent_id)
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent task not found")
+        if parent.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to use this parent task")
+
     task = await task_service.create_task(
-        user_id=request.user_id,
+        user_id=user_id,
         title=request.title,
         description=request.description,
         category=request.category,
@@ -192,10 +207,18 @@ async def create_task(
 async def update_task(
     task_id: str,
     request: UpdateTaskRequest,
+    user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Update an existing task."""
     task_service = TaskService(db)
+
+    # Verify ownership
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     # Build update dict from request
     updates = {}
@@ -206,6 +229,12 @@ async def update_task(
     if request.category is not None:
         updates['category'] = request.category
     if request.parent_id is not None:
+        if request.parent_id:  # non-empty string = move under a parent
+            parent = await task_service.get_task(request.parent_id)
+            if not parent:
+                raise HTTPException(status_code=404, detail="Parent task not found")
+            if parent.user_id != user_id:
+                raise HTTPException(status_code=403, detail="Not authorized to use this parent task")
         updates['parent_id'] = request.parent_id
     if request.due_date is not None:
         updates['due_date'] = request.due_date
@@ -229,6 +258,7 @@ async def update_task(
 @router.put("/{task_id}/complete", response_model=TaskResponse)
 async def complete_task(
     task_id: str,
+    user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Complete task. If it has active children, completes them too."""
@@ -237,6 +267,9 @@ async def complete_task(
     task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     # Check for active children
     children = await task_service.get_tasks(task.user_id, parent_id=task_id)
@@ -255,7 +288,7 @@ async def complete_task(
 @router.delete("/{task_id}")
 async def delete_task(
     task_id: str,
-    user_id: str = Query(..., description="User ID for verification"),
+    user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Hard delete task and all descendants from DB."""

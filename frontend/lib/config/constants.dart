@@ -27,13 +27,12 @@ class AppAnimations {
 
 /// App-wide constants
 class AppConstants {
-  // Default user ID (MVP)
-  static const String defaultUserId = 'default-user';
-
-  // API base URL
-  // For Android device testing, use your machine's local IP
+  // API base URL — override at build time: flutter run --dart-define=API_BASE_URL=https://...
   // For Android emulator, use 10.0.2.2 instead of localhost
-  static const String apiBaseUrl = 'http://192.168.0.106:8001/api';
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8001/api',
+  );
 
   // Audio recording settings
   static const String audioFolderName = 'audio_recordings';
