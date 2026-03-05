@@ -41,26 +41,12 @@ void main() {
       expect(find.byType(TextField), findsNothing);
     });
 
-    testWidgets('typing state shows TextField with hint', (tester) async {
+    testWidgets('typing state renders nothing (no longer used)', (tester) async {
       await tester
           .pumpWidget(buildOverlay(initialState: RecordingState.typing));
       await tester.pump();
-      expect(find.byType(TextField), findsOneWidget);
-      expect(find.text('What do you want to do?'), findsOneWidget);
-    });
-
-    testWidgets('typing state shows close button', (tester) async {
-      await tester
-          .pumpWidget(buildOverlay(initialState: RecordingState.typing));
-      await tester.pump();
-      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
-    });
-
-    testWidgets('typing state shows send button', (tester) async {
-      await tester
-          .pumpWidget(buildOverlay(initialState: RecordingState.typing));
-      await tester.pump();
-      expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+      // Typing state is no longer handled by PttInputOverlay
+      expect(find.byType(TextField), findsNothing);
     });
 
     testWidgets('processing state shows animated dots', (tester) async {
@@ -78,31 +64,6 @@ void main() {
       });
 
       expect(circleFinder, findsNWidgets(3));
-    });
-
-    testWidgets('tapping close button resets to idle state', (tester) async {
-      final container = ProviderContainer(overrides: [
-        apiServiceProvider.overrideWithValue(mockApi),
-        domainPalettesProvider.overrideWithValue(createTestPaletteMap()),
-        recordingStateProvider.overrideWith((ref) => RecordingState.typing),
-      ]);
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: PttInputOverlay(),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pump();
-
-      expect(container.read(recordingStateProvider), RecordingState.idle);
     });
   });
 }

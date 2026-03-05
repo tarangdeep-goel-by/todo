@@ -8,6 +8,7 @@ import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
 import '../screens/ramble_screen.dart';
+import 'add_task_sheet.dart';
 import 'styled_snackbar.dart';
 import 'voice_hint_pulse.dart';
 
@@ -33,6 +34,26 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
         await OnboardingService.hasSeenHint(OnboardingService.voiceHintKey);
     if (mounted) {
       setState(() => _voiceHintSeen = seen);
+    }
+  }
+
+  Future<void> _openAddSheet(BuildContext context) async {
+    HapticService.light();
+    final added = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.darkBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusMd)),
+      ),
+      builder: (_) => const AddTaskSheet(),
+    );
+
+    if (added == true && context.mounted) {
+      showStyledSnackbar(context,
+        message: 'Task added',
+        style: SnackbarStyle.success,
+      );
     }
   }
 
@@ -119,11 +140,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
                   isProcessing:
                       recordingState == RecordingState.processing,
                   showVoiceHint: !_voiceHintSeen,
-                  onTap: () {
-                    HapticService.light();
-                    ref.read(recordingStateProvider.notifier).state =
-                        RecordingState.typing;
-                  },
+                  onTap: () => _openAddSheet(context),
                   onLongPress: () => _onLongPress(context),
                 ),
               ),
@@ -222,7 +239,7 @@ class _CenterPttButton extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Input. Tap to type, hold to talk',
+      label: 'Input. Tap to add task, hold to talk',
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -245,7 +262,7 @@ class _CenterPttButton extends StatelessWidget {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  showVoiceHint ? 'Hold to talk' : 'Type or talk',
+                  showVoiceHint ? 'Hold to talk' : 'Add or talk',
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.navLabel(
                     color: isProcessing ? AppColors.darkText : AppColors.darkBg,
