@@ -55,7 +55,6 @@ void main() {
         createTestTask(id: 'b', title: 'Beta'),
       ];
       when(() => mockApi.getTasksAdvanced(
-        userId: any(named: 'userId'),
         limit: any(named: 'limit'),
         offset: any(named: 'offset'),
       )).thenAnswer((_) async => TaskListResponse(
@@ -80,7 +79,6 @@ void main() {
 
       // Fetch returns different set
       when(() => mockApi.getTasksAdvanced(
-        userId: any(named: 'userId'),
         limit: any(named: 'limit'),
         offset: any(named: 'offset'),
       )).thenAnswer((_) async => TaskListResponse(
@@ -101,7 +99,6 @@ void main() {
       );
 
       when(() => mockApi.getTasksAdvanced(
-        userId: any(named: 'userId'),
         limit: any(named: 'limit'),
         offset: any(named: 'offset'),
       )).thenThrow(Exception('network'));

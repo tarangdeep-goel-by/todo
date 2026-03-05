@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../config/constants.dart';
 import '../config/theme.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
@@ -98,7 +97,6 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     try {
       final apiService = ref.read(apiServiceProvider);
       final response = await apiService.searchTasks(
-        AppConstants.defaultUserId,
         query,
       );
       if (mounted && _searchController.text.trim() == query) {
