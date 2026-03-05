@@ -4,10 +4,6 @@ import 'package:frontend/config/constants.dart';
 
 void main() {
   group('AppConstants', () {
-    test('defaultUserId is default-user', () {
-      expect(AppConstants.defaultUserId, 'default-user');
-    });
-
     test('apiBaseUrl contains http', () {
       expect(AppConstants.apiBaseUrl, contains('http'));
     });

@@ -574,7 +574,6 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     try {
       final apiService = ref.read(apiServiceProvider);
       final newTask = await apiService.createTask(CreateTaskRequest(
-        userId: AppConstants.defaultUserId,
         title: title,
         category: parentTask.category,
         parentId: parentTask.id,

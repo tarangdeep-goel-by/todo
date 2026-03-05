@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task.dart';
 import '../models/task_filter.dart';
 import '../models/category.dart';
-import '../config/constants.dart';
 import '../config/theme.dart';
 import 'api_provider.dart';
 import 'task_filter_provider.dart';
@@ -52,7 +51,6 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
       while (true) {
         final response = await apiService.getTasksAdvanced(
-          userId: AppConstants.defaultUserId,
           limit: limit,
           offset: offset,
         );
@@ -66,7 +64,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
       // Fetch categories and update provider
       try {
-        final categories = await apiService.getCategories(AppConstants.defaultUserId);
+        final categories = await apiService.getCategories();
         _ref.read(categoriesProvider.notifier).state = categories;
       } catch (_) {
         // Non-fatal — categories may not be available

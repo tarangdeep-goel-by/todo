@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/constants.dart';
@@ -10,10 +11,15 @@ enum RambleConnectionState { disconnected, connecting, connected, reconnecting }
 /// WebSocket client for streaming ramble audio to backend (transcription-only).
 class RambleWebSocketService {
   final WebSocketChannel Function(Uri) _channelFactory;
+  final Future<String?> Function() _tokenProvider;
   WebSocketChannel? _channel;
 
-  RambleWebSocketService({WebSocketChannel Function(Uri)? channelFactory})
-      : _channelFactory = channelFactory ?? WebSocketChannel.connect;
+  RambleWebSocketService({
+    WebSocketChannel Function(Uri)? channelFactory,
+    Future<String?> Function()? tokenProvider,
+  })  : _channelFactory = channelFactory ?? WebSocketChannel.connect,
+        _tokenProvider = tokenProvider ??
+            (() async => FirebaseAuth.instance.currentUser?.getIdToken());
   final _transcriptionController = StreamController<String>.broadcast();
   final _finalTranscriptController = StreamController<String>.broadcast();
   final _statusController = StreamController<String>.broadcast();
@@ -23,7 +29,7 @@ class RambleWebSocketService {
       StreamController<RambleConnectionState>.broadcast();
 
   RambleConnectionState _connectionState = RambleConnectionState.disconnected;
-  String? _userId;
+  String? _token;
   bool _intentionalClose = false;
   DateTime? _connectedAt;
 
@@ -53,14 +59,22 @@ class RambleWebSocketService {
   }
 
   /// Connect and send start message.
-  Future<void> connect({required String userId}) async {
-    _userId = userId;
+  Future<void> connect() async {
     _intentionalClose = false;
     _connectedAt = null;
     _setConnectionState(RambleConnectionState.connecting);
 
+    // Get fresh auth token
+    _token = await _tokenProvider();
+    if (_token == null) {
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Not authenticated');
+      return;
+    }
+
+    final url = '$_wsUrl?token=$_token';
     debugPrint('[RambleWS] Connecting to $_wsUrl');
-    _channel = _channelFactory(Uri.parse(_wsUrl));
+    _channel = _channelFactory(Uri.parse(url));
 
     try {
       await _channel!.ready;
@@ -76,7 +90,7 @@ class RambleWebSocketService {
     _setConnectionState(RambleConnectionState.connected);
     _connectedAt = DateTime.now();
 
-    _send({'type': 'start', 'user_id': userId});
+    _send({'type': 'start'});
     debugPrint('[RambleWS] Start message sent');
   }
 
@@ -100,7 +114,7 @@ class RambleWebSocketService {
         final connectedLongEnough = _connectedAt != null &&
             DateTime.now().difference(_connectedAt!).inSeconds >= 3;
 
-        if (wasConnected && _userId != null && connectedLongEnough) {
+        if (wasConnected && _token != null && connectedLongEnough) {
           _attemptReconnect();
         } else if (wasConnected) {
           debugPrint('[RambleWS] Skipping reconnect — connection too brief');
@@ -114,14 +128,23 @@ class RambleWebSocketService {
     debugPrint('[RambleWS] Attempting reconnect in 2s...');
     await Future.delayed(const Duration(seconds: 2));
 
-    _channel = _channelFactory(Uri.parse(_wsUrl));
+    // Refresh token for reconnect
+    _token = await _tokenProvider();
+    if (_token == null) {
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Not authenticated');
+      return;
+    }
+
+    final url = '$_wsUrl?token=$_token';
+    _channel = _channelFactory(Uri.parse(url));
     try {
       await _channel!.ready;
       debugPrint('[RambleWS] Reconnected');
       _listenToChannel();
       _setConnectionState(RambleConnectionState.connected);
       _connectedAt = DateTime.now();
-      _send({'type': 'start', 'user_id': _userId!});
+      _send({'type': 'start'});
     } catch (e) {
       debugPrint('[RambleWS] Reconnect failed: $e');
       _setConnectionState(RambleConnectionState.disconnected);
@@ -131,12 +154,11 @@ class RambleWebSocketService {
 
   /// Manually reconnect after a disconnection.
   /// Re-establishes the WebSocket and sends a new start message.
-  Future<void> manualReconnect({required String userId}) async {
+  Future<void> manualReconnect() async {
     if (_connectionState == RambleConnectionState.connecting ||
         _connectionState == RambleConnectionState.reconnecting) {
       return; // Already attempting connection
     }
-    _userId = userId;
     _intentionalClose = false;
     await _attemptReconnect();
   }

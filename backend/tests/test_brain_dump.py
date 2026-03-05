@@ -287,7 +287,6 @@ class TestBrainDumpAPI:
             instance.process_brain_dump = AsyncMock(return_value=mock_response)
             response = await test_client.post("/agent/braindump", json={
                 "transcription": "buy groceries",
-                "user_id": "test-user",
             })
         assert response.status_code == 200
         data = response.json()
@@ -304,7 +303,6 @@ class TestBrainDumpAPI:
             instance = MockAgent.return_value
             instance.submit_brain_dump = AsyncMock(return_value=mock_response)
             response = await test_client.post("/agent/braindump/submit", json={
-                "user_id": "test-user",
                 "tasks": [
                     {
                         "id": "temp-1",

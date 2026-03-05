@@ -199,7 +199,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       final rambleWs = ref.read(rambleWebSocketProvider);
 
       debugPrint('[Ramble] Connecting WebSocket...');
-      await rambleWs.connect(userId: AppConstants.defaultUserId);
+      await rambleWs.connect();
 
       _transcriptionSub = rambleWs.transcriptionStream.listen((text) {
         if (mounted && _phase == _RamblePhase.recording) {
@@ -391,7 +391,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
   void _handleReconnect() {
     final rambleWs = ref.read(rambleWebSocketProvider);
-    rambleWs.manualReconnect(userId: AppConstants.defaultUserId);
+    rambleWs.manualReconnect();
     HapticService.light();
   }
 
@@ -410,7 +410,6 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       debugPrint('[Ramble] _processBrainDump transcript: "$text"');
       final response = await apiService.processBrainDump(
         transcription: text,
-        userId: AppConstants.defaultUserId,
         category: widget.prefilledCategory,
         parentId: widget.prefilledParentId,
       );
@@ -481,7 +480,6 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       debugPrint('[Ramble] _submitProposals calling API...');
       final stopwatch = Stopwatch()..start();
       final response = await apiService.submitBrainDump(
-        userId: AppConstants.defaultUserId,
         tasks: selected,
       );
       debugPrint('[Ramble] _submitProposals API returned in ${stopwatch.elapsedMilliseconds}ms: ${response.message}');

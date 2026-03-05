@@ -175,7 +175,6 @@ class BrainDumpSubmitResponse {
 
 /// Request to create a task
 class CreateTaskRequest {
-  final String userId;
   final String title;
   final String category;
   final String? description;
@@ -185,7 +184,6 @@ class CreateTaskRequest {
   final Map<String, dynamic>? aiPlacementJson;
 
   CreateTaskRequest({
-    required this.userId,
     required this.title,
     required this.category,
     this.description,
@@ -197,7 +195,6 @@ class CreateTaskRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'user_id': userId,
       'title': title,
       'category': category,
       'description': description,
