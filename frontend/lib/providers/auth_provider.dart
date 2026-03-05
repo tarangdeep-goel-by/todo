@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../services/app_logger.dart';
 
 /// Stream of Firebase auth state changes
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -18,43 +18,44 @@ final currentUserIdProvider = Provider<String?>((ref) {
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final _logger = AppLogger.instance;
 
   Future<UserCredential> signInWithEmail(String email, String password) async {
-    debugPrint('[Auth] Sign-in attempt: $email');
+    _logger.info('auth.sign_in', logger: 'AuthService', data: {'email': email});
     try {
       final cred = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      debugPrint('[Auth] Sign-in success: ${cred.user?.uid}');
+      _logger.info('auth.sign_in', logger: 'AuthService', data: {'uid': cred.user?.uid, 'success': true});
       return cred;
     } on FirebaseAuthException catch (e) {
-      debugPrint('[Auth] Sign-in failed: ${e.code} — ${e.message}');
+      _logger.warning('auth.sign_in', logger: 'AuthService', data: {'error': e.code});
       throw _mapFirebaseError(e);
     }
   }
 
   Future<UserCredential> signUpWithEmail(String email, String password) async {
-    debugPrint('[Auth] Sign-up attempt: $email');
+    _logger.info('auth.sign_up', logger: 'AuthService', data: {'email': email});
     try {
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      debugPrint('[Auth] Sign-up success: ${cred.user?.uid}');
+      _logger.info('auth.sign_up', logger: 'AuthService', data: {'uid': cred.user?.uid, 'success': true});
       return cred;
     } on FirebaseAuthException catch (e) {
-      debugPrint('[Auth] Sign-up failed: ${e.code} — ${e.message}');
+      _logger.warning('auth.sign_up', logger: 'AuthService', data: {'error': e.code});
       throw _mapFirebaseError(e);
     }
   }
 
   Future<UserCredential?> signInWithGoogle() async {
-    debugPrint('[Auth] Google sign-in attempt');
+    _logger.info('auth.google_sign_in', logger: 'AuthService');
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        debugPrint('[Auth] Google sign-in cancelled by user');
+        _logger.info('auth.google_sign_in', logger: 'AuthService', data: {'cancelled': true});
         return null;
       }
 
@@ -64,22 +65,22 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
       final cred = await _auth.signInWithCredential(credential);
-      debugPrint('[Auth] Google sign-in success: ${cred.user?.uid}');
+      _logger.info('auth.google_sign_in', logger: 'AuthService', data: {'uid': cred.user?.uid, 'success': true});
       return cred;
     } on FirebaseAuthException catch (e) {
-      debugPrint('[Auth] Google sign-in failed: ${e.code} — ${e.message}');
+      _logger.warning('auth.google_sign_in', logger: 'AuthService', data: {'error': e.code});
       throw _mapFirebaseError(e);
     }
   }
 
   Future<void> signOut() async {
     final uid = _auth.currentUser?.uid;
-    debugPrint('[Auth] Sign-out: $uid');
+    _logger.info('auth.sign_out', logger: 'AuthService', data: {'uid': uid});
     await Future.wait([
       _auth.signOut(),
       _googleSignIn.signOut(),
     ]);
-    debugPrint('[Auth] Sign-out complete');
+    _logger.info('auth.sign_out', logger: 'AuthService', data: {'success': true});
   }
 
   Future<String?> getIdToken() async {

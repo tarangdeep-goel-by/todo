@@ -1,18 +1,20 @@
 """Main FastAPI application."""
-import logging
+from structured_logging import setup_logging
+from config import get_settings as _get_settings
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# Initialize structured logging before any other imports that use logging
+setup_logging(_get_settings().log_level)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from routers import agent, tasks, categories, ramble
 from config import get_settings
+from rate_limit import limiter
 
 settings = get_settings()
 
@@ -40,7 +42,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
+
+from middleware.request_logging import RequestLoggingMiddleware
+app.add_middleware(RequestLoggingMiddleware)
+
+# HTTPS redirect in production (expects a reverse proxy setting X-Forwarded-Proto)
+if settings.app_env == "production":
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 # Configure CORS
 app.add_middleware(
@@ -48,7 +59,7 @@ app.add_middleware(
     allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Session-ID"],
 )
 
 # Include routers

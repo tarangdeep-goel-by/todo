@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     firebase_project_id: str = ""
     google_application_credentials: str = ""
 
+    # Logging
+    log_level: str = "INFO"
+
     # Category limits
     max_categories: int = 8
 

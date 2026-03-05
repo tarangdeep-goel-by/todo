@@ -1,16 +1,17 @@
 """WebSocket router for ramble streaming mode (transcription-only)."""
 import asyncio
 import json
-import logging
 import time
+import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from services.ramble_service import RambleSession
 from config import get_settings
 from auth import _init_firebase
+from structured_logging import get_logger, trace_id_var, user_id_var, session_id_var
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["ramble"])
 
 # Maximum session duration in seconds
@@ -41,21 +42,25 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
       {"type": "status", "status": "connected"|"closed"}
       {"type": "error", "message": "..."}
     """
-    # Verify Firebase token BEFORE accepting the connection
+    # Auth: Firebase token verified at connect time. Session max is 5 minutes
+    # (RAMBLE_MAX_DURATION_SECONDS=300), well within the 1-hour token lifetime.
+    # No mid-session re-verification needed — risk is negligible.
     _init_firebase()
     try:
         from firebase_admin import auth as firebase_auth
         decoded = firebase_auth.verify_id_token(token)
         user_uid = decoded.get("uid", "unknown")
     except Exception as e:
-        logger.warning("[Ramble WS] Auth failed: %s", e)
+        logger.warning("ws.error", reason=str(e))
         await websocket.close(code=4001, reason="Authentication failed")
         return
 
     # Only accept after auth succeeds
     await websocket.accept()
 
-    logger.info("[Ramble WS] Connection accepted for user %s", user_uid)
+    trace_id_var.set(str(uuid.uuid4()))
+    user_id_var.set(user_uid)
+    logger.info("ws.connect")
     settings = get_settings()
     session: RambleSession | None = None
     receive_task: asyncio.Task | None = None
@@ -66,7 +71,7 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
         try:
             await websocket.send_json(msg)
         except Exception as e:
-            logger.error("[Ramble WS] Failed to send to client: %s", e)
+            logger.error("ws.error", reason=str(e))
 
     async def session_timer(start_time: float):
         """Send time_remaining every 30s, set expired event at 0."""
@@ -80,7 +85,7 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
                     "status": "time_remaining",
                     "seconds": remaining,
                 })
-                logger.info("[Ramble WS] Time remaining: %ds", remaining)
+                logger.info("ramble.timer", seconds_remaining=remaining)
                 if remaining <= 0:
                     session_expired.set()
                     return
@@ -91,7 +96,7 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
         while True:
             # Check if session expired (timer ran out)
             if session_expired.is_set():
-                logger.info("[Ramble WS] Session expired, auto-stopping")
+                logger.info("ramble.stop", reason="timeout")
                 break
 
             raw = await websocket.receive_text()
@@ -115,7 +120,7 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
                 await send_to_client({"type": "error", "message": "Invalid message type"})
                 continue
 
-            logger.info("[Ramble WS] <- %s", msg_type)
+            logger.debug("ws.message", msg_type=msg_type)
 
             if msg_type == "start":
                 session = RambleSession(
@@ -123,9 +128,9 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
                 )
                 try:
                     await session.start()
-                    logger.info("[Ramble WS] Sarvam STT session started")
+                    logger.info("ramble.start")
                 except Exception as e:
-                    logger.error("[Ramble WS] Failed to start Sarvam STT session: %s", e, exc_info=True)
+                    logger.error("ramble.stt.error", reason=str(e), exc_info=True)
                     await send_to_client({"type": "error", "message": "Transcription service unavailable"})
                     break
 
@@ -147,11 +152,11 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
                     try:
                         await session.send_audio(data)
                     except Exception as e:
-                        logger.error("[Ramble WS] Failed to send audio: %s", e)
+                        logger.error("ramble.stt.chunk.error", reason=str(e))
                         await send_to_client({"type": "error", "message": "Audio processing failed"})
 
             elif msg_type == "stop":
-                logger.info("[Ramble WS] Stop requested")
+                logger.info("ramble.stop", reason="user")
                 if receive_task:
                     receive_task.cancel()
                     try:
@@ -162,7 +167,7 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
                 if session:
                     # Transliterate to English if needed, then send
                     transcript = await session.get_english_transcription()
-                    logger.info("Final transcript: '%s'", transcript)
+                    logger.info("ramble.transcript", length=len(transcript))
                     if transcript:
                         await send_to_client({
                             "type": "final_transcript",
@@ -174,9 +179,9 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
                 break
 
     except WebSocketDisconnect:
-        logger.info("[Ramble WS] Client disconnected")
+        logger.info("ws.disconnect", reason="client")
     except Exception as e:
-        logger.error("[Ramble WS] Unexpected error: %s", e, exc_info=True)
+        logger.error("ws.error", reason=str(e), exc_info=True)
         await send_to_client({"type": "error", "message": "An unexpected error occurred"})
     finally:
         # On timeout: send final transcript before closing
@@ -202,4 +207,4 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
             await session.close()
         if receive_task:
             receive_task.cancel()
-        logger.info("[Ramble WS] Cleanup done")
+        logger.info("ws.disconnect", reason="cleanup")
