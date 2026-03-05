@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/task_store_provider.dart';
-import '../providers/task_filter_provider.dart';
+import '../config/constants.dart';
 import '../config/theme.dart';
-import '../widgets/task_item.dart';
+import '../models/task.dart';
+import '../providers/api_provider.dart';
+import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
+import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
-import '../services/onboarding_service.dart';
+import '../widgets/task_item.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
@@ -26,8 +31,13 @@ class FlatTaskView extends ConsumerStatefulWidget {
 
 class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   int _displayCount = 50;
   int _swipeTutorialStep = 0;
+
+  Timer? _debounce;
+  List<Task>? _searchResults;
+  bool _searchLoading = false;
 
   @override
   void initState() {
@@ -69,9 +79,54 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     }
   }
 
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = null;
+        _searchLoading = false;
+      });
+      return;
+    }
+    setState(() => _searchLoading = true);
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _performSearch(query.trim());
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    try {
+      final apiService = ref.read(apiServiceProvider);
+      final response = await apiService.searchTasks(
+        AppConstants.defaultUserId,
+        query,
+      );
+      if (mounted && _searchController.text.trim() == query) {
+        setState(() {
+          _searchResults = response.results.map((r) => r.task).toList();
+          _searchLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _searchLoading = false);
+      }
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchResults = null;
+      _searchLoading = false;
+    });
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -103,7 +158,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       );
     }
 
-    if (allFiltered.isEmpty) {
+    if (allFiltered.isEmpty && _searchResults == null) {
       return const EmptyState(
         title: 'All clear',
         message:
@@ -117,65 +172,145 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       );
     }
 
-    final displayTasks = allFiltered.take(_displayCount).toList();
-    final hasMore = _displayCount < allFiltered.length;
+    final isSearching = _searchResults != null;
+    final displaySource = isSearching ? _searchResults! : allFiltered;
+    final displayTasks = isSearching
+        ? displaySource
+        : displaySource.take(_displayCount).toList();
+    final hasMore = !isSearching && _displayCount < allFiltered.length;
     final isTutorial = widget.tutorialActive && _swipeTutorialStep < 3;
 
-    return RefreshIndicator(
-      color: AppColors.darkText,
-      backgroundColor: AppColors.darkBg,
-      onRefresh: () => ref.read(taskStoreProvider.notifier).fetchAll(),
-      child: ListView.builder(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            style: const TextStyle(color: AppColors.darkText, fontSize: 15),
+            decoration: InputDecoration(
+              hintText: 'Search tasks...',
+              hintStyle: const TextStyle(
+                color: AppColors.secondaryText,
+                fontSize: 15,
+              ),
+              prefixIcon: const Icon(
+                Icons.search,
+                color: AppColors.secondaryText,
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.secondaryText,
+                        size: 20,
+                      ),
+                      onPressed: _clearSearch,
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.navBg,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
         ),
-        padding: const EdgeInsets.only(bottom: 120),
-        itemCount: displayTasks.length + (hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == displayTasks.length) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(
-                  color: AppColors.darkText,
+        // Search loading indicator
+        if (_searchLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: SizedBox(
+              height: 2,
+              child: LinearProgressIndicator(
+                color: AppColors.darkText,
+                backgroundColor: AppColors.navBg,
+              ),
+            ),
+          ),
+        // Search empty state
+        if (isSearching && _searchResults!.isEmpty && !_searchLoading)
+          const Expanded(
+            child: Center(
+              child: Text(
+                'No matching tasks found.',
+                style: TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 15,
                 ),
               ),
-            );
-          }
-
-          final task = displayTasks[index];
-          final isDemoTask = task.id == OnboardingService.demoTaskId;
-
-          final taskItem = TaskItem(
-            key: ValueKey(task.id),
-            task: task,
-            isDark: true,
-            parentName: parentNames[task.id],
-            onTutorialStepComplete:
-                isDemoTask ? _onTutorialStepComplete : null,
-          );
-
-          // Wrap demo task with tutorial overlay
-          if (isDemoTask && isTutorial) {
-            final domain =
-                DomainColors.getDomain(task.category, true, paletteMap);
-            return Stack(
-              children: [
-                taskItem,
-                Positioned.fill(
-                  child: SwipeTutorialOverlay(
-                    step: _swipeTutorialStep,
-                    domainColor: domain.primary,
-                  ),
+            ),
+          )
+        // Task list
+        else
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.darkText,
+              backgroundColor: AppColors.darkBg,
+              onRefresh: () =>
+                  ref.read(taskStoreProvider.notifier).fetchAll(),
+              child: ListView.builder(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
-              ],
-            );
-          }
+                padding: const EdgeInsets.only(bottom: 120),
+                itemCount: displayTasks.length + (hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == displayTasks.length) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                    );
+                  }
 
-          return taskItem;
-        },
-      ),
+                  final task = displayTasks[index];
+                  final isDemoTask =
+                      task.id == OnboardingService.demoTaskId;
+
+                  final taskItem = TaskItem(
+                    key: ValueKey(task.id),
+                    task: task,
+                    isDark: true,
+                    parentName: parentNames[task.id],
+                    onTutorialStepComplete:
+                        isDemoTask ? _onTutorialStepComplete : null,
+                  );
+
+                  // Wrap demo task with tutorial overlay
+                  if (isDemoTask && isTutorial) {
+                    final domain = DomainColors.getDomain(
+                        task.category, true, paletteMap);
+                    return Stack(
+                      children: [
+                        taskItem,
+                        Positioned.fill(
+                          child: SwipeTutorialOverlay(
+                            step: _swipeTutorialStep,
+                            domainColor: domain.primary,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return taskItem;
+                },
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

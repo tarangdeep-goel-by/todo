@@ -64,13 +64,14 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   StreamSubscription<List<int>>? _audioStreamSub;
   StreamSubscription<int>? _timerSub;
   StreamSubscription<RambleConnectionState>? _connectionSub;
-  int? _timeRemaining; // null = no timer shown, seconds when < 120
+  int? _timeRemaining; // null = no timer received yet
   RambleConnectionState _connectionState = RambleConnectionState.disconnected;
 
   // Reviewing state
   List<BrainDumpTaskProposal> _proposals = [];
   List<BrainDumpTaskProposal> _existingProposals = [];
   final Set<String> _deselectedIds = {};
+  final Set<String> _expandedAlternates = {};
   bool _isSubmitting = false;
 
   @override
@@ -234,7 +235,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       _timerSub = rambleWs.timeRemainingStream.listen((seconds) {
         if (mounted) {
           setState(() {
-            _timeRemaining = seconds <= 120 ? seconds : null;
+            _timeRemaining = seconds;
           });
         }
       });
@@ -242,20 +243,14 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       _connectionSub = rambleWs.connectionStateStream.listen((state) {
         if (mounted) {
           setState(() => _connectionState = state);
-          // If reconnect failed, auto-transition to editing with accumulated transcript
+          // When disconnected during recording, stay in recording phase
+          // so the user can tap the reconnect button (or stop to edit).
           if (state == RambleConnectionState.disconnected &&
               _phase == _RamblePhase.recording) {
-            final transcript = ref.read(transcriptionTextProvider);
-            if (transcript.isNotEmpty) {
-              _transcriptController.text = transcript;
-              _cancelSubscriptions();
-              ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
-              setState(() => _phase = _RamblePhase.editing);
-              showStyledSnackbar(context,
-                message: 'Connection lost — edit your transcript below.',
-                style: SnackbarStyle.info,
-              );
-            }
+            showStyledSnackbar(context,
+              message: 'Connection lost — tap reconnect or stop to edit.',
+              style: SnackbarStyle.info,
+            );
           }
         }
       });
@@ -392,6 +387,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     } else {
       _pauseRecording();
     }
+  }
+
+  void _handleReconnect() {
+    final rambleWs = ref.read(rambleWebSocketProvider);
+    rambleWs.manualReconnect(userId: AppConstants.defaultUserId);
+    HapticService.light();
   }
 
   // ────────── Processing (Brain Dump) ──────────
@@ -684,8 +685,6 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                       labels: proposal.labels,
                       changes: proposal.changes,
                       matchedTaskId: match['id'],
-                      targetParentId: proposal.targetParentId,
-                      targetContent: proposal.targetContent,
                       confidence: proposal.confidence,
                       tags: proposal.tags,
                       estimatedHours: proposal.estimatedHours,
@@ -814,13 +813,23 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                   ).copyWith(fontSize: 11),
                 ),
               ),
+            if (_connectionState == RambleConnectionState.disconnected)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  'Disconnected',
+                  style: AppTypography.metadataText(
+                    color: AppColors.darkText.withValues(alpha: 0.5),
+                  ).copyWith(fontSize: 11),
+                ),
+              ),
           ],
           const Spacer(),
           if (_timeRemaining != null && _phase == _RamblePhase.recording)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: _timeRemaining! <= 30
+                color: _timeRemaining! <= 60
                     ? AppColors.deleteAction.withValues(alpha: 0.15)
                     : AppColors.darkText.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -828,7 +837,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               child: Text(
                 '${(_timeRemaining! ~/ 60).toString().padLeft(1, '0')}:${(_timeRemaining! % 60).toString().padLeft(2, '0')}',
                 style: AppTypography.metadataText(
-                  color: _timeRemaining! <= 30
+                  color: _timeRemaining! <= 60
                       ? AppColors.deleteAction
                       : AppColors.darkText.withValues(alpha: 0.5),
                 ).copyWith(
@@ -1143,10 +1152,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                             DateFormat('MMM d').format(proposal.dueDate!),
                             domain.primary.withValues(alpha: 0.7),
                           ),
-                        if (proposal.action == 'move' &&
-                            proposal.targetContent != null)
+                        if (proposal.changes != null &&
+                            proposal.changes!.containsKey('parent_id'))
                           _buildChip(
-                            '\u2192 ${proposal.targetContent}',
+                            proposal.changes!['parent_id'] == null
+                                ? '\u2192 Top level'
+                                : '\u2192 Reparent',
                             AppColors.dueSoon,
                           ),
                         if (proposal.changes != null)
@@ -1155,11 +1166,10 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                               '${entry.key}: ${entry.value}',
                               AppColors.darkText.withValues(alpha: 0.6),
                             ),
-                        if (proposal.confidence != null &&
-                            proposal.confidence! < 0.8)
+                        if (proposal.confidence != null)
                           _buildChip(
                             '${(proposal.confidence! * 100).round()}%',
-                            AppColors.darkText.withValues(alpha: 0.4),
+                            _confidenceColor(proposal.confidence!),
                           ),
                         if (proposal.alternateMatches != null &&
                             proposal.alternateMatches!.isNotEmpty)
@@ -1169,6 +1179,22 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                           ),
                       ],
                     ),
+                    if (proposal.matchExplanation != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        proposal.matchExplanation!,
+                        style: AppTypography.metadataText(
+                          color: AppColors.darkText.withValues(alpha: 0.5),
+                        ).copyWith(fontSize: 11),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (proposal.alternateMatches != null &&
+                        proposal.alternateMatches!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      _buildAlternateMatchesSection(proposal, domain),
+                    ],
                   ],
                 ),
               ),
@@ -1226,12 +1252,84 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     );
   }
 
+  Color _confidenceColor(double confidence) {
+    if (confidence >= 0.8) return AppColors.completed;
+    if (confidence >= 0.6) return AppColors.dueSoon;
+    return AppColors.deleteAction;
+  }
+
+  Widget _buildAlternateMatchesSection(
+    BrainDumpTaskProposal proposal,
+    DomainPalette domain,
+  ) {
+    return StatefulBuilder(
+      builder: (context, setLocalState) {
+        final expanded = _expandedAlternates.contains(proposal.id);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: () {
+                setLocalState(() {
+                  if (expanded) {
+                    _expandedAlternates.remove(proposal.id);
+                  } else {
+                    _expandedAlternates.add(proposal.id);
+                  }
+                });
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 12,
+                    color: AppColors.dueSoon,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Other matches (${proposal.alternateMatches!.length})',
+                    style: AppTypography.metadataText(
+                      color: AppColors.dueSoon,
+                    ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 14,
+                    color: AppColors.dueSoon,
+                  ),
+                ],
+              ),
+            ),
+            if (expanded) ...[
+              const SizedBox(height: 4),
+              ...proposal.alternateMatches!.map((match) {
+                return Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 2),
+                  child: Text(
+                    '\u2022 ${match['title'] ?? 'Unknown'} (${match['category'] ?? ''})',
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
   String _actionLabel(String action) {
     return switch (action) {
       'complete' => 'Complete',
       'edit' => 'Edit',
       'delete' => 'Delete',
-      'move' => 'Move',
       _ => 'Add',
     };
   }
@@ -1241,7 +1339,6 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       'complete' => AppColors.completed,
       'edit' => AppColors.dueSoon,
       'delete' => AppColors.deleteAction,
-      'move' => AppColors.dueSoon,
       _ => domain.primary,
     };
   }
@@ -1327,9 +1424,47 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
               ),
             ],
           ),
+          if (_connectionState == RambleConnectionState.disconnected) ...[
+            const SizedBox(height: AppSpacing.md),
+            Semantics(
+              button: true,
+              label: 'Reconnect',
+              child: GestureDetector(
+                onTap: _handleReconnect,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: domain.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    border: Border.all(
+                      color: domain.primary.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh_rounded, size: 16, color: domain.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Reconnect',
+                        style: AppTypography.metadataText(
+                          color: domain.primary,
+                        ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           Text(
-            _isPaused ? 'Paused — tap play to resume' : 'Tap to stop',
+            _connectionState == RambleConnectionState.disconnected
+                ? 'Disconnected — reconnect or stop to edit'
+                : _isPaused ? 'Paused — tap play to resume' : 'Tap to stop',
             style: AppTypography.metadataText(
               color: AppColors.tertiaryText,
             ).copyWith(fontSize: 12),
@@ -1534,8 +1669,12 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
     _priority = widget.proposal.priority ?? 'none';
     _dueDate = widget.proposal.dueDate;
     _matchedTaskId = widget.proposal.matchedTaskId;
-    _targetParentId = widget.proposal.targetParentId;
-    _targetContent = widget.proposal.targetContent;
+    // Extract reparent target from changes.parent_id if present
+    final changes = widget.proposal.changes;
+    _targetParentId = changes != null && changes.containsKey('parent_id')
+        ? changes['parent_id'] as String?
+        : null;
+    _targetContent = null; // Will be resolved by parent picker
   }
 
   @override
@@ -1551,7 +1690,17 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
 
     // Clear irrelevant fields when action changes
     final isAdd = _action == 'add';
-    final isMove = _action == 'move';
+    final isEdit = _action == 'edit';
+
+    // Build changes map — merge existing changes with reparent if applicable
+    Map<String, dynamic>? editChanges;
+    if (isEdit) {
+      editChanges = Map<String, dynamic>.from(widget.proposal.changes ?? {});
+      // If user set a reparent target via parent picker, add to changes
+      if (_targetParentId != null || _targetContent != null) {
+        editChanges['parent_id'] = _targetParentId;
+      }
+    }
 
     final edited = BrainDumpTaskProposal(
       id: widget.proposal.id,
@@ -1563,10 +1712,8 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
       priority: _priority == 'none' ? null : _priority,
       parentId: isAdd ? widget.proposal.parentId : null,
       labels: widget.proposal.labels,
-      changes: isAdd ? null : widget.proposal.changes,
+      changes: editChanges,
       matchedTaskId: isAdd ? null : _matchedTaskId,
-      targetParentId: isMove ? _targetParentId : null,
-      targetContent: isMove ? _targetContent : null,
     );
     Navigator.pop(context, edited);
   }
@@ -1775,7 +1922,7 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
                       ),
                       const SizedBox(height: 8),
                       _ChipSelector(
-                        items: const ['add', 'complete', 'edit', 'delete', 'move'],
+                        items: const ['add', 'complete', 'edit', 'delete'],
                         selected: _action,
                         onSelect: (a) => setState(() => _action = a),
                         colorFn: _actionChipColor,
@@ -1827,11 +1974,11 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
 
                 const SizedBox(height: AppSpacing.md),
 
-                // Category chips (editable for add/move, locked for complete/delete/edit)
+                // Category chips (editable for add/edit, locked for complete/delete)
                 IgnorePointer(
-                  ignoring: _action != 'add' && _action != 'move',
+                  ignoring: _action != 'add' && _action != 'edit',
                   child: Opacity(
-                    opacity: (_action == 'add' || _action == 'move') ? 1.0 : 0.5,
+                    opacity: (_action == 'add' || _action == 'edit') ? 1.0 : 0.5,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                       child: Column(
@@ -1863,11 +2010,11 @@ class _ProposalEditSheetState extends ConsumerState<_ProposalEditSheet> {
 
                 const SizedBox(height: AppSpacing.md),
 
-                // Move to row (only for move actions)
-                if (_action == 'move')
+                // Reparent row (for edit actions with parent_id change)
+                if (_action == 'edit' && (_targetParentId != null || _targetContent != null))
                   _buildMoveToRow(domain),
 
-                if (_action == 'move')
+                if (_action == 'edit' && (_targetParentId != null || _targetContent != null))
                   const SizedBox(height: AppSpacing.md),
 
                 // Priority chips (locked for complete/delete)

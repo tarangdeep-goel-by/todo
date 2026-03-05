@@ -220,6 +220,24 @@ class ApiService {
     }
   }
 
+  /// Search tasks by query string
+  Future<TaskSearchResponse> searchTasks(
+    String userId,
+    String query, {
+    int limit = 10,
+  }) async {
+    try {
+      final response = await _dio.get('/tasks/search', queryParameters: {
+        'q': query,
+        'user_id': userId,
+        'limit': limit,
+      });
+      return TaskSearchResponse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Handle Dio errors
   String _handleError(DioException e) {
     if (e.response != null) {

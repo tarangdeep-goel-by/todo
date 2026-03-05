@@ -643,6 +643,12 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     return 1.0;
   }
 
+  Color _confidenceColor(double confidence) {
+    if (confidence >= 0.8) return AppColors.completed;
+    if (confidence >= 0.6) return AppColors.dueSoon;
+    return AppColors.deleteAction;
+  }
+
   String _getAiReasoning(Task task) {
     final json = task.aiPlacementJson;
     if (json == null) return '';
@@ -1155,6 +1161,14 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 Icon(Icons.auto_awesome, size: 13, color: dimColor),
                 const SizedBox(width: 4),
                 Text('AI placed', style: dimStyle),
+                const SizedBox(width: 4),
+                Text(
+                  '${(_getAiConfidence(task) * 100).round()}%',
+                  style: dimStyle.copyWith(
+                    color: _confidenceColor(_getAiConfidence(task)),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 if (_getAiConfidence(task) < 0.8) ...[
                   const SizedBox(width: 4),
                   Icon(Icons.warning_amber_rounded, size: 13, color: AppColors.overdue),
@@ -1175,13 +1189,13 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_getAiReasoning(task), style: dimStyle),
-                  if (_getAiConfidence(task) < 0.8) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Confidence: ${(_getAiConfidence(task) * 100).round()}%',
-                      style: dimStyle,
+                  const SizedBox(height: 2),
+                  Text(
+                    'Confidence: ${(_getAiConfidence(task) * 100).round()}%',
+                    style: dimStyle.copyWith(
+                      color: _confidenceColor(_getAiConfidence(task)),
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),

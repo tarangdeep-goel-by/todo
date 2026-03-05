@@ -185,18 +185,18 @@ class TestSubmitBrainDump:
         assert task.priority == "high"
         assert task.due_date is not None
 
-    async def test_submit_move_validates_target(self, agent_service, task_service, db_session):
-        """MOVE should fail gracefully if target no longer exists."""
+    async def test_submit_reparent_validates_target(self, agent_service, task_service, db_session):
+        """EDIT with parent_id should fail gracefully if target no longer exists."""
         tree = await make_task_tree(task_service)
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", action="move", content="Groceries",
+                id="temp-1", action="edit", content="Groceries",
                 category="home", matched_task_id=tree["groceries"].id,
-                target_parent_id="00000000-0000-0000-0000-000000000099",
+                changes={"parent_id": "00000000-0000-0000-0000-000000000099"},
             ),
         ]
         result = await agent_service.submit_brain_dump("test-user", proposals, db_session)
-        # Move should fail (target doesn't exist), but not crash
+        # Reparent should fail (target doesn't exist), but not crash
         assert result.success is False
 
     async def test_submit_add_with_tags_and_estimated_hours(self, agent_service, task_service, db_session):
