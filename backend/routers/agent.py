@@ -1,6 +1,5 @@
 """Agent API router."""
-import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from auth import get_current_user
@@ -10,14 +9,19 @@ from models.schemas import (
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
 from config import get_settings
+from rate_limit import limiter
+from audit import audit_log
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
 @router.post("/braindump", response_model=BrainDumpResponse)
+@limiter.limit("10/minute")
 async def process_brain_dump(
-    request: BrainDumpRequest,
+    request: Request,
+    body: BrainDumpRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> BrainDumpResponse:
@@ -32,17 +36,19 @@ async def process_brain_dump(
     agent_service = AgentService(gemini_service)
 
     return await agent_service.process_brain_dump(
-        transcription=request.transcription,
+        transcription=body.transcription,
         user_id=user_id,
         db=db,
-        category=request.category,
-        parent_id=request.parent_id,
+        category=body.category,
+        parent_id=body.parent_id,
     )
 
 
 @router.post("/braindump/submit", response_model=BrainDumpSubmitResponse)
+@limiter.limit("10/minute")
 async def submit_brain_dump(
-    request: BrainDumpSubmitRequest,
+    request: Request,
+    body: BrainDumpSubmitRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> BrainDumpSubmitResponse:
@@ -54,9 +60,9 @@ async def submit_brain_dump(
     """
     import time
     t0 = time.monotonic()
-    logger.info("braindump/submit: %d tasks for user '%s'", len(request.tasks), user_id)
-    for i, t in enumerate(request.tasks):
-        logger.debug("  task[%d]: action=%s content='%s' matched=%s", i, t.action, t.content, t.matched_task_id)
+    logger.info("braindump.submit", task_count=len(body.tasks))
+    for i, t in enumerate(body.tasks):
+        logger.debug("braindump.submit.task", index=i, action=t.action, matched_task_id=t.matched_task_id)
 
     settings = get_settings()
     gemini_service = GeminiService(settings.gemini_api_key)
@@ -64,8 +70,10 @@ async def submit_brain_dump(
 
     result = await agent_service.submit_brain_dump(
         user_id=user_id,
-        tasks=request.tasks,
+        tasks=body.tasks,
         db=db,
     )
-    logger.info("braindump/submit RESPONSE in %.1fms: success=%s", (time.monotonic() - t0) * 1000, result.success)
+    logger.info("braindump.submit.done", duration_ms=round((time.monotonic() - t0) * 1000, 1), success=result.success)
+    audit_log("braindump.submitted", user_id, task_count=len(body.tasks),
+              actions=[t.action for t in body.tasks])
     return result

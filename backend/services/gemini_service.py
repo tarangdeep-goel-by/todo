@@ -1,13 +1,13 @@
 """Gemini AI service for brain dump detection and subtask generation."""
-import logging
 import re
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 import json
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # ──────────────────────────────────────────────
@@ -195,7 +195,7 @@ Common mistakes to avoid:
                 ),
             )
 
-            logger.info("brain_dump raw response: %s", response.text)
+            logger.debug("braindump.detect.raw", response_length=len(response.text))
             result = json.loads(response.text)
 
             # Normalize: always return a list
@@ -221,12 +221,12 @@ Common mistakes to avoid:
                         task["changes"] = changes
 
             for i, task in enumerate(result):
-                logger.info("brain_dump[%d]: content='%s' | category='%s'", i, task.get('content'), task.get('category'))
+                logger.info("braindump.detect.action", index=i, content=task.get('content'), category=task.get('category'))
 
             return result
 
         except Exception as e:
-            logger.error("brain dump detection FAILED: %s", e, exc_info=True)
+            logger.error("braindump.detect.error", error=str(e), exc_info=True)
             return []
 
     async def generate_subtasks(self, task_title: str, task_description: str | None = None, context: str = "") -> List[str]:
@@ -273,9 +273,9 @@ Respond ONLY with a valid JSON array of strings. Example:
             if not isinstance(result, list) or not all(isinstance(s, str) for s in result):
                 raise ValueError("Expected JSON array of strings")
 
-            logger.info("generated %d subtask suggestions for '%s'", len(result), task_title)
+            logger.info("braindump.detect.subtasks", count=len(result), task_title=task_title)
             return result
 
         except Exception as e:
-            logger.error("subtask generation FAILED: %s", e)
+            logger.error("braindump.detect.subtasks_error", error=str(e))
             return []

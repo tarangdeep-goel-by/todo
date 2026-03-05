@@ -1,9 +1,9 @@
 """Pre-filter for intent detection — catches gibberish before LLM."""
 import re
-import logging
 from typing import Optional, List, Dict
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Minimum vowel ratio for non-gibberish English
 _MIN_VOWEL_RATIO = 0.15
@@ -28,7 +28,7 @@ def _is_gibberish(text: str) -> bool:
     ratio = vowels / len(alpha)
 
     if ratio < _MIN_VOWEL_RATIO:
-        logger.info("gibberish detected: vowel ratio %.2f < %.2f", ratio, _MIN_VOWEL_RATIO)
+        logger.info("braindump.prefilter", result="gibberish", reason="vowel_ratio", ratio=round(ratio, 2))
         return True
 
     # Per-word analysis: any word with 5+ alpha chars and extremely low vowel ratio
@@ -51,11 +51,11 @@ def _is_gibberish(text: str) -> bool:
                 suspicious_count += 1
 
     if gibberish_words >= 2 or (gibberish_words >= 1 and suspicious_count >= 2):
-        logger.info("gibberish detected: %d gibberish words, %d suspicious clusters", gibberish_words, suspicious_count)
+        logger.info("braindump.prefilter", result="gibberish", reason="word_analysis", gibberish_words=gibberish_words, suspicious_clusters=suspicious_count)
         return True
 
     if suspicious_count >= 2:
-        logger.info("gibberish detected: %d suspicious consonant clusters", suspicious_count)
+        logger.info("braindump.prefilter", result="gibberish", reason="consonant_clusters", suspicious_clusters=suspicious_count)
         return True
 
     return False

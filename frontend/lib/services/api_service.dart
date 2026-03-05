@@ -1,13 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import '../models/task.dart';
 import '../models/api_response.dart';
 import '../models/category.dart';
 import '../config/constants.dart';
 import 'auth_interceptor.dart';
+import 'app_logger.dart';
 
 /// Service for backend API communication
 class ApiService {
+  final _logger = AppLogger.instance;
   final Dio _dio;
 
   ApiService({String? baseUrl, Dio? dio})
@@ -123,14 +124,10 @@ class ApiService {
       final payload = {
         'tasks': tasks.map((t) => t.toJson()).toList(),
       };
-      debugPrint('[API] submitBrainDump POST /agent/braindump/submit payload=${tasks.length} tasks');
-      debugPrint('[API] submitBrainDump baseUrl=${_dio.options.baseUrl}');
+      _logger.info('braindump.submit', logger: 'ApiService', data: {'task_count': tasks.length});
       final response = await _dio.post('/agent/braindump/submit', data: payload);
-      debugPrint('[API] submitBrainDump response status=${response.statusCode}');
       return BrainDumpSubmitResponse.fromJson(response.data);
     } on DioException catch (e) {
-      debugPrint('[API] submitBrainDump DioException type=${e.type} message=${e.message}');
-      debugPrint('[API] submitBrainDump response=${e.response?.statusCode} data=${e.response?.data}');
       throw _handleError(e);
     }
   }

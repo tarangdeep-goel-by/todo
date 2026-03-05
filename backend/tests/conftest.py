@@ -11,6 +11,7 @@ os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("SARVAM_API_KEY", "test-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
 os.environ.setdefault("DEBUG", "True")
+os.environ.setdefault("LOG_LEVEL", "WARNING")
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

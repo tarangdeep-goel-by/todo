@@ -1,6 +1,4 @@
 """Firebase Authentication dependency for FastAPI."""
-import logging
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -8,8 +6,9 @@ import firebase_admin
 from firebase_admin import auth as firebase_auth, credentials
 
 from config import get_settings
+from structured_logging import get_logger, user_id_var
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _firebase_app = None
 
@@ -44,28 +43,29 @@ async def get_current_user(
     try:
         decoded = firebase_auth.verify_id_token(cred.credentials)
         uid = decoded["uid"]
-        logger.debug("Authenticated user: %s", uid)
+        user_id_var.set(uid)
+        logger.debug("auth.token_verify", uid=uid)
         return uid
     except firebase_admin.auth.ExpiredIdTokenError:
-        logger.warning("Auth failed: expired token")
+        logger.warning("auth.token_expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired",
         )
     except firebase_admin.auth.RevokedIdTokenError:
-        logger.warning("Auth failed: revoked token")
+        logger.warning("auth.token_invalid", reason="revoked")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token revoked",
         )
     except firebase_admin.auth.InvalidIdTokenError as e:
-        logger.warning("Auth failed: invalid token — %s", e)
+        logger.warning("auth.token_invalid", reason=str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
     except Exception as e:
-        logger.warning("Auth failed: unexpected — %s", e)
+        logger.warning("auth.token_invalid", reason=str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed",

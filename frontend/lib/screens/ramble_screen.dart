@@ -18,6 +18,7 @@ import '../widgets/waveform_painter.dart';
 import '../widgets/styled_snackbar.dart';
 import '../widgets/task_parent_picker.dart';
 import '../utils/string_extensions.dart';
+import '../services/app_logger.dart';
 
 /// Ramble mode phases
 enum _RamblePhase { recording, editing, processing, reviewing }
@@ -48,6 +49,7 @@ class RambleScreen extends ConsumerStatefulWidget {
 }
 
 class _RambleScreenState extends ConsumerState<RambleScreen> {
+  final _logger = AppLogger.instance;
   _RamblePhase _phase = _RamblePhase.recording;
   bool _canStopListening = false;
   bool _isStoppingListening = false;
@@ -186,7 +188,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   // ────────── Recording (WebSocket streaming) ──────────
 
   Future<void> _startRecording() async {
-    debugPrint('[Ramble] _startRecording called');
+    _logger.info('ramble.start', logger: 'RambleScreen');
     _canStopListening = false;
     setState(() => _phase = _RamblePhase.recording);
 
@@ -198,7 +200,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       final audioService = ref.read(audioServiceProvider);
       final rambleWs = ref.read(rambleWebSocketProvider);
 
-      debugPrint('[Ramble] Connecting WebSocket...');
+      _logger.debug('ws.connect', logger: 'RambleScreen');
       await rambleWs.connect();
 
       _transcriptionSub = rambleWs.transcriptionStream.listen((text) {
@@ -209,13 +211,13 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
       _finalTranscriptSub = rambleWs.finalTranscriptStream.listen((text) {
         if (mounted) {
-          debugPrint('[Ramble] Final transcript received: ${text.length} chars');
+          _logger.info('ramble.transcript', logger: 'RambleScreen', data: {'length': text.length});
           _transcriptController.text = text;
         }
       });
 
       _errorSub = rambleWs.errorStream.listen((error) {
-        debugPrint('[Ramble] Server error: $error');
+        _logger.error('ws.error', logger: 'RambleScreen', data: {'error': error});
         if (mounted && _phase == _RamblePhase.recording) {
           showStyledSnackbar(context,
             message: 'Voice connection interrupted. Try again.',
@@ -225,7 +227,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       });
 
       _statusSub = rambleWs.statusStream.listen((status) {
-        debugPrint('[Ramble] Status: $status');
+        _logger.debug('ramble.status', logger: 'RambleScreen', data: {'status': status});
         if (status == 'timeout' && mounted && _phase == _RamblePhase.recording) {
           // Session timed out — auto-transition to editing
           _stopAndEdit();
@@ -255,7 +257,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         }
       });
 
-      debugPrint('[Ramble] Starting audio stream...');
+      _logger.debug('ramble.start', logger: 'RambleScreen', data: {'step': 'audio_stream'});
       final audioStream = await audioService.startStream();
 
       _audioStreamSub = audioStream.listen((pcmChunk) {

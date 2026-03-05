@@ -1,8 +1,8 @@
-import logging
 from typing import List, Tuple
 from rapidfuzz import fuzz
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FuzzyMatcher:
@@ -46,12 +46,10 @@ class FuzzyMatcher:
                      limit: int = 5) -> List[Tuple[object, int]]:
         """Rank tasks by fuzzy score."""
         scored = []
-        logger.debug("query='%s', searching %d tasks, threshold=%d", query, len(tasks), threshold)
+        logger.debug("task.search.fuzzy", query=query, task_count=len(tasks), threshold=threshold)
         for task in tasks:
             score = FuzzyMatcher.score_task_match(
                 query, task.title, task.description or "", threshold)
-            if score >= threshold - 20:  # Log near-misses too
-                logger.debug("  -> '%s' score=%d %s", task.title, score, '✓' if score >= threshold else '✗')
             if score >= threshold:
                 scored.append((task, score))
         scored.sort(key=lambda x: x[1], reverse=True)
@@ -62,5 +60,5 @@ class FuzzyMatcher:
             cutoff = scored[0][1] - 10
             scored = [(t, s) for t, s in scored if s >= cutoff]
 
-        logger.debug("matched %d tasks", len(scored))
+        logger.debug("task.search.fuzzy.done", matched=len(scored))
         return scored[:limit]
