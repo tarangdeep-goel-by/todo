@@ -7,18 +7,18 @@ class TestSearchTasks:
 
     async def test_empty_query_returns_422(self, test_client):
         """Empty query string should fail validation (min_length=1)."""
-        resp = await test_client.get("/tasks/search", params={"q": "", "user_id": "u1"})
+        resp = await test_client.get("/tasks/search", params={"q": ""})
         assert resp.status_code == 422
 
     async def test_missing_query_returns_422(self, test_client):
         """Missing q parameter should fail validation."""
-        resp = await test_client.get("/tasks/search", params={"user_id": "u1"})
+        resp = await test_client.get("/tasks/search", params={})
         assert resp.status_code == 422
 
     async def test_no_results(self, test_client):
         """Search with no matching tasks returns empty list."""
         resp = await test_client.get("/tasks/search", params={
-            "q": "nonexistent xyz", "user_id": "u1",
+            "q": "nonexistent xyz",
         })
         assert resp.status_code == 200
         body = resp.json()
@@ -30,16 +30,16 @@ class TestSearchTasks:
         """Search matching a task title returns results with scores."""
         # Create tasks
         await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Buy groceries from store",
+            "title": "Buy groceries from store",
             "category": "home", "transcription": "buy groceries",
         })
         await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Finish project report",
+            "title": "Finish project report",
             "category": "career", "transcription": "finish report",
         })
 
         resp = await test_client.get("/tasks/search", params={
-            "q": "groceries", "user_id": "u1",
+            "q": "groceries",
         })
         assert resp.status_code == 200
         body = resp.json()
@@ -56,37 +56,39 @@ class TestSearchTasks:
             assert isinstance(result["score"], float)
             assert result["score"] > 0
 
-    async def test_user_isolation(self, test_client):
-        """User A's tasks should not appear in User B's search."""
+    async def test_user_isolation(self, test_client, task_service):
+        """Other user's tasks should not appear in authenticated user's search."""
+        # Create a task owned by a different user directly via service
+        await task_service.create_task(
+            user_id="other-user", title="Secret project alpha",
+            category="career", transcription="secret project",
+        )
+        # Create a task via API (owned by "test-user" via auth override)
         await test_client.post("/tasks", json={
-            "user_id": "user-a", "title": "Secret project alpha",
-            "category": "career", "transcription": "secret project",
-        })
-        await test_client.post("/tasks", json={
-            "user_id": "user-b", "title": "Public project beta",
+            "title": "Public project beta",
             "category": "career", "transcription": "public project",
         })
 
-        # User B searches — should NOT see user A's task
+        # Search via API — should NOT see the other-user's task
         resp = await test_client.get("/tasks/search", params={
-            "q": "secret project alpha", "user_id": "user-b",
+            "q": "secret project alpha",
         })
         assert resp.status_code == 200
         body = resp.json()
         task_ids = [r["task"]["user_id"] for r in body["results"]]
-        assert "user-a" not in task_ids
+        assert "other-user" not in task_ids
 
     async def test_limit_parameter(self, test_client):
         """Limit parameter caps the number of results."""
         # Create several tasks with similar titles
         for i in range(5):
             await test_client.post("/tasks", json={
-                "user_id": "u1", "title": f"Review document {i}",
+                "title": f"Review document {i}",
                 "category": "career", "transcription": f"review doc {i}",
             })
 
         resp = await test_client.get("/tasks/search", params={
-            "q": "review document", "user_id": "u1", "limit": 2,
+            "q": "review document", "limit": 2,
         })
         assert resp.status_code == 200
         body = resp.json()
@@ -95,7 +97,7 @@ class TestSearchTasks:
     async def test_completed_tasks_excluded(self, test_client):
         """Completed tasks should not appear in search results."""
         create_resp = await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Completed task cleanup",
+            "title": "Completed task cleanup",
             "category": "home", "transcription": "cleanup",
         })
         task_id = create_resp.json()["id"]
@@ -104,7 +106,7 @@ class TestSearchTasks:
         await test_client.put(f"/tasks/{task_id}/complete")
 
         resp = await test_client.get("/tasks/search", params={
-            "q": "completed task cleanup", "user_id": "u1",
+            "q": "completed task cleanup",
         })
         assert resp.status_code == 200
         body = resp.json()
@@ -114,12 +116,12 @@ class TestSearchTasks:
     async def test_response_structure(self, test_client):
         """Verify full response structure matches TaskSearchResponse schema."""
         await test_client.post("/tasks", json={
-            "user_id": "u1", "title": "Structure test task",
+            "title": "Structure test task",
             "category": "career", "transcription": "structure test",
         })
 
         resp = await test_client.get("/tasks/search", params={
-            "q": "structure test", "user_id": "u1",
+            "q": "structure test",
         })
         assert resp.status_code == 200
         body = resp.json()

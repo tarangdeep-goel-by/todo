@@ -20,10 +20,20 @@ class Settings(BaseSettings):
 
     # Application
     app_env: str = "development"
-    debug: bool = True
+    debug: bool = False
 
     # Search engine: "fuzzy" (RapidFuzz) or "pg_native" (pg_trgm)
     search_engine: str = "fuzzy"
+
+    # CORS
+    cors_origins: str = "http://localhost:8000,http://localhost:8001"
+
+    # Firebase Auth
+    firebase_project_id: str = ""
+    google_application_credentials: str = ""
+
+    # Logging
+    log_level: str = "INFO"
 
     # Category limits
     max_categories: int = 8

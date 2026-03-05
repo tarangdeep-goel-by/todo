@@ -4,12 +4,13 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: todo-postgres
+    env_file: .env
     environment:
-      POSTGRES_USER: todo
-      POSTGRES_PASSWORD: todo123
-      POSTGRES_DB: todo_db
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-todo_db}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,22 +22,16 @@ services:
   backend:
     build: .
     container_name: todo-backend
+    env_file: .env
     environment:
-      # Database URL (auto-configured for docker network)
-      DATABASE_URL: postgresql+asyncpg://todo:todo123@postgres:5432/todo_db
-
-      # Gemini API Key
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-todo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-todo_db}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-
-      # Sarvam AI (streaming STT)
       SARVAM_API_KEY: ${SARVAM_API_KEY}
-
-      # Application settings
-      APP_ENV: development
-      DEBUG: "True"
-
-      # Search engine: "fuzzy" (RapidFuzz) or "pg_native" (pg_trgm)
-      SEARCH_ENGINE: pg_native
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-False}
+      SEARCH_ENGINE: ${SEARCH_ENGINE:-pg_native}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
     ports:
       - "8001:8000"
     volumes:

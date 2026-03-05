@@ -1,11 +1,11 @@
 """Ramble mode service — streams audio to Sarvam AI for transcription."""
 import asyncio
-import logging
 from typing import Callable
 
 from sarvamai import AsyncSarvamAI
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RambleSession:
@@ -19,7 +19,7 @@ class RambleSession:
 
     async def start(self) -> None:
         """Open Sarvam streaming STT connection in translate mode (→ English)."""
-        logger.info("Opening Sarvam streaming STT session...")
+        logger.info("ramble.stt.open")
         self._context_manager = self._client.speech_to_text_streaming.connect(
             model="saaras:v3",
             mode="translate",
@@ -28,7 +28,7 @@ class RambleSession:
             input_audio_codec="pcm_s16le",
         )
         self._ws = await self._context_manager.__aenter__()
-        logger.info("Sarvam streaming STT session opened successfully")
+        logger.info("ramble.stt.open.done")
 
     async def send_audio(self, pcm_base64: str) -> None:
         """Send a chunk of base64-encoded 16kHz PCM audio."""
@@ -44,35 +44,35 @@ class RambleSession:
         """Listen for Sarvam streaming events. Calls on_message(dict) for each."""
         if not self._ws:
             return
-        logger.info("Starting receive loop")
+        logger.debug("ramble.stt.receive_start")
         try:
             async for message in self._ws:
                 # SpeechToTextStreamingResponse: .type = "data"|"error"|"events"
                 # For "data": .data is SpeechToTextTranscriptionData with .transcript
-                logger.debug("Sarvam event: type=%s", getattr(message, "type", "?"))
+                logger.debug("ramble.stt.event", event_type=getattr(message, "type", "?"))
                 if getattr(message, "type", None) == "data" and hasattr(message, "data"):
                     transcript = getattr(message.data, "transcript", None)
                     if transcript:
                         self._accumulated_transcription += " " + transcript
-                        logger.debug("Transcription chunk: %s", transcript[:200])
+                        logger.debug("ramble.stt.chunk", length=len(transcript))
                         await on_message({
                             "type": "transcription",
                             "text": self._accumulated_transcription.strip(),
                         })
                 elif getattr(message, "type", None) == "error":
                     err_msg = str(getattr(message, "data", message))
-                    logger.error("Sarvam error event: %s", err_msg)
+                    logger.error("ramble.stt.error", message=err_msg)
                     await on_message({"type": "error", "message": err_msg})
 
-            logger.info("Receive loop ended normally")
+            logger.info("ramble.stt.close")
         except asyncio.CancelledError:
-            logger.info("Receive loop cancelled")
+            logger.info("ramble.stt.close", reason="cancelled")
         except Exception as e:
             err_str = str(e)
             if "1000 (OK)" in err_str or "1001" in err_str:
-                logger.info("Receive loop closed normally")
+                logger.info("ramble.stt.close", reason="normal")
             else:
-                logger.error("Receive loop error: %s", e)
+                logger.error("ramble.stt.error", error=str(e))
                 await on_message({"type": "error", "message": err_str})
 
     async def close(self) -> None:

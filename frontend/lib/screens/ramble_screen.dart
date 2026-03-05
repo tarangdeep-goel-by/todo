@@ -18,6 +18,7 @@ import '../widgets/waveform_painter.dart';
 import '../widgets/styled_snackbar.dart';
 import '../widgets/task_parent_picker.dart';
 import '../utils/string_extensions.dart';
+import '../services/app_logger.dart';
 
 /// Ramble mode phases
 enum _RamblePhase { recording, editing, processing, reviewing }
@@ -48,6 +49,7 @@ class RambleScreen extends ConsumerStatefulWidget {
 }
 
 class _RambleScreenState extends ConsumerState<RambleScreen> {
+  final _logger = AppLogger.instance;
   _RamblePhase _phase = _RamblePhase.recording;
   bool _canStopListening = false;
   bool _isStoppingListening = false;
@@ -186,7 +188,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   // ────────── Recording (WebSocket streaming) ──────────
 
   Future<void> _startRecording() async {
-    debugPrint('[Ramble] _startRecording called');
+    _logger.info('ramble.start', logger: 'RambleScreen');
     _canStopListening = false;
     setState(() => _phase = _RamblePhase.recording);
 
@@ -198,8 +200,8 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       final audioService = ref.read(audioServiceProvider);
       final rambleWs = ref.read(rambleWebSocketProvider);
 
-      debugPrint('[Ramble] Connecting WebSocket...');
-      await rambleWs.connect(userId: AppConstants.defaultUserId);
+      _logger.debug('ws.connect', logger: 'RambleScreen');
+      await rambleWs.connect();
 
       _transcriptionSub = rambleWs.transcriptionStream.listen((text) {
         if (mounted && _phase == _RamblePhase.recording) {
@@ -209,13 +211,13 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
       _finalTranscriptSub = rambleWs.finalTranscriptStream.listen((text) {
         if (mounted) {
-          debugPrint('[Ramble] Final transcript received: ${text.length} chars');
+          _logger.info('ramble.transcript', logger: 'RambleScreen', data: {'length': text.length});
           _transcriptController.text = text;
         }
       });
 
       _errorSub = rambleWs.errorStream.listen((error) {
-        debugPrint('[Ramble] Server error: $error');
+        _logger.error('ws.error', logger: 'RambleScreen', data: {'error': error});
         if (mounted && _phase == _RamblePhase.recording) {
           showStyledSnackbar(context,
             message: 'Voice connection interrupted. Try again.',
@@ -225,7 +227,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       });
 
       _statusSub = rambleWs.statusStream.listen((status) {
-        debugPrint('[Ramble] Status: $status');
+        _logger.debug('ramble.status', logger: 'RambleScreen', data: {'status': status});
         if (status == 'timeout' && mounted && _phase == _RamblePhase.recording) {
           // Session timed out — auto-transition to editing
           _stopAndEdit();
@@ -255,7 +257,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         }
       });
 
-      debugPrint('[Ramble] Starting audio stream...');
+      _logger.debug('ramble.start', logger: 'RambleScreen', data: {'step': 'audio_stream'});
       final audioStream = await audioService.startStream();
 
       _audioStreamSub = audioStream.listen((pcmChunk) {
@@ -264,9 +266,9 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       });
 
       ref.read(recordingStateProvider.notifier).state = RecordingState.listening;
-      debugPrint('[Ramble] Recording started');
+      _logger.info('ramble.start', logger: 'RambleScreen', data: {'success': true});
     } catch (e) {
-      debugPrint('[Ramble] _startRecording FAILED: $e');
+      _logger.error('ramble.start', logger: 'RambleScreen', data: {'error': e.toString()});
       if (mounted) {
         _resetProviders();
         Navigator.pop(context);
@@ -279,7 +281,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   }
 
   Future<void> _stopAndEdit() async {
-    debugPrint('[Ramble] _stopAndEdit called');
+    _logger.info('ramble.stop', logger: 'RambleScreen');
     if (_isStoppingListening || !_canStopListening) return;
     if (_phase != _RamblePhase.recording) return;
     _isStoppingListening = true;
@@ -294,11 +296,11 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         await audioService.stopStream();
       }
       _isPaused = false;
-      debugPrint('[Ramble] Audio stream stopped');
+      _logger.debug('ramble.stop', logger: 'RambleScreen', data: {'step': 'audio_stopped'});
 
       final rambleWs = ref.read(rambleWebSocketProvider);
       final finalTranscript = await rambleWs.stop();
-      debugPrint('[Ramble] WebSocket stopped, transcript: ${finalTranscript?.length ?? 0} chars');
+      _logger.info('ramble.stop', logger: 'RambleScreen', data: {'transcript_length': finalTranscript?.length ?? 0});
 
       _cancelSubscriptions();
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
@@ -316,10 +318,10 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         return;
       }
 
-      debugPrint('[Ramble] -> editing phase, ${transcript.length} chars');
+      _logger.info('ramble.stop', logger: 'RambleScreen', data: {'phase': 'editing', 'length': transcript.length});
       setState(() => _phase = _RamblePhase.editing);
     } catch (e) {
-      debugPrint('[Ramble] _stopAndEdit FAILED: $e');
+      _logger.error('ramble.stop', logger: 'RambleScreen', data: {'error': e.toString()});
       if (mounted) {
         _resetProviders();
         Navigator.pop(context);
@@ -337,7 +339,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
   Future<void> _pauseRecording() async {
     if (_isPaused || _phase != _RamblePhase.recording) return;
-    debugPrint('[Ramble] Pausing...');
+    _logger.debug('ramble.pause', logger: 'RambleScreen');
     HapticService.light();
 
     // Stop sending audio but keep WebSocket open
@@ -349,12 +351,12 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
     setState(() => _isPaused = true);
     ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
-    debugPrint('[Ramble] Paused');
+    _logger.debug('ramble.pause', logger: 'RambleScreen', data: {'success': true});
   }
 
   Future<void> _resumeRecording() async {
     if (!_isPaused || _phase != _RamblePhase.recording) return;
-    debugPrint('[Ramble] Resuming...');
+    _logger.debug('ramble.resume', logger: 'RambleScreen');
     HapticService.light();
 
     try {
@@ -369,9 +371,9 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
       setState(() => _isPaused = false);
       ref.read(recordingStateProvider.notifier).state = RecordingState.listening;
-      debugPrint('[Ramble] Resumed');
+      _logger.debug('ramble.resume', logger: 'RambleScreen', data: {'success': true});
     } catch (e) {
-      debugPrint('[Ramble] Resume FAILED: $e');
+      _logger.error('ramble.resume', logger: 'RambleScreen', data: {'error': e.toString()});
       if (mounted) {
         showStyledSnackbar(context,
           message: 'Couldn\'t resume recording. Try again.',
@@ -391,7 +393,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
   void _handleReconnect() {
     final rambleWs = ref.read(rambleWebSocketProvider);
-    rambleWs.manualReconnect(userId: AppConstants.defaultUserId);
+    rambleWs.manualReconnect();
     HapticService.light();
   }
 
@@ -407,17 +409,16 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
     try {
       final apiService = ref.read(apiServiceProvider);
-      debugPrint('[Ramble] _processBrainDump transcript: "$text"');
+      _logger.info('braindump.process', logger: 'RambleScreen', data: {'transcript_length': text.length});
       final response = await apiService.processBrainDump(
         transcription: text,
-        userId: AppConstants.defaultUserId,
         category: widget.prefilledCategory,
         parentId: widget.prefilledParentId,
       );
 
-      debugPrint('[Ramble] _processBrainDump got ${response.tasks.length} proposals:');
+      _logger.info('braindump.process', logger: 'RambleScreen', data: {'proposal_count': response.tasks.length});
       for (final t in response.tasks) {
-        debugPrint('[Ramble]   → action=${t.action} content="${t.content}" category=${t.category} matched=${t.matchedTaskId} changes=${t.changes}');
+        _logger.debug('braindump.action', logger: 'RambleScreen', data: {'action': t.action, 'category': t.category, 'matched_id': t.matchedTaskId});
       }
 
       if (mounted) {
@@ -449,7 +450,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         });
       }
     } catch (e) {
-      debugPrint('[Ramble] _processBrainDump FAILED: $e');
+      _logger.error('braindump.process', logger: 'RambleScreen', data: {'error': e.toString()});
       if (mounted) {
         showStyledSnackbar(context,
           message: 'Couldn\'t process your input. Try again.',
@@ -468,9 +469,9 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         .toList();
     if (selected.isEmpty) return;
 
-    debugPrint('[Ramble] _submitProposals START: ${selected.length} tasks');
+    _logger.info('braindump.submit', logger: 'RambleScreen', data: {'task_count': selected.length});
     for (final t in selected) {
-      debugPrint('[Ramble]   → action=${t.action} content="${t.content}" matchedId=${t.matchedTaskId}');
+      _logger.debug('braindump.action', logger: 'RambleScreen', data: {'action': t.action, 'matched_id': t.matchedTaskId});
     }
 
     HapticService.medium();
@@ -478,17 +479,16 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
     try {
       final apiService = ref.read(apiServiceProvider);
-      debugPrint('[Ramble] _submitProposals calling API...');
+      _logger.debug('braindump.submit', logger: 'RambleScreen', data: {'step': 'api_call'});
       final stopwatch = Stopwatch()..start();
       final response = await apiService.submitBrainDump(
-        userId: AppConstants.defaultUserId,
         tasks: selected,
       );
-      debugPrint('[Ramble] _submitProposals API returned in ${stopwatch.elapsedMilliseconds}ms: ${response.message}');
+      _logger.info('braindump.submit', logger: 'RambleScreen', data: {'step': 'api_done', 'duration_ms': stopwatch.elapsedMilliseconds});
 
-      debugPrint('[Ramble] _submitProposals fetching tasks...');
+      _logger.debug('braindump.submit', logger: 'RambleScreen', data: {'step': 'fetch_all'});
       await ref.read(taskStoreProvider.notifier).fetchAll();
-      debugPrint('[Ramble] _submitProposals fetchAll done in ${stopwatch.elapsedMilliseconds}ms');
+      _logger.info('braindump.submit', logger: 'RambleScreen', data: {'step': 'fetch_done', 'duration_ms': stopwatch.elapsedMilliseconds});
 
       if (mounted) {
         _resetProviders();
@@ -498,8 +498,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         ));
       }
     } catch (e, stack) {
-      debugPrint('[Ramble] _submitProposals FAILED: $e');
-      debugPrint('[Ramble] _submitProposals stack: $stack');
+      _logger.error('braindump.submit', logger: 'RambleScreen', data: {'error': e.toString(), 'stack': stack.toString()});
       if (mounted) {
         setState(() => _isSubmitting = false);
         showStyledSnackbar(context,

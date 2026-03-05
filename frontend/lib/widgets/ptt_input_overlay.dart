@@ -188,7 +188,6 @@ class _PttInputOverlayState extends ConsumerState<PttInputOverlay> {
       final apiService = ref.read(apiServiceProvider);
       final response = await apiService.processBrainDump(
         transcription: text,
-        userId: AppConstants.defaultUserId,
       );
 
       ref.read(recordingStateProvider.notifier).state = RecordingState.idle;

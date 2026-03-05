@@ -1,5 +1,4 @@
 """Agent service for processing voice commands via brain dump pipeline."""
-import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List, Optional, Tuple
 import uuid
@@ -10,8 +9,9 @@ from .intent_prefilter import prefilter
 from models.schemas import BrainDumpResponse, BrainDumpTaskProposal, BrainDumpSubmitResponse
 from utils.date_parser import parse_flexible_date
 from config import get_settings
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AgentService:
@@ -58,7 +58,7 @@ class AgentService:
         Returns:
             BrainDumpResponse with list of proposed tasks
         """
-        logger.info("process_brain_dump: transcription='%s', user_id='%s', parent_id=%s", transcription, user_id, parent_id)
+        logger.info("braindump.process", transcription_length=len(transcription), parent_id=parent_id)
 
         # Pre-filter — catch gibberish before LLM
         prefilter_result = prefilter(transcription)
@@ -77,7 +77,7 @@ class AgentService:
             parent_task = await task_service.get_task(parent_id)
             if parent_task:
                 parent_category = parent_task.category
-                logger.debug("subtask mode: parent='%s', category='%s'", parent_task.title, parent_category)
+                logger.debug("braindump.process.subtask_mode", parent_title=parent_task.title, category=parent_category)
 
         # Get task proposals from Gemini
         raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context)
@@ -99,7 +99,7 @@ class AgentService:
                 seen.add(key)
                 deduped.append(raw)
             else:
-                logger.debug("brain dump dedup: dropped duplicate '%s' (%s)", key[1], key[0])
+                logger.debug("braindump.process.dedup", content=key[1], action=key[0])
         raw_tasks = deduped
 
         # Get available categories for validation
@@ -129,7 +129,7 @@ class AgentService:
             # Brain dump uses flat 0.6 threshold (lower than voice commands) because
             # users review all proposals before submission — false positives are caught in UI
             if confidence < 0.6:
-                logger.warning("brain dump skipping low-confidence (%.2f): '%s'", confidence, content)
+                logger.warning("braindump.process.low_confidence", confidence=confidence, content=content)
                 continue
 
             task_category = category or parent_category or raw.get("category", "home")
@@ -146,7 +146,7 @@ class AgentService:
                     task_category = top_task.category or task_category
                     match_explanation = f"Matched '{top_task.title}' (similarity: {int(top_score)}%)"
                     content = top_task.title  # show real task title in proposal UI
-                    logger.debug("brain dump resolved '%s' → task '%s' (%s, score=%d%%)", content, top_task.title, matched_task_id, int(top_score))
+                    logger.debug("braindump.process.resolved", task_id=matched_task_id, score=int(top_score))
                     if len(matched) > 1:
                         alternate_matches = [
                             {"id": str(m.id), "title": m.title, "category": m.category}
@@ -162,7 +162,7 @@ class AgentService:
                             existing_desc = raw.get("description") or ""
                             raw["description"] = f"{child_note}. {existing_desc}".strip().rstrip(".")
                 else:
-                    logger.warning("brain dump could not resolve '%s' for %s, skipping", content, action)
+                    logger.warning("braindump.process.unresolved", content=content, action=action)
                     continue
 
             # BREAKDOWN: expand into ADD subtask proposals inline
@@ -186,7 +186,7 @@ class AgentService:
                     if targets:
                         changes["parent_id"] = str(targets[0][0].id)
                     else:
-                        logger.warning("brain dump could not resolve reparent target '%s', skipping", target_query)
+                        logger.warning("braindump.process.unresolved", content=target_query, action="reparent")
                         continue
                 # If changes.parent_id is a search query string (from LLM), resolve it
                 elif "parent_id" in changes and changes["parent_id"] is not None:
@@ -200,7 +200,7 @@ class AgentService:
                         if targets:
                             changes["parent_id"] = str(targets[0][0].id)
                         else:
-                            logger.warning("brain dump could not resolve parent_id query '%s', skipping", pid)
+                            logger.warning("braindump.process.unresolved", content=str(pid), action="reparent")
                             continue
                 raw["changes"] = changes
 
@@ -236,7 +236,7 @@ class AgentService:
                 match_explanation=match_explanation,
             ))
 
-        logger.info("brain dump produced %d task proposals", len(proposals))
+        logger.info("braindump.process.done", proposal_count=len(proposals))
 
         return BrainDumpResponse(
             success=True,
@@ -259,11 +259,11 @@ class AgentService:
         import time as _time
         action = proposal.action or "add"
         _t0 = _time.monotonic()
-        logger.debug("_execute_action START: action=%s content='%s' matched=%s", action, proposal.content, proposal.matched_task_id)
+        logger.debug("braindump.action.start", action=action, content=proposal.content)
 
         if action == "complete" and proposal.matched_task_id:
             count = await task_service.complete_task_with_children(proposal.matched_task_id)
-            logger.debug("_execute_action DONE in %.0fms: completed '%s' + %d children", (_time.monotonic()-_t0)*1000, proposal.content, count - 1)
+            logger.debug("braindump.action.done", action="complete", duration_ms=round((_time.monotonic()-_t0)*1000, 1))
             return {"type": "completed", "count": count}
 
         # Backward compat: convert old "move" to "edit" at execution time
@@ -287,12 +287,12 @@ class AgentService:
                     raise ValueError(f"Reparent target '{changes['parent_id']}' no longer exists")
             if changes:
                 await task_service.update_task(proposal.matched_task_id, **changes)
-            logger.debug("_execute_action DONE in %.0fms: edited '%s': %s", (_time.monotonic()-_t0)*1000, proposal.content, changes)
+            logger.debug("braindump.action.done", action="edit", duration_ms=round((_time.monotonic()-_t0)*1000, 1))
             return {"type": "edited", "count": 1}
 
         if action == "delete" and proposal.matched_task_id:
             count = await task_service.delete_task_with_children(proposal.matched_task_id)
-            logger.debug("_execute_action DONE in %.0fms: deleted '%s' + %d children", (_time.monotonic()-_t0)*1000, proposal.content, count - 1)
+            logger.debug("braindump.action.done", action="delete", duration_ms=round((_time.monotonic()-_t0)*1000, 1))
             return {"type": "deleted", "count": count}
 
         # Default: ADD — auto-create category if needed
@@ -319,7 +319,7 @@ class AgentService:
                 "reasoning": "Brain dump voice input",
             },
         )
-        logger.debug("_execute_action DONE in %.0fms: created '%s' (%s)", (_time.monotonic()-_t0)*1000, task.title, task.id)
+        logger.debug("braindump.action.done", action="add", duration_ms=round((_time.monotonic()-_t0)*1000, 1))
         return {"type": "created", "count": 1, "task_id": task.id}
 
     async def submit_brain_dump(
@@ -339,7 +339,7 @@ class AgentService:
         Returns:
             BrainDumpSubmitResponse with created task IDs
         """
-        logger.info("submit_brain_dump: %d tasks for user '%s'", len(tasks), user_id)
+        logger.info("braindump.submit.start", task_count=len(tasks))
 
         task_service = TaskService(db)
         created_ids: List[str] = []
@@ -353,7 +353,7 @@ class AgentService:
                 if result.get("task_id"):
                     created_ids.append(result["task_id"])
             except Exception as e:
-                logger.error("failed to process '%s' (%s): %s", proposal.content, proposal.action, e)
+                logger.error("braindump.action.error", content=proposal.content, action=proposal.action, error=str(e))
 
         total = sum(counts.values())
         if total == 0:

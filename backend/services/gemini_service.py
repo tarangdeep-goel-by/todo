@@ -1,12 +1,13 @@
 """Gemini AI service for brain dump detection and subtask generation."""
-import logging
+import re
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 import json
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # ──────────────────────────────────────────────
@@ -46,6 +47,11 @@ class GeminiService:
         """Initialize Gemini service with API key."""
         self.client = genai.Client(api_key=api_key)
 
+    @staticmethod
+    def _sanitize_prompt_input(text: str) -> str:
+        """Strip XML-like tags from user input to prevent prompt injection."""
+        return re.sub(r'</?[a-zA-Z][^>]*>', '', text)
+
     async def detect_brain_dump(
         self,
         transcription: str,
@@ -68,6 +74,8 @@ Each category header (e.g. "CAREER TASKS:") represents a top-level domain — us
 form (e.g. "career") as the category value. Tasks are nested with "├──" showing parent-child
 relationships. Task IDs are shown in parentheses."""
 
+        safe_transcription = self._sanitize_prompt_input(transcription)
+
         prompt = f"""<context>
 {context_desc}
 
@@ -75,7 +83,7 @@ relationships. Task IDs are shown in parentheses."""
 </context>
 
 <input>
-{transcription}
+{safe_transcription}
 </input>
 
 <instructions>
@@ -187,7 +195,7 @@ Common mistakes to avoid:
                 ),
             )
 
-            logger.info("brain_dump raw response: %s", response.text)
+            logger.debug("braindump.detect.raw", response_length=len(response.text))
             result = json.loads(response.text)
 
             # Normalize: always return a list
@@ -213,12 +221,12 @@ Common mistakes to avoid:
                         task["changes"] = changes
 
             for i, task in enumerate(result):
-                logger.info("brain_dump[%d]: content='%s' | category='%s'", i, task.get('content'), task.get('category'))
+                logger.info("braindump.detect.action", index=i, content=task.get('content'), category=task.get('category'))
 
             return result
 
         except Exception as e:
-            logger.error("brain dump detection FAILED: %s", e, exc_info=True)
+            logger.error("braindump.detect.error", error=str(e), exc_info=True)
             return []
 
     async def generate_subtasks(self, task_title: str, task_description: str | None = None, context: str = "") -> List[str]:
@@ -232,11 +240,14 @@ Common mistakes to avoid:
         Returns:
             List of subtask title strings
         """
-        desc_line = f"\nDescription: {task_description}" if task_description else ""
-        prompt = f"""Task to break down: "{task_title}"{desc_line}
+        safe_title = self._sanitize_prompt_input(task_title)
+        safe_desc = self._sanitize_prompt_input(task_description) if task_description else None
+        safe_context = self._sanitize_prompt_input(context) if context else ""
+        desc_line = f"\nDescription: {safe_desc}" if safe_desc else ""
+        prompt = f"""Task to break down: "{safe_title}"{desc_line}
 
 Current task tree context:
-{context}
+{safe_context}
 
 Generate 4-6 actionable subtasks for the task above. Each subtask should be:
 - Specific and actionable (starts with a verb or clear action)
@@ -262,9 +273,9 @@ Respond ONLY with a valid JSON array of strings. Example:
             if not isinstance(result, list) or not all(isinstance(s, str) for s in result):
                 raise ValueError("Expected JSON array of strings")
 
-            logger.info("generated %d subtask suggestions for '%s'", len(result), task_title)
+            logger.info("braindump.detect.subtasks", count=len(result), task_title=task_title)
             return result
 
         except Exception as e:
-            logger.error("subtask generation FAILED: %s", e)
+            logger.error("braindump.detect.subtasks_error", error=str(e))
             return []

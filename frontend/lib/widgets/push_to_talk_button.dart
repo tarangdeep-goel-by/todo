@@ -260,7 +260,6 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       final apiService = ref.read(apiServiceProvider);
       final response = await apiService.processBrainDump(
         transcription: text,
-        userId: AppConstants.defaultUserId,
       );
 
       _resetState();

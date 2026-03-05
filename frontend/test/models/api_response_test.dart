@@ -5,7 +5,6 @@ void main() {
   group('CreateTaskRequest.toJson', () {
     test('serializes required and optional fields', () {
       final req = CreateTaskRequest(
-        userId: 'u1',
         title: 'Task',
         category: 'career',
         transcription: 'task',
@@ -13,7 +12,7 @@ void main() {
         dueDate: DateTime(2025, 6, 15),
       );
       final json = req.toJson();
-      expect(json['user_id'], 'u1');
+      expect(json.containsKey('user_id'), false);
       expect(json['title'], 'Task');
       expect(json['category'], 'career');
       expect(json['description'], 'desc');

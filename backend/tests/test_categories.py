@@ -85,44 +85,33 @@ class TestCategoryAPI:
     """HTTP endpoint tests for /api/categories."""
 
     async def test_list_empty(self, test_client):
-        resp = await test_client.get("/categories", params={"user_id": "test-user"})
+        resp = await test_client.get("/categories")
         assert resp.status_code == 200
         assert resp.json() == []
 
     async def test_create_and_list(self, test_client):
-        resp = await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "career",
-        })
+        resp = await test_client.post("/categories", json={"name": "career"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "career"
         assert data["position"] == 0
 
-        resp = await test_client.get("/categories", params={"user_id": "test-user"})
+        resp = await test_client.get("/categories")
         assert len(resp.json()) == 1
 
     async def test_create_duplicate_400(self, test_client):
-        await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "career",
-        })
-        resp = await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "career",
-        })
+        await test_client.post("/categories", json={"name": "career"})
+        resp = await test_client.post("/categories", json={"name": "career"})
         assert resp.status_code == 400
 
     async def test_delete_category(self, test_client):
-        resp = await test_client.post("/categories", json={
-            "user_id": "test-user", "name": "career",
-        })
+        resp = await test_client.post("/categories", json={"name": "career"})
         cat_id = resp.json()["id"]
-        resp = await test_client.delete(
-            f"/categories/{cat_id}", params={"user_id": "test-user"}
-        )
+        resp = await test_client.delete(f"/categories/{cat_id}")
         assert resp.status_code == 200
 
     async def test_delete_nonexistent_404(self, test_client):
         resp = await test_client.delete(
             "/categories/ffffffff-ffff-ffff-ffff-ffffffffffff",
-            params={"user_id": "test-user"},
         )
         assert resp.status_code == 404
