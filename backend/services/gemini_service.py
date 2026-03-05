@@ -100,6 +100,14 @@ Rules:
 - "move X under Y" → move (reparenting, not category change)
 - "move X to top level" / "put X to top level" / "X to root" → move with targetParentQuery=null (reparent to root level, NOT edit)
 - "add X under Y" / "create X under Y" → add with parentQuery="Y" (MUST set parentQuery when "under Y" is specified)
+- Implicit parent references → set parentQuery when the referenced name looks like an existing task, project, or proper noun in the tree:
+  - "for X": "write a spec for safedrop" → parentQuery: "safedrop"
+  - "in X": "add tests in the auth module" → parentQuery: "auth module"
+  - "to X": "add logging to the API" → parentQuery: "api"
+  - possessive "X's": "implement safedrop's auth" → parentQuery: "safedrop"
+  - "on X": "work on safedrop spec" → parentQuery: "safedrop"
+  - "related to X": "task related to payments" → parentQuery: "payments"
+- ONLY set parentQuery for implicit references when X looks like a proper noun, project name, or recognizable task name (check the task tree). Skip for generic common nouns not in the tree (e.g. "buy a gift for mom" → parentQuery: null unless "mom" is an actual task). When ambiguous, prefer setting parentQuery — the lookup gracefully fails if no match is found.
 - Each distinct task mentioned = separate action. Never merge different tasks into one action. E.g. "finished report, schedule meeting, set budget priority high" = 3 actions.
 - Filler speech ("um", "let me think") → skip
 - Self-corrections ("no wait, I mean...") → use the correction only
@@ -113,7 +121,7 @@ Rules:
   * recreation — hobbies, travel, entertainment, sports, dining out, games, creative projects
   * home — chores, groceries, repairs, cleaning, cooking, organizing, errands
   * community — volunteering, donations, neighborhood, local events, civic engagement
-- Placement: nest under an existing parent when the new task is clearly a subtask (e.g. "buy protein powder" under "Meal prep"). Create at root level when it's an independent task or no obvious parent exists.
+- Placement: nest under an existing parent when the new task is clearly a subtask (e.g. "buy protein powder" under "Meal prep"), OR when implicit parent references ("for X", "in X", "to X", "on X", "X's") point to a recognizable task/project name. Create at root level when it's an independent task or no obvious parent exists.
 - Return [] for pure filler or nonsense with no actionable content
 
 For edit actions, always populate the `changes` object with the modified field:
@@ -128,6 +136,12 @@ Common mistakes to avoid:
 - "put Riverpod patterns to top level" → action: MOVE, targetParentQuery: null ✓ (not edit!)
 - "buy running shoes with high priority" (task "buy new running shoes" exists) → action: EDIT, changes: {{priority: "high"}} ✓ (not add!)
 - "show me all my career tasks" → return [] ✓ (query, not mutation)
+- "write a spec for safedrop" (task "SafeDrop" in tree) → action: ADD, parentQuery: "safedrop" ✓ (not root-level!)
+- "implement safedrop's auth module" (task "SafeDrop" in tree) → action: ADD, parentQuery: "safedrop" ✓ (possessive → parent)
+- "add tests for the login feature" (task "Login Feature" in tree) → action: ADD, parentQuery: "login feature" ✓
+- "buy groceries for dinner tonight" (no "dinner" task in tree) → action: ADD, parentQuery: null ✓ (generic phrase, not a task name)
+- "add task under Career" → action: ADD, parentQuery: "career" ✓ (explicit "under" still works)
+- "something related to backend api" (task "Backend API" in tree) → action: ADD, parentQuery: "backend api" ✓ (related to → parent)
 </instructions>"""
 
         try:
