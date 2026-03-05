@@ -4,10 +4,11 @@ import json
 import logging
 import time
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from services.ramble_service import RambleSession
 from config import get_settings
+from auth import _init_firebase
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ramble"])
@@ -16,25 +17,45 @@ router = APIRouter(tags=["ramble"])
 RAMBLE_MAX_DURATION_SECONDS = 300  # 5 minutes
 RAMBLE_TIMER_INTERVAL_SECONDS = 30
 
+# WebSocket security limits
+MAX_MESSAGE_SIZE = 262_144  # 256 KB per message
+MAX_AUDIO_CHUNK_SIZE = 200_000  # ~5 seconds at 16kHz base64
+VALID_MSG_TYPES = {"start", "audio", "stop"}
+
 
 @router.websocket("/ws/ramble")
-async def ramble_websocket(websocket: WebSocket):
+async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
     """
     WebSocket endpoint for streaming ramble mode (transcription-only).
 
-    Client→Server messages (JSON):
-      {"type": "start", "user_id": "..."}
+    Auth: Pass Firebase ID token as ?token=xxx query param.
+
+    Client->Server messages (JSON):
+      {"type": "start"}
       {"type": "audio", "data": "<base64 PCM 16kHz mono>"}
       {"type": "stop"}
 
-    Server→Client messages (JSON):
+    Server->Client messages (JSON):
       {"type": "transcription", "text": "..."}
       {"type": "final_transcript", "text": "..."}
       {"type": "status", "status": "connected"|"closed"}
       {"type": "error", "message": "..."}
     """
+    # Verify Firebase token BEFORE accepting the connection
+    _init_firebase()
+    try:
+        from firebase_admin import auth as firebase_auth
+        decoded = firebase_auth.verify_id_token(token)
+        user_uid = decoded.get("uid", "unknown")
+    except Exception as e:
+        logger.warning("[Ramble WS] Auth failed: %s", e)
+        await websocket.close(code=4001, reason="Authentication failed")
+        return
+
+    # Only accept after auth succeeds
     await websocket.accept()
-    logger.info("[Ramble WS] Connection accepted")
+
+    logger.info("[Ramble WS] Connection accepted for user %s", user_uid)
     settings = get_settings()
     session: RambleSession | None = None
     receive_task: asyncio.Task | None = None
@@ -74,9 +95,27 @@ async def ramble_websocket(websocket: WebSocket):
                 break
 
             raw = await websocket.receive_text()
-            msg = json.loads(raw)
+
+            # Validate message size
+            if len(raw) > MAX_MESSAGE_SIZE:
+                await send_to_client({"type": "error", "message": "Message too large"})
+                continue
+
+            # Parse JSON safely
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                await send_to_client({"type": "error", "message": "Invalid JSON"})
+                continue
+
             msg_type = msg.get("type")
-            logger.info("[Ramble WS] ← %s", msg_type)
+
+            # Validate message type
+            if msg_type not in VALID_MSG_TYPES:
+                await send_to_client({"type": "error", "message": "Invalid message type"})
+                continue
+
+            logger.info("[Ramble WS] <- %s", msg_type)
 
             if msg_type == "start":
                 session = RambleSession(
@@ -87,7 +126,7 @@ async def ramble_websocket(websocket: WebSocket):
                     logger.info("[Ramble WS] Sarvam STT session started")
                 except Exception as e:
                     logger.error("[Ramble WS] Failed to start Sarvam STT session: %s", e, exc_info=True)
-                    await send_to_client({"type": "error", "message": f"Sarvam STT session failed: {e}"})
+                    await send_to_client({"type": "error", "message": "Transcription service unavailable"})
                     break
 
                 receive_task = asyncio.create_task(
@@ -101,11 +140,15 @@ async def ramble_websocket(websocket: WebSocket):
 
             elif msg_type == "audio":
                 if session:
+                    data = msg.get("data", "")
+                    if not isinstance(data, str) or len(data) > MAX_AUDIO_CHUNK_SIZE:
+                        await send_to_client({"type": "error", "message": "Audio chunk too large"})
+                        continue
                     try:
-                        await session.send_audio(msg["data"])
+                        await session.send_audio(data)
                     except Exception as e:
                         logger.error("[Ramble WS] Failed to send audio: %s", e)
-                        await send_to_client({"type": "error", "message": f"Audio send failed: {e}"})
+                        await send_to_client({"type": "error", "message": "Audio processing failed"})
 
             elif msg_type == "stop":
                 logger.info("[Ramble WS] Stop requested")
@@ -134,7 +177,7 @@ async def ramble_websocket(websocket: WebSocket):
         logger.info("[Ramble WS] Client disconnected")
     except Exception as e:
         logger.error("[Ramble WS] Unexpected error: %s", e, exc_info=True)
-        await send_to_client({"type": "error", "message": str(e)})
+        await send_to_client({"type": "error", "message": "An unexpected error occurred"})
     finally:
         # On timeout: send final transcript before closing
         if session_expired.is_set() and session:

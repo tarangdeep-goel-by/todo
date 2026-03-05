@@ -46,6 +46,7 @@ app.*.map.json
 
 # Environment variables (contains API keys)
 .env
+**/.env
 lib/config/env.dart
 
 # Audio recordings
@@ -61,6 +62,9 @@ assets/audio/
 *.db
 *.sqlite
 *.sqlite3
+
+# Firebase service account key
+**/firebase-service-account.json
 
 # Claude Flow pipeline artifacts
 .claude-flow/

@@ -1,5 +1,6 @@
 """Gemini AI service for brain dump detection and subtask generation."""
 import logging
+import re
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
@@ -46,6 +47,11 @@ class GeminiService:
         """Initialize Gemini service with API key."""
         self.client = genai.Client(api_key=api_key)
 
+    @staticmethod
+    def _sanitize_prompt_input(text: str) -> str:
+        """Strip XML-like tags from user input to prevent prompt injection."""
+        return re.sub(r'</?[a-zA-Z][^>]*>', '', text)
+
     async def detect_brain_dump(
         self,
         transcription: str,
@@ -68,6 +74,8 @@ Each category header (e.g. "CAREER TASKS:") represents a top-level domain — us
 form (e.g. "career") as the category value. Tasks are nested with "├──" showing parent-child
 relationships. Task IDs are shown in parentheses."""
 
+        safe_transcription = self._sanitize_prompt_input(transcription)
+
         prompt = f"""<context>
 {context_desc}
 
@@ -75,7 +83,7 @@ relationships. Task IDs are shown in parentheses."""
 </context>
 
 <input>
-{transcription}
+{safe_transcription}
 </input>
 
 <instructions>
@@ -232,11 +240,14 @@ Common mistakes to avoid:
         Returns:
             List of subtask title strings
         """
-        desc_line = f"\nDescription: {task_description}" if task_description else ""
-        prompt = f"""Task to break down: "{task_title}"{desc_line}
+        safe_title = self._sanitize_prompt_input(task_title)
+        safe_desc = self._sanitize_prompt_input(task_description) if task_description else None
+        safe_context = self._sanitize_prompt_input(context) if context else ""
+        desc_line = f"\nDescription: {safe_desc}" if safe_desc else ""
+        prompt = f"""Task to break down: "{safe_title}"{desc_line}
 
 Current task tree context:
-{context}
+{safe_context}
 
 Generate 4-6 actionable subtasks for the task above. Each subtask should be:
 - Specific and actionable (starts with a verb or clear action)

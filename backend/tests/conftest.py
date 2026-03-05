@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock
 # Set env vars before any app imports
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
+os.environ.setdefault("SARVAM_API_KEY", "test-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
+os.environ.setdefault("DEBUG", "True")
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -17,11 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy import text
 
 from database import Base, get_db
+from auth import get_current_user
 from models.task import Task  # noqa: F401 — registers model on Base
 from models.category import Category  # noqa: F401 — registers model on Base
 from services.task_service import TaskService
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
+
+TEST_USER_ID = "test-user"
 
 
 # ──────────────── Database fixtures ────────────────
@@ -102,6 +107,7 @@ async def test_client(db_session, mock_gemini):
         yield db_session
 
     app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_user] = lambda: TEST_USER_ID
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test/api") as client:
