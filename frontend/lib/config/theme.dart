@@ -73,141 +73,141 @@ class DomainColors {
   // Named aliases for UI accent usage (filter chips, buttons, etc.)
   static const careerDark = DomainPalette(
     name: 'Career',
-    primary: Color(0xFFFF9A50),
-    darkShade: Color(0xFFCC6020),
-    surface: Color(0xFF4A3020),
-    textOnPrimary: Color(0xFF1A0E06),
-    glow: Color(0x66FF9A50),
+    primary: Color(0xFFC4845A),
+    darkShade: Color(0xFF8A5E3E),
+    surface: Color(0xFF2E2218),
+    textOnPrimary: Color(0xFF140E08),
+    glow: Color(0x4DC4845A),
   );
   static const homeDark = DomainPalette(
     name: 'Home',
-    primary: Color(0xFFBB78FF),
-    darkShade: Color(0xFF7838C8),
-    surface: Color(0xFF32204A),
-    textOnPrimary: Color(0xFF10081A),
-    glow: Color(0x66BB78FF),
+    primary: Color(0xFF9878B0),
+    darkShade: Color(0xFF6A5480),
+    surface: Color(0xFF241E30),
+    textOnPrimary: Color(0xFF0E0A16),
+    glow: Color(0x4D9878B0),
   );
   static const recreationDark = DomainPalette(
     name: 'Recreation',
-    primary: Color(0xFFFF5898),
-    darkShade: Color(0xFFCC2860),
-    surface: Color(0xFF441C30),
-    textOnPrimary: Color(0xFF1A0A12),
-    glow: Color(0x66FF5898),
+    primary: Color(0xFFC46A80),
+    darkShade: Color(0xFF8A4A5A),
+    surface: Color(0xFF2A1A20),
+    textOnPrimary: Color(0xFF140A0E),
+    glow: Color(0x4DC46A80),
   );
   static const growthDark = DomainPalette(
     name: 'Growth',
-    primary: Color(0xFFFFC840),
-    darkShade: Color(0xFFCC9010),
-    surface: Color(0xFF3E3214),
-    textOnPrimary: Color(0xFF1A1408),
-    glow: Color(0x66FFC840),
+    primary: Color(0xFFC4A455),
+    darkShade: Color(0xFF8A7438),
+    surface: Color(0xFF2A2414),
+    textOnPrimary: Color(0xFF14100A),
+    glow: Color(0x4DC4A455),
   );
   static const financeDark = DomainPalette(
     name: 'Finance',
-    primary: Color(0xFF6890FF),
-    darkShade: Color(0xFF3050C0),
-    surface: Color(0xFF1E2848),
-    textOnPrimary: Color(0xFF080E1A),
-    glow: Color(0x666890FF),
+    primary: Color(0xFF6A80B0),
+    darkShade: Color(0xFF4A5A80),
+    surface: Color(0xFF1A2028),
+    textOnPrimary: Color(0xFF0A0E14),
+    glow: Color(0x4D6A80B0),
   );
   static const relationshipsDark = DomainPalette(
     name: 'Relationships',
-    primary: Color(0xFFFF5060),
-    darkShade: Color(0xFFCC2030),
-    surface: Color(0xFF401C20),
-    textOnPrimary: Color(0xFF1A0A0C),
-    glow: Color(0x66FF5060),
+    primary: Color(0xFFC46A6E),
+    darkShade: Color(0xFF8A4A4E),
+    surface: Color(0xFF2A1A1C),
+    textOnPrimary: Color(0xFF140A0C),
+    glow: Color(0x4DC46A6E),
   );
   static const communityDark = DomainPalette(
     name: 'Community',
-    primary: Color(0xFF50E8D8),
-    darkShade: Color(0xFF20A898),
-    surface: Color(0xFF1E3834),
-    textOnPrimary: Color(0xFF081A18),
-    glow: Color(0x6650E8D8),
+    primary: Color(0xFF6AAFA4),
+    darkShade: Color(0xFF487A72),
+    surface: Color(0xFF1A2826),
+    textOnPrimary: Color(0xFF0A1412),
+    glow: Color(0x4D6AAFA4),
   );
   static const defaultPalette = DomainPalette(
     name: 'Default',
-    primary: Color(0xFF50E8D8),
-    darkShade: Color(0xFF20A898),
-    surface: Color(0xFF1E3834),
-    textOnPrimary: Color(0xFF081A18),
-    glow: Color(0x6650E8D8),
+    primary: Color(0xFF6AAFA4),
+    darkShade: Color(0xFF487A72),
+    surface: Color(0xFF1A2826),
+    textOnPrimary: Color(0xFF0A1412),
+    glow: Color(0x4D6AAFA4),
   );
 
   static const palettes = <DomainPalette>[
-    // 0 - Bright Orange (Career)
+    // 0 - Warm Clay (Career)
     DomainPalette(
       name: '',
-      primary: Color(0xFFFF9A50),
-      darkShade: Color(0xFFCC6020),
-      surface: Color(0xFF4A3020),
-      textOnPrimary: Color(0xFF1A0E06),
-      glow: Color(0x66FF9A50),
+      primary: Color(0xFFC4845A),
+      darkShade: Color(0xFF8A5E3E),
+      surface: Color(0xFF2E2218),
+      textOnPrimary: Color(0xFF140E08),
+      glow: Color(0x4DC4845A),
     ),
-    // 1 - Bright Purple (Home)
+    // 1 - Dusty Lavender (Home)
     DomainPalette(
       name: '',
-      primary: Color(0xFFBB78FF),
-      darkShade: Color(0xFF7838C8),
-      surface: Color(0xFF32204A),
-      textOnPrimary: Color(0xFF10081A),
-      glow: Color(0x66BB78FF),
+      primary: Color(0xFF9878B0),
+      darkShade: Color(0xFF6A5480),
+      surface: Color(0xFF241E30),
+      textOnPrimary: Color(0xFF0E0A16),
+      glow: Color(0x4D9878B0),
     ),
-    // 2 - Bright Green (Health)
+    // 2 - Sage Green (Health)
     DomainPalette(
       name: '',
-      primary: Color(0xFF50E890),
-      darkShade: Color(0xFF20A850),
-      surface: Color(0xFF1E3828),
-      textOnPrimary: Color(0xFF081A10),
-      glow: Color(0x6650E890),
+      primary: Color(0xFF6AAF7A),
+      darkShade: Color(0xFF487A54),
+      surface: Color(0xFF1A2A1E),
+      textOnPrimary: Color(0xFF0A140E),
+      glow: Color(0x4D6AAF7A),
     ),
-    // 3 - Bright Gold (Growth)
+    // 3 - Ochre Gold (Growth)
     DomainPalette(
       name: '',
-      primary: Color(0xFFFFC840),
-      darkShade: Color(0xFFCC9010),
-      surface: Color(0xFF3E3214),
-      textOnPrimary: Color(0xFF1A1408),
-      glow: Color(0x66FFC840),
+      primary: Color(0xFFC4A455),
+      darkShade: Color(0xFF8A7438),
+      surface: Color(0xFF2A2414),
+      textOnPrimary: Color(0xFF14100A),
+      glow: Color(0x4DC4A455),
     ),
-    // 4 - Hot Pink (Recreation)
+    // 4 - Muted Rose (Recreation)
     DomainPalette(
       name: '',
-      primary: Color(0xFFFF5898),
-      darkShade: Color(0xFFCC2860),
-      surface: Color(0xFF441C30),
-      textOnPrimary: Color(0xFF1A0A12),
-      glow: Color(0x66FF5898),
+      primary: Color(0xFFC46A80),
+      darkShade: Color(0xFF8A4A5A),
+      surface: Color(0xFF2A1A20),
+      textOnPrimary: Color(0xFF140A0E),
+      glow: Color(0x4DC46A80),
     ),
-    // 5 - Bright Blue (Finance)
+    // 5 - Slate Blue (Finance)
     DomainPalette(
       name: '',
-      primary: Color(0xFF6890FF),
-      darkShade: Color(0xFF3050C0),
-      surface: Color(0xFF1E2848),
-      textOnPrimary: Color(0xFF080E1A),
-      glow: Color(0x666890FF),
+      primary: Color(0xFF6A80B0),
+      darkShade: Color(0xFF4A5A80),
+      surface: Color(0xFF1A2028),
+      textOnPrimary: Color(0xFF0A0E14),
+      glow: Color(0x4D6A80B0),
     ),
-    // 6 - Bright Red (Relationships)
+    // 6 - Terracotta (Relationships)
     DomainPalette(
       name: '',
-      primary: Color(0xFFFF5060),
-      darkShade: Color(0xFFCC2030),
-      surface: Color(0xFF401C20),
-      textOnPrimary: Color(0xFF1A0A0C),
-      glow: Color(0x66FF5060),
+      primary: Color(0xFFC46A6E),
+      darkShade: Color(0xFF8A4A4E),
+      surface: Color(0xFF2A1A1C),
+      textOnPrimary: Color(0xFF140A0C),
+      glow: Color(0x4DC46A6E),
     ),
-    // 7 - Bright Cyan (Community)
+    // 7 - Teal Sage (Community)
     DomainPalette(
       name: '',
-      primary: Color(0xFF50E8D8),
-      darkShade: Color(0xFF20A898),
-      surface: Color(0xFF1E3834),
-      textOnPrimary: Color(0xFF081A18),
-      glow: Color(0x6650E8D8),
+      primary: Color(0xFF6AAFA4),
+      darkShade: Color(0xFF487A72),
+      surface: Color(0xFF1A2826),
+      textOnPrimary: Color(0xFF0A1412),
+      glow: Color(0x4D6AAFA4),
     ),
   ];
 

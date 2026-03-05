@@ -31,7 +31,6 @@ void main() {
 
     // Stub API calls that happen in initState via fetchAll()
     when(() => mockApi.getTasksAdvanced(
-          userId: any(named: 'userId'),
           limit: any(named: 'limit'),
           offset: any(named: 'offset'),
         )).thenAnswer((_) async => TaskListResponse(
@@ -41,7 +40,7 @@ void main() {
           offset: 0,
           hasMore: false,
         ));
-    when(() => mockApi.getCategories(any()))
+    when(() => mockApi.getCategories())
         .thenAnswer((_) async => <Category>[]);
     when(() => mockSpeech.initialize()).thenAnswer((_) async => true);
   });
@@ -57,12 +56,12 @@ void main() {
   }
 
   group('HomeScreen', () {
-    testWidgets('renders TopBar with VOKL text', (tester) async {
+    testWidgets('renders TopBar with Amble text', (tester) async {
       await tester.pumpWidget(buildHomeScreen());
       await tester.pumpAndSettle();
 
       expect(find.byType(TopBar), findsOneWidget);
-      expect(find.text('VOKL'), findsOneWidget);
+      expect(find.text('Amble'), findsOneWidget);
     });
 
     testWidgets('renders BottomNavBar', (tester) async {

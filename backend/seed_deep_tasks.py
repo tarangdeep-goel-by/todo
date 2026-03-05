@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed deep hierarchical tasks for VOKL frontend testing.
+"""Seed deep hierarchical tasks for Amble frontend testing.
 
 Creates ~160 tasks across 5 domains with 4-5 levels of nesting.
 Includes priorities, due dates, tags, descriptions, and estimated hours.
