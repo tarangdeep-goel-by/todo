@@ -1,7 +1,7 @@
 """Agent service for processing voice commands via brain dump pipeline."""
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import uuid
 from .gemini_service import GeminiService
 from .task_service import TaskService
@@ -21,15 +21,18 @@ class AgentService:
         """Initialize with Gemini service."""
         self.gemini = gemini_service
 
-    async def _search_tasks(self, user_id: str, query: str, db: AsyncSession, task_service: TaskService):
-        """Search for tasks by query, dispatching on configured search engine."""
+    async def _search_tasks(self, user_id: str, query: str, db: AsyncSession, task_service: TaskService) -> List[Tuple[Any, float]]:
+        """Search for tasks by query, dispatching on configured search engine.
+
+        Returns list of (Task, score) tuples sorted by score descending.
+        """
         settings = get_settings()
         if settings.search_engine == "pg_native":
             search = TaskSearchService(db)
             results = await search.search(user_id, query, status_filter="active")
-            return [task for task, score in results]
+            return [(task, score) for task, score in results]
         else:
-            return await task_service.search_tasks(user_id, query)
+            return await task_service.search_tasks_with_scores(user_id, query)
 
     async def process_brain_dump(
         self,
@@ -111,6 +114,17 @@ class AgentService:
 
             action = raw.get("action", "add").lower()
 
+            # Backward compat: convert old "move" actions to "edit" with changes.parent_id
+            if action == "move":
+                action = "edit"
+                changes = raw.get("changes") or {}
+                target_query = raw.get("targetParentQuery")
+                if target_query:
+                    changes["_targetParentQuery"] = target_query  # resolve later
+                else:
+                    changes["parent_id"] = None  # move to root
+                raw["changes"] = changes
+
             confidence = raw.get("confidence", 0.5)
             # Brain dump uses flat 0.6 threshold (lower than voice commands) because
             # users review all proposals before submission — false positives are caught in UI
@@ -123,17 +137,20 @@ class AgentService:
             # For actions on existing tasks, resolve via search
             matched_task_id = None
             alternate_matches = None
-            if action in ("complete", "edit", "delete", "move", "breakdown"):
+            match_explanation = None
+            if action in ("complete", "edit", "delete", "breakdown"):
                 matched = await self._search_tasks(user_id, content, db, task_service)
                 if matched:
-                    matched_task_id = str(matched[0].id)
-                    task_category = matched[0].category or task_category
-                    content = matched[0].title  # show real task title in proposal UI
-                    logger.debug("brain dump resolved '%s' → task '%s' (%s)", content, matched[0].title, matched_task_id)
+                    top_task, top_score = matched[0]
+                    matched_task_id = str(top_task.id)
+                    task_category = top_task.category or task_category
+                    match_explanation = f"Matched '{top_task.title}' (similarity: {int(top_score)}%)"
+                    content = top_task.title  # show real task title in proposal UI
+                    logger.debug("brain dump resolved '%s' → task '%s' (%s, score=%d%%)", content, top_task.title, matched_task_id, int(top_score))
                     if len(matched) > 1:
                         alternate_matches = [
                             {"id": str(m.id), "title": m.title, "category": m.category}
-                            for m in matched[1:4]  # top 3 alternatives
+                            for m, _s in matched[1:4]  # top 3 alternatives
                         ]
 
                     # For COMPLETE: check active children and note in description
@@ -160,21 +177,32 @@ class AgentService:
                             category=task_category.lower(), parent_id=matched_task_id))
                 continue  # don't append raw breakdown proposal
 
-            # MOVE: resolve target parent
-            target_parent_id = None
-            target_content = None
-            if action == "move":
-                target_query = raw.get("targetParentQuery")
+            # EDIT with reparenting: resolve changes._targetParentQuery or changes.parent_id
+            if action == "edit":
+                changes = raw.get("changes") or {}
+                target_query = changes.pop("_targetParentQuery", None)
                 if target_query:
                     targets = await self._search_tasks(user_id, target_query, db, task_service)
                     if targets:
-                        target_parent_id = str(targets[0].id)
-                        target_content = targets[0].title
+                        changes["parent_id"] = str(targets[0][0].id)
                     else:
-                        logger.warning("brain dump could not resolve move target '%s', skipping", target_query)
+                        logger.warning("brain dump could not resolve reparent target '%s', skipping", target_query)
                         continue
-                else:
-                    target_content = "top-level"  # move to root
+                # If changes.parent_id is a search query string (from LLM), resolve it
+                elif "parent_id" in changes and changes["parent_id"] is not None:
+                    pid = changes["parent_id"]
+                    # Check if it looks like a UUID (already resolved) or a search query
+                    try:
+                        uuid.UUID(str(pid))
+                    except ValueError:
+                        # It's a search query, resolve it
+                        targets = await self._search_tasks(user_id, str(pid), db, task_service)
+                        if targets:
+                            changes["parent_id"] = str(targets[0][0].id)
+                        else:
+                            logger.warning("brain dump could not resolve parent_id query '%s', skipping", pid)
+                            continue
+                raw["changes"] = changes
 
             # Resolve parent for ADD proposals
             resolved_parent_id = None
@@ -187,7 +215,7 @@ class AgentService:
                 if parent_query:
                     parent_tasks = await self._search_tasks(user_id, parent_query, db, task_service)
                     if parent_tasks:
-                        resolved_parent_id = str(parent_tasks[0].id)
+                        resolved_parent_id = str(parent_tasks[0][0].id)
 
             proposals.append(BrainDumpTaskProposal(
                 id=str(uuid.uuid4()),
@@ -201,12 +229,11 @@ class AgentService:
                 labels=raw.get("labels", []),
                 changes=raw.get("changes"),
                 matched_task_id=matched_task_id,
-                target_parent_id=target_parent_id,
-                target_content=target_content,
                 confidence=confidence,
                 tags=raw.get("tags"),
                 estimated_hours=raw.get("estimatedHours"),
                 alternate_matches=alternate_matches,
+                match_explanation=match_explanation,
             ))
 
         logger.info("brain dump produced %d task proposals", len(proposals))
@@ -239,10 +266,25 @@ class AgentService:
             logger.debug("_execute_action DONE in %.0fms: completed '%s' + %d children", (_time.monotonic()-_t0)*1000, proposal.content, count - 1)
             return {"type": "completed", "count": count}
 
+        # Backward compat: convert old "move" to "edit" at execution time
+        if action == "move" and proposal.matched_task_id:
+            action = "edit"
+            if not proposal.changes:
+                proposal.changes = {}
+            if hasattr(proposal, 'target_parent_id') and getattr(proposal, 'target_parent_id', None):
+                proposal.changes["parent_id"] = proposal.target_parent_id
+            elif "parent_id" not in proposal.changes:
+                proposal.changes["parent_id"] = None  # move to root
+
         if action == "edit" and proposal.matched_task_id:
             changes = dict(proposal.changes or {})
             if 'dueDate' in changes:
                 changes['due_date'] = parse_flexible_date(changes.pop('dueDate'))
+            # Validate parent_id target exists before reparenting
+            if 'parent_id' in changes and changes['parent_id'] is not None:
+                target = await task_service.get_task(changes['parent_id'])
+                if not target:
+                    raise ValueError(f"Reparent target '{changes['parent_id']}' no longer exists")
             if changes:
                 await task_service.update_task(proposal.matched_task_id, **changes)
             logger.debug("_execute_action DONE in %.0fms: edited '%s': %s", (_time.monotonic()-_t0)*1000, proposal.content, changes)
@@ -252,15 +294,6 @@ class AgentService:
             count = await task_service.delete_task_with_children(proposal.matched_task_id)
             logger.debug("_execute_action DONE in %.0fms: deleted '%s' + %d children", (_time.monotonic()-_t0)*1000, proposal.content, count - 1)
             return {"type": "deleted", "count": count}
-
-        if action == "move" and proposal.matched_task_id:
-            if proposal.target_parent_id:
-                target = await task_service.get_task(proposal.target_parent_id)
-                if not target:
-                    raise ValueError(f"Move target '{proposal.target_parent_id}' no longer exists")
-            await task_service.update_task(proposal.matched_task_id, parent_id=proposal.target_parent_id)
-            logger.debug("_execute_action DONE in %.0fms: moved '%s' → %s", (_time.monotonic()-_t0)*1000, proposal.content, proposal.target_parent_id)
-            return {"type": "moved", "count": 1}
 
         # Default: ADD — auto-create category if needed
         available_categories = await task_service.get_categories(user_id)
@@ -332,7 +365,7 @@ class AgentService:
             )
 
         # Build summary message with actual counts (including cascaded children)
-        label_map = {"created": "Created", "completed": "completed", "edited": "edited", "deleted": "deleted", "moved": "moved"}
+        label_map = {"created": "Created", "completed": "completed", "edited": "edited", "deleted": "deleted"}
         parts = [f"{label_map.get(k, k)} {v}" for k, v in counts.items()]
         message = ", ".join(parts) + f" task{'s' if total != 1 else ''}"
 

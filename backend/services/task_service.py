@@ -324,9 +324,14 @@ class TaskService:
     async def search_tasks(self, user_id: str, query: str,
                            threshold: int = 60, limit: int = 5) -> List[Task]:
         """Search with fuzzy matching."""
-        all_tasks = await self.get_tasks(user_id, status="active")
-        ranked = FuzzyMatcher.rank_matches(query, all_tasks, threshold, limit)
+        ranked = await self.search_tasks_with_scores(user_id, query, threshold, limit)
         return [task for task, score in ranked]
+
+    async def search_tasks_with_scores(self, user_id: str, query: str,
+                                       threshold: int = 60, limit: int = 5) -> List[tuple]:
+        """Search with fuzzy matching, returning (task, score) tuples."""
+        all_tasks = await self.get_tasks(user_id, status="active")
+        return FuzzyMatcher.rank_matches(query, all_tasks, threshold, limit)
 
     async def get_categories(self, user_id: str) -> List[str]:
         """Get list of category names for user from categories table."""

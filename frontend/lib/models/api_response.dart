@@ -1,9 +1,47 @@
 import 'task.dart';
 
+/// A single search result: task + relevance score
+class TaskSearchResult {
+  final Task task;
+  final double score;
+
+  TaskSearchResult({required this.task, required this.score});
+
+  factory TaskSearchResult.fromJson(Map<String, dynamic> json) {
+    return TaskSearchResult(
+      task: Task.fromJson(json['task'] as Map<String, dynamic>),
+      score: (json['score'] as num).toDouble(),
+    );
+  }
+}
+
+/// Response from /api/tasks/search
+class TaskSearchResponse {
+  final List<TaskSearchResult> results;
+  final String query;
+  final int totalCount;
+
+  TaskSearchResponse({
+    required this.results,
+    required this.query,
+    required this.totalCount,
+  });
+
+  factory TaskSearchResponse.fromJson(Map<String, dynamic> json) {
+    return TaskSearchResponse(
+      results: (json['results'] as List)
+          .map((r) => TaskSearchResult.fromJson(r as Map<String, dynamic>))
+          .toList(),
+      query: json['query'] as String,
+      totalCount: json['total_count'] as int,
+    );
+  }
+}
+
 /// A proposed task from brain dump (not yet created)
 class BrainDumpTaskProposal {
   String id;
-  String action; // "add", "complete", "edit", "delete", or "move"
+  String action; // "add", "complete", "edit", "delete", or "breakdown"
   String content;
   String? description;
   String category;
@@ -11,14 +49,13 @@ class BrainDumpTaskProposal {
   String? priority;
   String? parentId;
   List<String> labels;
-  Map<String, dynamic>? changes; // For edit actions
-  String? matchedTaskId; // Resolved existing task ID for complete/edit/delete/move
-  String? targetParentId; // MOVE: resolved destination parent UUID
-  String? targetContent; // MOVE: display name of target parent
+  Map<String, dynamic>? changes; // For edit actions (e.g. {"priority": "low", "parent_id": "..."})
+  String? matchedTaskId; // Resolved existing task ID for complete/edit/delete
   double? confidence; // Gemini's confidence in this proposal
   List<String>? tags;
   double? estimatedHours;
   List<Map<String, dynamic>>? alternateMatches; // [{id, title, category}, ...]
+  String? matchExplanation; // AI transparency: "Matched 'X' (similarity: 87%)"
 
   BrainDumpTaskProposal({
     required this.id,
@@ -32,12 +69,11 @@ class BrainDumpTaskProposal {
     this.labels = const [],
     this.changes,
     this.matchedTaskId,
-    this.targetParentId,
-    this.targetContent,
     this.confidence,
     this.tags,
     this.estimatedHours,
     this.alternateMatches,
+    this.matchExplanation,
   });
 
   factory BrainDumpTaskProposal.fromJson(Map<String, dynamic> json) {
@@ -55,14 +91,13 @@ class BrainDumpTaskProposal {
       labels: (json['labels'] as List?)?.cast<String>() ?? [],
       changes: json['changes'] as Map<String, dynamic>?,
       matchedTaskId: json['matched_task_id'] as String?,
-      targetParentId: json['target_parent_id'] as String?,
-      targetContent: json['target_content'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),
       tags: (json['tags'] as List?)?.cast<String>(),
       estimatedHours: (json['estimated_hours'] as num?)?.toDouble(),
       alternateMatches: (json['alternate_matches'] as List?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),
+      matchExplanation: json['match_explanation'] as String?,
     );
   }
 
@@ -79,12 +114,11 @@ class BrainDumpTaskProposal {
       'labels': labels,
       'changes': changes,
       'matched_task_id': matchedTaskId,
-      'target_parent_id': targetParentId,
-      'target_content': targetContent,
       'confidence': confidence,
       'tags': tags,
       'estimated_hours': estimatedHours,
       'alternate_matches': alternateMatches,
+      'match_explanation': matchExplanation,
     };
   }
 }

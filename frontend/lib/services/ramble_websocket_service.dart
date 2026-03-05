@@ -129,6 +129,18 @@ class RambleWebSocketService {
     }
   }
 
+  /// Manually reconnect after a disconnection.
+  /// Re-establishes the WebSocket and sends a new start message.
+  Future<void> manualReconnect({required String userId}) async {
+    if (_connectionState == RambleConnectionState.connecting ||
+        _connectionState == RambleConnectionState.reconnecting) {
+      return; // Already attempting connection
+    }
+    _userId = userId;
+    _intentionalClose = false;
+    await _attemptReconnect();
+  }
+
   /// Send base64-encoded PCM audio chunk.
   void sendAudioChunk(String base64Pcm) {
     _send({'type': 'audio', 'data': base64Pcm});

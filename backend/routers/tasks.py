@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import datetime
 from database import get_db
-from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse
+from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse, TaskSearchResult, TaskSearchResponse
 from services.task_service import TaskService
 from models.task import Task
 
@@ -14,13 +14,13 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 def task_to_response(task: Task) -> TaskResponse:
     """Convert Task model to TaskResponse."""
     return TaskResponse(
-        id=task.id,
+        id=str(task.id),
         user_id=task.user_id,
         title=task.title,
         description=task.description,
-        parent_id=task.parent_id,
+        parent_id=str(task.parent_id) if task.parent_id else None,
         category=task.category,
-        category_id=task.category_id,
+        category_id=str(task.category_id) if task.category_id else None,
         status=task.status,
         created_at=task.created_at,
         updated_at=task.updated_at,
@@ -114,6 +114,39 @@ async def get_task_stats(
     task_service = TaskService(db)
     stats = await task_service.get_task_stats(user_id)
     return TaskStatsResponse(**stats)
+
+
+@router.get("/search", response_model=TaskSearchResponse)
+async def search_tasks(
+    q: str = Query(..., min_length=1),
+    user_id: str = Query(...),
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> TaskSearchResponse:
+    """Full-text search across tasks by title/description."""
+    from config import get_settings
+    from services.task_search_service import TaskSearchService
+    from utils.fuzzy_matcher import FuzzyMatcher
+
+    settings = get_settings()
+
+    if settings.search_engine == "pg_native":
+        search_service = TaskSearchService(db)
+        results = await search_service.search(user_id, q, status_filter="active", limit=limit)
+    else:
+        task_service = TaskService(db)
+        all_tasks = await task_service.get_tasks(user_id, status="active")
+        results = FuzzyMatcher.rank_matches(q, all_tasks, threshold=60, limit=limit)
+
+    search_results = [
+        TaskSearchResult(task=task_to_response(task), score=float(score))
+        for task, score in results
+    ]
+    return TaskSearchResponse(
+        results=search_results,
+        query=q,
+        total_count=len(search_results),
+    )
 
 
 @router.get("/{task_id}", response_model=TaskResponse)

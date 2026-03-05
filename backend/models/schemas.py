@@ -28,7 +28,7 @@ class BrainDumpRequest(BaseModel):
 class BrainDumpTaskProposal(BaseModel):
     """A single proposed task from brain dump."""
     id: str  # Client-generated temp ID
-    action: str = "add"  # "add", "complete", "edit", "delete", or "move"
+    action: str = "add"  # "add", "complete", "edit", "delete", or "breakdown"
     content: str
     description: Optional[str] = None
     category: str
@@ -36,14 +36,13 @@ class BrainDumpTaskProposal(BaseModel):
     priority: Optional[str] = None
     parent_id: Optional[str] = None
     labels: List[str] = []
-    changes: Optional[Dict[str, Any]] = None  # For edit actions (e.g. {"priority": "low"})
-    matched_task_id: Optional[str] = None  # Resolved existing task ID for complete/edit/delete/move
-    target_parent_id: Optional[str] = None  # MOVE: resolved destination parent UUID
-    target_content: Optional[str] = None  # MOVE: display name of target parent
+    changes: Optional[Dict[str, Any]] = None  # For edit actions (e.g. {"priority": "low", "parent_id": "..."})
+    matched_task_id: Optional[str] = None  # Resolved existing task ID for complete/edit/delete
     confidence: Optional[float] = None  # Gemini's confidence in this proposal
     tags: Optional[List[str]] = None
     estimated_hours: Optional[float] = None
     alternate_matches: Optional[List[Dict[str, str]]] = None  # [{id, title, category}, ...]
+    match_explanation: Optional[str] = None  # AI transparency: "Matched 'X' (similarity: 87%)"
 
 
 class BrainDumpResponse(BaseModel):
@@ -128,6 +127,19 @@ class TaskResponse(BaseModel):
     estimated_hours: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TaskSearchResult(BaseModel):
+    """A single search result with score."""
+    task: TaskResponse
+    score: float
+
+
+class TaskSearchResponse(BaseModel):
+    """Response for task search."""
+    results: List[TaskSearchResult]
+    query: str
+    total_count: int
 
 
 class TaskTreeNode(BaseModel):
