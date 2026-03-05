@@ -41,6 +41,7 @@
   {"id": "eval-work-040", "title": "Globex - Dashboard MVP", "parent_id": "eval-work-035", "category": "career", "status": "active", "priority": "medium"},
   {"id": "eval-work-041", "title": "Wireframe review with client", "parent_id": "eval-work-040", "category": "career", "status": "active", "priority": "high"},
   {"id": "eval-work-042", "title": "Implement chart components", "parent_id": "eval-work-040", "category": "career", "status": "active", "priority": "medium"},
+  {"id": "eval-work-043", "title": "Quarterly report", "parent_id": "eval-work-001", "category": "career", "status": "active", "priority": "medium"},
   {"id": "eval-personal-001", "title": "Home", "parent_id": null, "category": "home", "status": "active", "priority": "medium"},
   {"id": "eval-personal-002", "title": "Kitchen renovation", "parent_id": "eval-personal-001", "category": "home", "status": "active", "priority": "high"},
   {"id": "eval-personal-003", "title": "Design phase", "parent_id": "eval-personal-002", "category": "home", "status": "active", "priority": "high"},
@@ -165,5 +166,16 @@
   {"id": "eval-projects-030", "title": "Build landing page", "parent_id": "eval-projects-028", "category": "growth", "status": "active", "priority": "medium"},
   {"id": "eval-projects-031", "title": "Run Google Ads experiment ($50 budget)", "parent_id": "eval-projects-028", "category": "growth", "status": "active", "priority": "low"},
   {"id": "eval-projects-032", "title": "Research YC application process", "parent_id": "eval-projects-027", "category": "growth", "status": "active", "priority": "low"},
-  {"id": "eval-projects-033", "title": "Draft one-pager pitch", "parent_id": "eval-projects-027", "category": "growth", "status": "active", "priority": "low"}
+  {"id": "eval-projects-033", "title": "Draft one-pager pitch", "parent_id": "eval-projects-027", "category": "growth", "status": "active", "priority": "low"},
+
+  {"id": "eval-community-001", "title": "Community Involvement", "parent_id": null, "category": "community", "status": "active", "priority": "medium"},
+  {"id": "eval-community-002", "title": "Neighborhood Watch Program", "parent_id": "eval-community-001", "category": "community", "status": "active", "priority": "medium"},
+  {"id": "eval-community-003", "title": "Attend monthly meeting", "parent_id": "eval-community-002", "category": "community", "status": "active", "priority": "medium"},
+  {"id": "eval-community-004", "title": "Set up neighborhood group chat", "parent_id": "eval-community-002", "category": "community", "status": "active", "priority": "low"},
+  {"id": "eval-community-005", "title": "Food bank volunteering", "parent_id": "eval-community-001", "category": "community", "status": "active", "priority": "high"},
+  {"id": "eval-community-006", "title": "Saturday morning volunteer shift", "parent_id": "eval-community-005", "category": "community", "status": "active", "priority": "high"},
+  {"id": "eval-community-007", "title": "Organize canned food drive", "parent_id": "eval-community-005", "category": "community", "status": "active", "priority": "medium"},
+  {"id": "eval-community-008", "title": "Coach youth soccer team", "parent_id": "eval-community-001", "category": "community", "status": "active", "priority": "medium"},
+  {"id": "eval-community-009", "title": "Plan practice drills for spring season", "parent_id": "eval-community-008", "category": "community", "status": "active", "priority": "medium"},
+  {"id": "eval-community-010", "title": "HOA quarterly newsletter", "parent_id": "eval-community-001", "category": "community", "status": "active", "priority": "low"}
 ]

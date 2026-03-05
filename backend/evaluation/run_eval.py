@@ -26,6 +26,7 @@ sys.path.insert(0, str(backend_dir))
 from evaluation.eval_engine import (
     build_tree_context,
     match_entries,
+    classify_failure_mode,
     print_header,
     print_case_result,
     print_summary,
@@ -34,6 +35,67 @@ from evaluation.eval_engine import (
 )
 from services.gemini_service import GeminiService
 from services.intent_prefilter import prefilter
+
+
+# ──────────────────────────────────────────────
+# LLM Judge for subjective cases
+# ──────────────────────────────────────────────
+
+JUDGE_PROMPT = """You are evaluating a task management AI that extracts actions from voice/text input.
+
+Given the user's input and the AI's response, judge whether the response is REASONABLE.
+
+User input: "{transcription}"
+
+Expected actions (human-labeled): {expected}
+
+Actual AI response: {actual}
+
+Task tree context is available to the AI (it knows all existing tasks).
+
+Evaluate:
+1. Did the AI produce the right NUMBER of actions?
+2. Are the action TYPES reasonable? (add/complete/edit/delete/move/breakdown)
+3. Did it target the right TASKS?
+4. Are the field values reasonable?
+
+A response can be correct even if it differs from the expected label — ambiguous inputs may have multiple valid interpretations.
+
+Respond with EXACTLY one line in this format:
+PASS: <brief reason>
+or
+FAIL: <brief reason>"""
+
+
+async def run_llm_judge(
+    case: Dict,
+    result: Dict,
+    gemini: "GeminiService",
+) -> Dict:
+    """Run LLM judge on a single case. Returns judge verdict dict."""
+    import google.generativeai as genai
+
+    prompt = JUDGE_PROMPT.format(
+        transcription=case["transcription"],
+        expected=json.dumps(case["expected_actions"], indent=2),
+        actual=json.dumps(result["actual_actions"], indent=2),
+    )
+
+    try:
+        model = genai.GenerativeModel("gemini-2.5-flash-lite")
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        passed = text.upper().startswith("PASS")
+        return {
+            "judge_passed": passed,
+            "judge_response": text,
+        }
+    except Exception as e:
+        return {
+            "judge_passed": None,
+            "judge_response": f"ERROR: {e}",
+        }
 
 
 # ──────────────────────────────────────────────
@@ -59,12 +121,14 @@ async def run_eval(
 
         start = time.time()
 
+        prefilter_fired = False
         if no_llm:
             actual_actions = [{"action": "unknown", "content": "", "confidence": 0.5}]
         else:
             # Try pre-filter first (catches gibberish)
             prefilter_result = None if no_prefilter else prefilter(transcription)
             if prefilter_result is not None:
+                prefilter_fired = True
                 # Convert prefilter result to brain dump format
                 actual_actions = [{"action": "unknown", "content": "", "confidence": 0.1}]
             else:
@@ -77,8 +141,8 @@ async def run_eval(
 
         latency_ms = int((time.time() - start) * 1000)
 
-        # Check action count
-        count_match = len(actual_actions) == expected_count
+        # Check action count (-1 = skip count check)
+        count_match = expected_count == -1 or len(actual_actions) == expected_count
 
         # Match and check actions
         matches = match_entries(
@@ -128,6 +192,14 @@ async def run_eval(
                 for c in all_checks
             ],
             "failure_reason": failure_reason,
+            "failure_mode": classify_failure_mode(result={
+                "passed": all_passed,
+                "expected_action_count": expected_count,
+                "actual_action_count": len(actual_actions),
+                "checks": [{"field": c.field, "passed": c.passed} for c in all_checks],
+                "category": case["category"],
+                "transcription": transcription,
+            }, prefilter_fired=prefilter_fired),
         }
         results.append(result)
 
@@ -159,6 +231,10 @@ async def main():
                         help="Override SEARCH_ENGINE (fuzzy or pg_native)")
     parser.add_argument("--no-prefilter", action="store_true",
                         help="Skip intent pre-filter, send everything to LLM")
+    parser.add_argument("--with-judge", action="store_true",
+                        help="Run LLM judge on cases tagged with judge=true")
+    parser.add_argument("--html", action="store_true",
+                        help="Generate HTML report alongside JSON results")
 
     args = parser.parse_args()
 
@@ -215,12 +291,39 @@ async def main():
     # Run eval
     results = await run_eval(cases, tree_context, gemini, no_llm=args.no_llm, search_engine=search_engine, no_prefilter=args.no_prefilter)
 
+    # LLM Judge pass (optional)
+    if args.with_judge and not args.no_llm:
+        judge_cases = [(i, c) for i, c in enumerate(cases) if c.get("judge")]
+        if judge_cases:
+            print(f"\n{'─' * 12} LLM JUDGE {'─' * 12}")
+            print(f"Running judge on {len(judge_cases)} tagged cases...\n")
+            judge_passed = 0
+            for idx, case in judge_cases:
+                verdict = await run_llm_judge(case, results[idx], gemini)
+                results[idx]["judge_result"] = verdict
+                status = "\033[92mPASS\033[0m" if verdict["judge_passed"] else "\033[91mFAIL\033[0m"
+                print(f"  {case['id']}: {status} — {verdict['judge_response'][:80]}")
+                if verdict["judge_passed"]:
+                    judge_passed += 1
+                await asyncio.sleep(0.3)
+            print(f"\n  Judge: {judge_passed}/{len(judge_cases)} passed\n")
+
     # Summary
     summary = build_summary(results)
     print_summary(results, model_name)
 
     # Save
     save_results(results, summary, output_path, model_name, len(tasks))
+
+    # HTML report
+    if args.html:
+        from evaluation.eval_report import generate_html
+        html_path = output_path.replace(".json", ".html")
+        with open(output_path) as f:
+            report_data = json.load(f)
+        with open(html_path, "w") as f:
+            f.write(generate_html(report_data))
+        print(f"HTML report: {html_path}")
 
 
 if __name__ == "__main__":
