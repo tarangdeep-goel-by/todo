@@ -3,6 +3,7 @@ import '../models/task.dart';
 import '../models/task_filter.dart';
 import '../models/category.dart';
 import '../config/theme.dart';
+import '../services/app_logger.dart';
 import 'api_provider.dart';
 import 'task_filter_provider.dart';
 
@@ -36,12 +37,14 @@ class TaskStoreState {
 
 class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
   final Ref _ref;
+  final _logger = AppLogger.instance;
 
   TaskStoreNotifier(this._ref) : super(const TaskStoreState());
 
   /// Fetch all tasks from backend and replace the store.
   /// Paginates through all results (backend max limit=100).
   Future<void> fetchAll() async {
+    _logger.info('store.fetch', logger: 'TaskStore');
     state = state.copyWith(isLoading: true, error: null);
     try {
       final apiService = _ref.read(apiServiceProvider);
@@ -60,6 +63,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       }
 
       final map = {for (final t in allTasks) t.id: t};
+      _logger.info('store.fetch', logger: 'TaskStore', data: {'task_count': map.length});
       state = TaskStoreState(tasks: map);
 
       // Fetch categories and update provider
@@ -76,11 +80,13 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
   /// Upsert a single task into the store.
   void upsertTask(Task task) {
+    _logger.debug('store.upsert', logger: 'TaskStore', data: {'task_id': task.id});
     state = state.copyWith(tasks: {...state.tasks, task.id: task});
   }
 
   /// Remove a task from the store.
   void removeTask(String taskId) {
+    _logger.debug('store.delete', logger: 'TaskStore', data: {'task_id': taskId});
     final updated = Map<String, Task>.from(state.tasks)..remove(taskId);
     state = state.copyWith(tasks: updated);
   }
