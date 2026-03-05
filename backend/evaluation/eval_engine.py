@@ -308,7 +308,76 @@ def match_entries(
 
 
 # ──────────────────────────────────────────────
-# 3. Console reporter
+# 3. Failure mode classification
+# ──────────────────────────────────────────────
+
+def classify_failure_mode(
+    result: Dict,
+    prefilter_fired: bool = False,
+) -> Optional[str]:
+    """Classify a failed eval case into an actionable failure mode.
+
+    Returns None if the case passed.
+
+    Modes:
+        WRONG_ACTION    — action type mismatch (ADD instead of EDIT, etc.)
+        WRONG_TARGET    — matched wrong task in tree
+        MISSING_ACTION  — fewer actions than expected
+        PHANTOM_ACTION  — more actions than expected
+        WRONG_FIELD     — correct action+target, wrong metadata (priority, date, etc.)
+        BAD_CONFIDENCE  — only confidence check failed
+        PREFILTER_FP    — prefilter blocked valid input
+        PREFILTER_FN    — prefilter passed gibberish
+    """
+    if result.get("passed"):
+        return None
+
+    expected_count = result.get("expected_action_count", 0)
+    actual_count = result.get("actual_action_count", 0)
+    checks = result.get("checks", [])
+
+    # Prefilter modes
+    if prefilter_fired and expected_count > 0:
+        return "PREFILTER_FP"
+    if not prefilter_fired and expected_count == 0 and actual_count > 0:
+        category = result.get("category", "")
+        if category == "EDGE" and result.get("transcription", "").strip() and not any(c in result.get("transcription", "") for c in "aeiou"):
+            return "PREFILTER_FN"
+
+    # Count mismatches
+    if actual_count < expected_count:
+        return "MISSING_ACTION"
+    if actual_count > expected_count:
+        return "PHANTOM_ACTION"
+
+    # Check-level failures (counts match)
+    failed_checks = [c for c in checks if not c.get("passed", True)]
+    if not failed_checks:
+        return None  # shouldn't happen if result failed, but safety
+
+    # Categorize by field
+    has_action_fail = any(c["field"] in ("action", "intent") for c in failed_checks)
+    has_confidence_fail = any(c["field"] == "confidence" for c in failed_checks)
+    has_content_fail = any(c["field"] == "content" for c in failed_checks)
+    has_field_fail = any(
+        c["field"] not in ("action", "intent", "confidence", "content")
+        for c in failed_checks
+    )
+
+    if has_action_fail:
+        return "WRONG_ACTION"
+    if has_content_fail:
+        return "WRONG_TARGET"
+    if has_field_fail:
+        return "WRONG_FIELD"
+    if has_confidence_fail:
+        return "BAD_CONFIDENCE"
+
+    return "WRONG_ACTION"  # fallback
+
+
+# ──────────────────────────────────────────────
+# 4. Console reporter
 # ──────────────────────────────────────────────
 
 def print_header(title: str, model: str, case_count: int, tree_size: int):
@@ -411,12 +480,25 @@ def print_summary(results: List[Dict], model: str):
         print(f"  mean={int(mean)}ms  p50={p50}ms  p95={p95}ms")
     print()
 
+    # Failure mode breakdown
+    by_mode: Dict[str, int] = {}
+    for r in results:
+        mode = r.get("failure_mode")
+        if mode:
+            by_mode[mode] = by_mode.get(mode, 0) + 1
+    if by_mode:
+        print("By Failure Mode:")
+        for mode in sorted(by_mode.keys()):
+            print(f"  {mode:<20} {by_mode[mode]}")
+        print()
+
     # Failed cases
     failed = [r for r in results if not r["passed"]]
     if failed:
         print("Failed:")
         for r in failed:
-            print(f"  {r['id']}: {r['failure_reason']}")
+            mode_tag = f" [{r.get('failure_mode', '?')}]" if r.get("failure_mode") else ""
+            print(f"  {r['id']}{mode_tag}: {r['failure_reason']}")
         print()
 
 
@@ -469,6 +551,13 @@ def build_summary(results: List[Dict]) -> Dict:
             "p95": latencies[min(int(len(latencies) * 0.95), len(latencies) - 1)],
         }
 
+    # By failure mode
+    by_mode: Dict[str, int] = {}
+    for r in results:
+        mode = r.get("failure_mode")
+        if mode:
+            by_mode[mode] = by_mode.get(mode, 0) + 1
+
     return {
         "overall": {
             "passed": passed,
@@ -477,6 +566,7 @@ def build_summary(results: List[Dict]) -> Dict:
         },
         "by_category": by_cat,
         "by_difficulty": by_diff,
+        "by_failure_mode": by_mode,
         "performance": {"latency_ms": perf},
     }
 
