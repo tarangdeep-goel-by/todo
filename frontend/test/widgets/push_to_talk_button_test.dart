@@ -19,74 +19,42 @@ void main() {
         apiServiceProvider.overrideWithValue(mockApi),
         ...extraOverrides,
       ],
-      child: MaterialApp(
+      child: const MaterialApp(
         home: Scaffold(
-          body: LayoutBuilder(
-            builder: (context, constraints) => const PttInputOverlay(),
-          ),
+          body: PttInputOverlay(),
         ),
       ),
     );
   }
 
-  /// Suppress overflow errors from fallback font width differences in test.
-  Future<void> pumpIgnoringOverflow(WidgetTester tester, Widget widget) async {
-    final oldHandler = FlutterError.onError;
-    FlutterError.onError = (details) {
-      if (details.exception.toString().contains('overflowed')) return;
-      oldHandler?.call(details);
-    };
-    await tester.pumpWidget(widget);
-    addTearDown(() => FlutterError.onError = oldHandler);
-  }
-
   group('Idle state', () {
     testWidgets('renders nothing when idle', (tester) async {
-      await pumpIgnoringOverflow(tester, buildOverlay());
+      await tester.pumpWidget(buildOverlay());
       expect(find.byType(PttInputOverlay), findsOneWidget);
-      // Should render SizedBox.shrink — no text field, no dots
+      // Should render SizedBox.shrink
       expect(find.byType(TextField), findsNothing);
-      expect(find.byType(AnimatedContainer), findsNothing);
     });
   });
 
-  group('Typing state', () {
-    testWidgets('shows TextField when typing', (tester) async {
-      await pumpIgnoringOverflow(
-        tester,
+  group('Processing state', () {
+    testWidgets('shows processing dots', (tester) async {
+      await tester.pumpWidget(
         buildOverlay(extraOverrides: [
-          recordingStateProvider.overrideWith((ref) => RecordingState.typing),
+          recordingStateProvider.overrideWith((ref) => RecordingState.processing),
         ]),
       );
       await tester.pump();
-      expect(find.byType(TextField), findsOneWidget);
-    });
-
-    testWidgets('shows close and send buttons in typing mode', (tester) async {
-      await pumpIgnoringOverflow(
-        tester,
-        buildOverlay(extraOverrides: [
-          recordingStateProvider.overrideWith((ref) => RecordingState.typing),
-        ]),
-      );
-      await tester.pump();
-      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+      expect(find.byType(AnimatedContainer), findsOneWidget);
+      expect(find.byType(AnimatedOpacity), findsNWidgets(3));
     });
   });
 
   group('RecordingState enum', () {
-    test('has typing state', () {
-      expect(RecordingState.values, contains(RecordingState.typing));
-    });
-
     test('has all expected states', () {
-      expect(RecordingState.values, [
-        RecordingState.idle,
-        RecordingState.listening,
-        RecordingState.processing,
-        RecordingState.typing,
-      ]);
+      expect(RecordingState.values, contains(RecordingState.idle));
+      expect(RecordingState.values, contains(RecordingState.listening));
+      expect(RecordingState.values, contains(RecordingState.processing));
+      expect(RecordingState.values, contains(RecordingState.typing));
     });
   });
 }

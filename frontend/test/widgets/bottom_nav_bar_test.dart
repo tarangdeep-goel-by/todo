@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/widgets/bottom_nav_bar.dart';
 import 'package:frontend/providers/view_mode_provider.dart';
-import 'package:frontend/providers/recording_provider.dart';
 import 'package:frontend/providers/api_provider.dart';
 import 'package:frontend/providers/task_store_provider.dart';
 
@@ -36,9 +35,9 @@ void main() {
       expect(find.text('Profile'), findsOneWidget);
     });
 
-    testWidgets('renders Type or talk text', (tester) async {
+    testWidgets('renders Add or talk text', (tester) async {
       await tester.pumpWidget(buildNavBar());
-      expect(find.text('Type or talk'), findsOneWidget);
+      expect(find.text('Add or talk'), findsOneWidget);
     });
 
     testWidgets('has mic_rounded icon', (tester) async {
@@ -128,7 +127,7 @@ void main() {
       expect(container.read(viewModeProvider), ViewMode.calendar);
     });
 
-    testWidgets('tapping center PTT button sets recordingState to typing',
+    testWidgets('tapping center PTT button opens add task sheet',
         (tester) async {
       final container = ProviderContainer(overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
@@ -150,10 +149,11 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Type or talk'));
-      await tester.pump();
+      await tester.tap(find.text('Add or talk'));
+      await tester.pumpAndSettle();
 
-      expect(container.read(recordingStateProvider), RecordingState.typing);
+      // Bottom sheet should show the add task form
+      expect(find.text('What needs to be done?'), findsOneWidget);
     });
   });
 }
