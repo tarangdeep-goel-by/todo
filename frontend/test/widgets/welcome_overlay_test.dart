@@ -5,12 +5,12 @@ import '../helpers/test_helpers.dart';
 
 void main() {
   group('WelcomeOverlay', () {
-    testWidgets('shows VOKL text', (tester) async {
+    testWidgets('shows Amble text', (tester) async {
       await tester.pumpWidget(
         buildTestApp(WelcomeOverlay(onDismiss: () {})),
       );
       await tester.pumpAndSettle();
-      expect(find.text('VOKL'), findsOneWidget);
+      expect(find.text('Amble'), findsOneWidget);
     });
 
     testWidgets('shows Your voice, organized. text', (tester) async {

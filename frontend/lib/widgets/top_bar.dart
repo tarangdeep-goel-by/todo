@@ -14,7 +14,7 @@ class TopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       alignment: Alignment.centerLeft,
       child: Text(
-        'VOKL',
+        'Amble',
         style: AppTypography.ctaLabelText(
           color: AppColors.darkText,
         ).copyWith(

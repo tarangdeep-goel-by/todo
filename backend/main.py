@@ -16,7 +16,7 @@ settings = get_settings()
 
 # Create FastAPI app
 app = FastAPI(
-    title="Todo Agent API",
+    title="Amble API",
     description="AI-powered voice-first todo list backend",
     version="1.0.0",
     debug=settings.debug
@@ -51,7 +51,7 @@ async def health():
 async def root():
     """Root endpoint."""
     return {
-        "message": "Todo Agent API",
+        "message": "Amble API",
         "version": "1.0.0",
         "docs": "/docs"
     }

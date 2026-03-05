@@ -90,7 +90,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
 
                   // Brand
                   Text(
-                    'VOKL',
+                    'Amble',
                     style: AppTypography.domainTitle(
                       context,
                       color: AppColors.darkText,
@@ -112,7 +112,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   _buildPoint(
                     Icons.mic_none_rounded,
                     'Say it, done.',
-                    'Just speak \u2014 VOKL finds the right\ndomain and creates the task.',
+                    'Just speak \u2014 Amble finds the right\ndomain and creates the task.',
                     accentColors[0],
                   ),
                   const SizedBox(height: AppSpacing.lg),

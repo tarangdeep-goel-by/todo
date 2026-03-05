@@ -1,4 +1,4 @@
-"""Generate sample tasks for testing VOKL frontend."""
+"""Generate sample tasks for testing Amble frontend."""
 import asyncio
 import sys
 from pathlib import Path
@@ -104,7 +104,7 @@ def create_task(title: str, category: str, description: str = None):
 
 def main():
     """Generate diverse sample tasks across all 5 domains."""
-    print("🌱 Seeding tasks for VOKL frontend testing...\n")
+    print("🌱 Seeding tasks for Amble frontend testing...\n")
 
     created = 0
     failed = 0

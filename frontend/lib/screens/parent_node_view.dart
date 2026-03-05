@@ -262,7 +262,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       return EmptyState(
         title: 'Your world, organized',
         message:
-            'Say or type a task — VOKL creates\ndomains for you automatically.',
+            'Say or type a task — Amble creates\ndomains for you automatically.',
         textColor: AppColors.darkText,
         icon: Icons.auto_awesome,
         examples: const [

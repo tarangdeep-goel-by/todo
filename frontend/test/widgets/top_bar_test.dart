@@ -7,9 +7,9 @@ import '../helpers/test_helpers.dart';
 
 void main() {
   group('TopBar', () {
-    testWidgets('finds text VOKL', (tester) async {
+    testWidgets('finds text Amble', (tester) async {
       await tester.pumpWidget(buildTestApp(const TopBar()));
-      expect(find.text('VOKL'), findsOneWidget);
+      expect(find.text('Amble'), findsOneWidget);
     });
 
     testWidgets('has correct height container', (tester) async {
