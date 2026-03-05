@@ -3,13 +3,12 @@ import pytest
 from datetime import datetime, timezone, timedelta
 
 
-USER = "stats-test-user"
+USER = "test-user"
 
 
 def _task(title, category="career", **overrides):
     """Shorthand for creating a task payload."""
     base = {
-        "user_id": USER,
         "title": title,
         "category": category,
         "transcription": title.lower(),
@@ -22,7 +21,7 @@ class TestTaskStatsEmpty:
     """Stats for a user with no tasks."""
 
     async def test_empty_user_returns_all_zeros(self, test_client):
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         assert resp.status_code == 200
         body = resp.json()
         assert body["total_tasks"] == 0
@@ -45,7 +44,7 @@ class TestTaskStatsByStatus:
             tid = cr.json()["id"]
             await test_client.put(f"/tasks/{tid}/complete")
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         assert resp.status_code == 200
         body = resp.json()
         assert body["total_tasks"] == 5
@@ -66,7 +65,7 @@ class TestTaskStatsByStatus:
         cr = await test_client.post("/tasks", json=_task("Done Past", due_date=yesterday))
         await test_client.put(f"/tasks/{cr.json()['id']}/complete")
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         assert body["by_status"]["overdue"] == 2
         # Overdue tasks are still active, so active count should include them
@@ -82,7 +81,7 @@ class TestTaskStatsByStatus:
         cr = await test_client.post("/tasks", json=_task("Completed Late", due_date=past))
         await test_client.put(f"/tasks/{cr.json()['id']}/complete")
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         assert body["by_status"]["overdue"] == 0
         assert body["by_status"]["completed"] == 1
@@ -107,7 +106,7 @@ class TestTaskStatsDueSoon:
         await test_client.post("/tasks", json=_task("Later", due_date=in_72h))
         await test_client.post("/tasks", json=_task("Overdue", due_date=past))
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         assert body["due_soon_count"] == 2
 
@@ -117,7 +116,7 @@ class TestTaskStatsDueSoon:
         cr = await test_client.post("/tasks", json=_task("Done Soon", due_date=in_12h))
         await test_client.put(f"/tasks/{cr.json()['id']}/complete")
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         assert body["due_soon_count"] == 0
 
@@ -132,7 +131,7 @@ class TestTaskStatsByPriority:
         await test_client.post("/tasks", json=_task("L1", priority="low"))
         await test_client.post("/tasks", json=_task("N1"))  # no priority
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         assert body["by_priority"]["high"] == 2
         assert body["by_priority"]["medium"] == 1
@@ -156,7 +155,7 @@ class TestTaskStatsByCategory:
         # Health: 1 active only
         await test_client.post("/tasks", json=_task("H1", "health"))
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
 
         cats = {c["category_name"]: c for c in body["by_category"]}
@@ -178,7 +177,7 @@ class TestTaskStatsByCategory:
     async def test_category_has_id_and_name(self, test_client):
         await test_client.post("/tasks", json=_task("T", "finance"))
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         assert len(body["by_category"]) == 1
         entry = body["by_category"][0]
@@ -199,7 +198,7 @@ class TestTaskStatsByCategory:
         # there should be no "Uncategorized" entry.
         await test_client.post("/tasks", json=_task("T", "career"))
 
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         body = resp.json()
         names = [c["category_name"] for c in body["by_category"]]
         # No uncategorized if all tasks have categories
@@ -245,24 +244,23 @@ class TestTaskStatsUncategorized:
 class TestTaskStatsIsolation:
     """Stats should only include tasks for the requested user."""
 
-    async def test_different_users_isolated(self, test_client):
+    async def test_different_users_isolated(self, test_client, task_service):
+        # Create a task for a different user directly via service
+        await task_service.create_task(
+            user_id="other-user", title="Other's task",
+            category="career", transcription="other",
+        )
+        # Create a task for the authenticated user (test-user) via API
         await test_client.post("/tasks", json={
-            "user_id": "user-a", "title": "A's task",
-            "category": "career", "transcription": "a",
-        })
-        await test_client.post("/tasks", json={
-            "user_id": "user-b", "title": "B's task",
-            "category": "career", "transcription": "b",
+            "title": "My task", "category": "career", "transcription": "mine",
         })
 
-        resp_a = await test_client.get("/tasks/stats", params={"user_id": "user-a"})
-        resp_b = await test_client.get("/tasks/stats", params={"user_id": "user-b"})
+        # Stats should only show test-user's task
+        resp = await test_client.get("/tasks/stats")
+        assert resp.json()["total_tasks"] == 1
 
-        assert resp_a.json()["total_tasks"] == 1
-        assert resp_b.json()["total_tasks"] == 1
-
-    async def test_nonexistent_user_returns_zeros(self, test_client):
-        resp = await test_client.get("/tasks/stats", params={"user_id": "ghost"})
+    async def test_no_tasks_returns_zeros(self, test_client):
+        resp = await test_client.get("/tasks/stats")
         assert resp.status_code == 200
         assert resp.json()["total_tasks"] == 0
 
@@ -271,7 +269,7 @@ class TestTaskStatsResponseShape:
     """Validate the response schema structure."""
 
     async def test_response_has_all_required_fields(self, test_client):
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         assert resp.status_code == 200
         body = resp.json()
         assert "total_tasks" in body
@@ -281,15 +279,12 @@ class TestTaskStatsResponseShape:
         assert "due_soon_count" in body
 
     async def test_by_status_has_all_keys(self, test_client):
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         status = resp.json()["by_status"]
         assert set(status.keys()) == {"active", "completed", "overdue"}
 
     async def test_by_priority_has_all_keys(self, test_client):
-        resp = await test_client.get("/tasks/stats", params={"user_id": USER})
+        resp = await test_client.get("/tasks/stats")
         priority = resp.json()["by_priority"]
         assert set(priority.keys()) == {"high", "medium", "low", "none"}
 
-    async def test_missing_user_id_returns_422(self, test_client):
-        resp = await test_client.get("/tasks/stats")
-        assert resp.status_code == 422

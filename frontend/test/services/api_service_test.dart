@@ -57,7 +57,7 @@ void main() {
                 'offset': 0,
                 'has_more': false,
               }));
-      final tasks = await apiService.getTasks('u1');
+      final tasks = await apiService.getTasks();
       expect(tasks.length, 1);
       expect(tasks.first.title, 'Task');
     });
@@ -73,7 +73,7 @@ void main() {
                 'offset': 0,
                 'has_more': false,
               }));
-      final resp = await apiService.getTasksByCategory('u1', 'career');
+      final resp = await apiService.getTasksByCategory('career');
       expect(resp.tasks.length, 1);
     });
   });
@@ -83,7 +83,6 @@ void main() {
       when(() => mockDio.post('/tasks', data: any(named: 'data')))
           .thenAnswer((_) async => ok(taskJson));
       final req = CreateTaskRequest(
-        userId: 'u1',
         title: 'Task',
         category: 'career',
         transcription: 'task',
@@ -106,11 +105,10 @@ void main() {
 
   group('deleteTask', () {
     test('completes without error', () async {
-      when(() => mockDio.delete('/tasks/t1',
-              queryParameters: any(named: 'queryParameters')))
+      when(() => mockDio.delete('/tasks/t1'))
           .thenAnswer((_) async => ok({'success': true}));
       await expectLater(
-        apiService.deleteTask('t1', userId: 'u1'),
+        apiService.deleteTask('t1'),
         completes,
       );
     });
@@ -118,15 +116,15 @@ void main() {
 
   group('getCategories', () {
     test('returns category list', () async {
-      when(() => mockDio.get('/categories', queryParameters: any(named: 'queryParameters')))
+      when(() => mockDio.get('/categories'))
           .thenAnswer((_) async => ok([categoryJson]));
-      final cats = await apiService.getCategories('u1');
+      final cats = await apiService.getCategories();
       expect(cats.length, 1);
       expect(cats.first.name, 'career');
     });
 
     test('throws on error', () async {
-      when(() => mockDio.get('/categories', queryParameters: any(named: 'queryParameters')))
+      when(() => mockDio.get('/categories'))
           .thenThrow(DioException(
         response: Response(
           data: {'detail': 'Server error'},
@@ -135,7 +133,7 @@ void main() {
         ),
         requestOptions: RequestOptions(path: ''),
       ));
-      expect(() => apiService.getCategories('u1'), throwsA(equals('Server error')));
+      expect(() => apiService.getCategories(), throwsA(equals('Server error')));
     });
   });
 
@@ -143,18 +141,17 @@ void main() {
     test('returns created category', () async {
       when(() => mockDio.post('/categories', data: any(named: 'data')))
           .thenAnswer((_) async => ok(categoryJson));
-      final cat = await apiService.createCategory('u1', 'career');
+      final cat = await apiService.createCategory('career');
       expect(cat.name, 'career');
     });
   });
 
   group('deleteCategory', () {
     test('completes without error', () async {
-      when(() => mockDio.delete('/categories/cat-1',
-              queryParameters: any(named: 'queryParameters')))
+      when(() => mockDio.delete('/categories/cat-1'))
           .thenAnswer((_) async => ok({'success': true}));
       await expectLater(
-        apiService.deleteCategory('cat-1', userId: 'u1'),
+        apiService.deleteCategory('cat-1'),
         completes,
       );
     });
@@ -171,7 +168,6 @@ void main() {
                 'has_more': false,
               }));
       final resp = await apiService.getTasksAdvanced(
-        userId: 'u1',
         category: 'career',
         priority: 'high',
         status: 'active',
@@ -204,7 +200,7 @@ void main() {
         requestOptions: RequestOptions(path: ''),
       ));
       expect(
-        () => apiService.getTasks('u1'),
+        () => apiService.getTasks(),
         throwsA(equals('Not found')),
       );
     });
@@ -216,7 +212,7 @@ void main() {
         requestOptions: RequestOptions(path: ''),
       ));
       expect(
-        () => apiService.getTasks('u1'),
+        () => apiService.getTasks(),
         throwsA(equals('Connection timeout')),
       );
     });

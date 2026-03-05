@@ -1,11 +1,11 @@
 """PG-native task search using pg_trgm trigram matching."""
-import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from typing import List, Optional, Tuple
 from models.task import Task
+from structured_logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Confidence thresholds for resolve_single()
 HIGH_CONFIDENCE_SCORE = 0.6
@@ -88,11 +88,7 @@ class TaskSearchService:
             )
             tasks_with_scores.append((task, float(row.search_score)))
 
-        logger.debug(
-            "pg_trgm search for '%s': %d results (top=%.3f)",
-            query, len(tasks_with_scores),
-            tasks_with_scores[0][1] if tasks_with_scores else 0,
-        )
+        logger.debug("task.search", query=query, result_count=len(tasks_with_scores), top_score=round(tasks_with_scores[0][1], 3) if tasks_with_scores else 0)
         return tasks_with_scores
 
     async def resolve_single(

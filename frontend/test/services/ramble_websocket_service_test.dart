@@ -89,6 +89,7 @@ void main() {
 
       service = RambleWebSocketService(
         channelFactory: (_) => mockChannel,
+        tokenProvider: () async => 'test-token',
       );
     });
 
@@ -99,24 +100,24 @@ void main() {
       }
     });
 
-    test('connect sends start message with userId', () async {
-      await service.connect(userId: 'test-user');
+    test('connect sends start message', () async {
+      await service.connect();
 
       final captured = verify(() => mockSink.add(captureAny())).captured;
       final startMsg = jsonDecode(captured.first as String) as Map<String, dynamic>;
       expect(startMsg['type'], 'start');
-      expect(startMsg['user_id'], 'test-user');
+      expect(startMsg.containsKey('user_id'), false);
     });
 
     test('connect sets state to connected', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
 
       // After connect returns, the state should be connected
       expect(service.connectionState, RambleConnectionState.connected);
     });
 
     test('sendAudioChunk sends audio message', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
       reset(mockSink);
       when(() => mockSink.add(any())).thenReturn(null);
       when(() => mockSink.close()).thenAnswer((_) async {});
@@ -131,7 +132,7 @@ void main() {
     });
 
     test('transcriptionStream emits on transcription message', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
 
       final future = service.transcriptionStream.first;
       streamController.add(jsonEncode({
@@ -143,7 +144,7 @@ void main() {
     });
 
     test('finalTranscriptStream emits on final_transcript message', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
 
       final future = service.finalTranscriptStream.first;
       streamController.add(jsonEncode({
@@ -155,7 +156,7 @@ void main() {
     });
 
     test('statusStream emits on status message', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
 
       final future = service.statusStream.first;
       streamController.add(jsonEncode({
@@ -167,7 +168,7 @@ void main() {
     });
 
     test('timeRemainingStream emits seconds on time_remaining status', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
 
       final future = service.timeRemainingStream.first;
       streamController.add(jsonEncode({
@@ -180,7 +181,7 @@ void main() {
     });
 
     test('errorStream emits on error message', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
 
       final future = service.errorStream.first;
       streamController.add(jsonEncode({
@@ -192,7 +193,7 @@ void main() {
     });
 
     test('stop sends stop message and waits for final transcript', () async {
-      await service.connect(userId: 'test-user');
+      await service.connect();
       reset(mockSink);
       when(() => mockSink.add(any())).thenReturn(null);
       when(() => mockSink.close()).thenAnswer((_) async {});
@@ -219,7 +220,7 @@ void main() {
       final states = <RambleConnectionState>[];
       service.connectionStateStream.listen(states.add);
 
-      await service.connect(userId: 'test-user');
+      await service.connect();
       // Allow any pending microtasks to flush
       await Future<void>.delayed(Duration.zero);
 

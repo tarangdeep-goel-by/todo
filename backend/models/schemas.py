@@ -1,4 +1,5 @@
 """Pydantic schemas for request/response validation."""
+import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -17,32 +18,52 @@ class WriteTaskStatus(str, Enum):
     COMPLETED = "completed"
 
 
+class PriorityLevel(str, Enum):
+    """Valid priority levels."""
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+def _strip_html_tags(v: str | None) -> str | None:
+    """Strip HTML tags from text to prevent stored XSS."""
+    if v is None:
+        return v
+    return re.sub(r'<[^>]+>', '', v)
+
+
 class BrainDumpRequest(BaseModel):
     """Request schema for brain dump voice processing."""
     transcription: str = Field(..., min_length=1, max_length=5000)
-    user_id: str = Field(..., min_length=1)
-    category: Optional[str] = None  # Pre-fill category for all tasks
-    parent_id: Optional[str] = None  # Pre-fill parent for subtask mode
+    category: Optional[str] = Field(None, max_length=50)
+    parent_id: Optional[str] = Field(None, max_length=36)
 
 
 class BrainDumpTaskProposal(BaseModel):
     """A single proposed task from brain dump."""
     id: str  # Client-generated temp ID
     action: str = "add"  # "add", "complete", "edit", "delete", or "breakdown"
-    content: str
-    description: Optional[str] = None
-    category: str
+    content: str = Field(..., max_length=500)
+    description: Optional[str] = Field(None, max_length=5000)
+    category: str = Field(..., max_length=50)
     due_date: Optional[datetime] = None
-    priority: Optional[str] = None
+    priority: Optional[str] = None  # Gemini output — validated downstream
     parent_id: Optional[str] = None
     labels: List[str] = []
-    changes: Optional[Dict[str, Any]] = None  # For edit actions (e.g. {"priority": "low", "parent_id": "..."})
-    matched_task_id: Optional[str] = None  # Resolved existing task ID for complete/edit/delete
-    confidence: Optional[float] = None  # Gemini's confidence in this proposal
-    tags: Optional[List[str]] = None
-    estimated_hours: Optional[float] = None
-    alternate_matches: Optional[List[Dict[str, str]]] = None  # [{id, title, category}, ...]
-    match_explanation: Optional[str] = None  # AI transparency: "Matched 'X' (similarity: 87%)"
+    changes: Optional[Dict[str, Any]] = None
+    matched_task_id: Optional[str] = None
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    tags: Optional[List[str]] = Field(None, max_length=20)
+    estimated_hours: Optional[float] = Field(None, ge=0.0, le=999.9)
+    alternate_matches: Optional[List[Dict[str, str]]] = None
+    match_explanation: Optional[str] = Field(None, max_length=500)
+
+    @field_validator('tags')
+    @classmethod
+    def validate_tags(cls, v):
+        if v is None:
+            return v
+        return [tag.strip()[:50] for tag in v[:20] if tag.strip()]
 
 
 class BrainDumpResponse(BaseModel):
@@ -55,7 +76,6 @@ class BrainDumpResponse(BaseModel):
 
 class BrainDumpSubmitRequest(BaseModel):
     """Request schema for committing reviewed brain dump tasks."""
-    user_id: str = Field(..., min_length=1)
     tasks: List[BrainDumpTaskProposal]
 
 
@@ -69,32 +89,49 @@ class BrainDumpSubmitResponse(BaseModel):
 
 class CreateTaskRequest(BaseModel):
     """Request schema for creating a task."""
-    user_id: str
     title: str = Field(..., min_length=1, max_length=500)
-    description: Optional[str] = None
-    category: str  # Any category: work, personal, fitness, etc.
+    description: Optional[str] = Field(None, max_length=5000)
+    category: str = Field(..., max_length=50)
     category_id: Optional[str] = None
     parent_id: Optional[str] = None
     due_date: Optional[datetime] = None
-    transcription: str
+    transcription: str = Field(..., max_length=5000)
+    priority: Optional[PriorityLevel] = None
+    tags: Optional[List[str]] = Field(None, max_length=20)
+    estimated_hours: Optional[float] = Field(None, ge=0.0, le=999.9)
 
-    # New optional fields
-    priority: Optional[str] = None  # high/medium/low
-    tags: Optional[List[str]] = None
-    estimated_hours: Optional[float] = None
+    _sanitize_title = field_validator('title')(lambda cls, v: _strip_html_tags(v))
+    _sanitize_desc = field_validator('description')(lambda cls, v: _strip_html_tags(v))
+
+    @field_validator('tags')
+    @classmethod
+    def validate_tags(cls, v):
+        if v is None:
+            return v
+        return [tag.strip()[:50] for tag in v[:20] if tag.strip()]
 
 
 class UpdateTaskRequest(BaseModel):
     """Request schema for updating a task."""
     title: Optional[str] = Field(None, min_length=1, max_length=500)
-    description: Optional[str] = None
-    category: Optional[str] = None  # Move to different domain
-    parent_id: Optional[str] = None  # Move to different parent
+    description: Optional[str] = Field(None, max_length=5000)
+    category: Optional[str] = Field(None, max_length=50)
+    parent_id: Optional[str] = None
     due_date: Optional[datetime] = None
     status: Optional[WriteTaskStatus] = None
-    priority: Optional[str] = None
-    tags: Optional[List[str]] = None
-    estimated_hours: Optional[float] = None
+    priority: Optional[PriorityLevel] = None
+    tags: Optional[List[str]] = Field(None, max_length=20)
+    estimated_hours: Optional[float] = Field(None, ge=0.0, le=999.9)
+
+    _sanitize_title = field_validator('title')(lambda cls, v: _strip_html_tags(v))
+    _sanitize_desc = field_validator('description')(lambda cls, v: _strip_html_tags(v))
+
+    @field_validator('tags')
+    @classmethod
+    def validate_tags(cls, v):
+        if v is None:
+            return v
+        return [tag.strip()[:50] for tag in v[:20] if tag.strip()]
 
 
 class AIPlacement(BaseModel):
@@ -111,7 +148,7 @@ class TaskResponse(BaseModel):
     title: str
     description: Optional[str]
     parent_id: Optional[str]
-    category: str  # Any category string
+    category: str
     category_id: Optional[str] = None
     status: TaskStatus
     created_at: datetime
@@ -120,8 +157,6 @@ class TaskResponse(BaseModel):
     completed_at: Optional[datetime]
     transcription: str
     ai_placement: AIPlacement
-
-    # New optional fields
     priority: Optional[str] = None
     tags: Optional[List[str]] = None
     estimated_hours: Optional[float] = None
@@ -173,11 +208,11 @@ class TaskFilterParams(BaseModel):
     user_id: str
 
     # Exact match filters (single or multi-value)
-    category: Optional[str] = None
-    priority: Optional[str] = None
-    status: Optional[str] = None
-    parent_id: Optional[str] = None
-    tags: Optional[str] = None
+    category: Optional[str] = Field(None, max_length=200)
+    priority: Optional[str] = Field(None, max_length=50)
+    status: Optional[str] = Field(None, max_length=50)
+    parent_id: Optional[str] = Field(None, max_length=36)
+    tags: Optional[str] = Field(None, max_length=500)
 
     # Range filters
     created_at_gte: Optional[datetime] = None
@@ -276,5 +311,4 @@ class CategoryResponse(BaseModel):
 
 class CreateCategoryRequest(BaseModel):
     """Request schema for creating a category."""
-    user_id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1, max_length=50)

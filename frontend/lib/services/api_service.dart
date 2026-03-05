@@ -1,12 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import '../models/task.dart';
 import '../models/api_response.dart';
 import '../models/category.dart';
 import '../config/constants.dart';
+import 'auth_interceptor.dart';
+import 'app_logger.dart';
 
 /// Service for backend API communication
 class ApiService {
+  final _logger = AppLogger.instance;
   final Dio _dio;
 
   ApiService({String? baseUrl, Dio? dio})
@@ -16,14 +18,17 @@ class ApiService {
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(seconds: 30),
               sendTimeout: const Duration(seconds: 15),
-            ));
+            )) {
+    // Add auth interceptor unless a custom Dio was provided (tests)
+    if (dio == null) {
+      _dio.interceptors.add(AuthInterceptor());
+    }
+  }
 
   /// Get all tasks for user
-  Future<List<Task>> getTasks(String userId) async {
+  Future<List<Task>> getTasks() async {
     try {
-      final response = await _dio.get('/tasks', queryParameters: {
-        'user_id': userId,
-      });
+      final response = await _dio.get('/tasks');
 
       final taskListResponse = TaskListResponse.fromJson(response.data);
       return taskListResponse.tasks;
@@ -33,13 +38,9 @@ class ApiService {
   }
 
   /// Get tasks by category
-  Future<TaskListResponse> getTasksByCategory(
-    String userId,
-    String category,
-  ) async {
+  Future<TaskListResponse> getTasksByCategory(String category) async {
     try {
       final response = await _dio.get('/tasks', queryParameters: {
-        'user_id': userId,
         'category': category,
       });
 
@@ -51,7 +52,6 @@ class ApiService {
 
   /// Get tasks with advanced filtering and sorting
   Future<TaskListResponse> getTasksAdvanced({
-    required String userId,
     String? category,
     String? priority,
     String? status,
@@ -67,7 +67,6 @@ class ApiService {
   }) async {
     try {
       final queryParams = <String, dynamic>{
-        'user_id': userId,
         'limit': limit,
         'offset': offset,
       };
@@ -101,14 +100,12 @@ class ApiService {
   /// Process brain dump — extract task proposals from voice transcription
   Future<BrainDumpResponse> processBrainDump({
     required String transcription,
-    required String userId,
     String? category,
     String? parentId,
   }) async {
     try {
       final data = <String, dynamic>{
         'transcription': transcription,
-        'user_id': userId,
       };
       if (category != null) data['category'] = category;
       if (parentId != null) data['parent_id'] = parentId;
@@ -121,22 +118,16 @@ class ApiService {
 
   /// Submit reviewed brain dump tasks
   Future<BrainDumpSubmitResponse> submitBrainDump({
-    required String userId,
     required List<BrainDumpTaskProposal> tasks,
   }) async {
     try {
       final payload = {
-        'user_id': userId,
         'tasks': tasks.map((t) => t.toJson()).toList(),
       };
-      debugPrint('[API] submitBrainDump POST /agent/braindump/submit payload=${tasks.length} tasks');
-      debugPrint('[API] submitBrainDump baseUrl=${_dio.options.baseUrl}');
+      _logger.info('braindump.submit', logger: 'ApiService', data: {'task_count': tasks.length});
       final response = await _dio.post('/agent/braindump/submit', data: payload);
-      debugPrint('[API] submitBrainDump response status=${response.statusCode}');
       return BrainDumpSubmitResponse.fromJson(response.data);
     } on DioException catch (e) {
-      debugPrint('[API] submitBrainDump DioException type=${e.type} message=${e.message}');
-      debugPrint('[API] submitBrainDump response=${e.response?.statusCode} data=${e.response?.data}');
       throw _handleError(e);
     }
   }
@@ -172,22 +163,18 @@ class ApiService {
   }
 
   /// Delete task
-  Future<void> deleteTask(String taskId, {String userId = AppConstants.defaultUserId}) async {
+  Future<void> deleteTask(String taskId) async {
     try {
-      await _dio.delete('/tasks/$taskId', queryParameters: {
-        'user_id': userId,
-      });
+      await _dio.delete('/tasks/$taskId');
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
   /// Get categories for user
-  Future<List<Category>> getCategories(String userId) async {
+  Future<List<Category>> getCategories() async {
     try {
-      final response = await _dio.get('/categories', queryParameters: {
-        'user_id': userId,
-      });
+      final response = await _dio.get('/categories');
       return (response.data as List)
           .map((json) => Category.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -197,10 +184,9 @@ class ApiService {
   }
 
   /// Create a new category
-  Future<Category> createCategory(String userId, String name) async {
+  Future<Category> createCategory(String name) async {
     try {
       final response = await _dio.post('/categories', data: {
-        'user_id': userId,
         'name': name,
       });
       return Category.fromJson(response.data as Map<String, dynamic>);
@@ -210,11 +196,9 @@ class ApiService {
   }
 
   /// Delete a category
-  Future<void> deleteCategory(String categoryId, {String userId = AppConstants.defaultUserId}) async {
+  Future<void> deleteCategory(String categoryId) async {
     try {
-      await _dio.delete('/categories/$categoryId', queryParameters: {
-        'user_id': userId,
-      });
+      await _dio.delete('/categories/$categoryId');
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -222,14 +206,12 @@ class ApiService {
 
   /// Search tasks by query string
   Future<TaskSearchResponse> searchTasks(
-    String userId,
     String query, {
     int limit = 10,
   }) async {
     try {
       final response = await _dio.get('/tasks/search', queryParameters: {
         'q': query,
-        'user_id': userId,
         'limit': limit,
       });
       return TaskSearchResponse.fromJson(response.data as Map<String, dynamic>);
