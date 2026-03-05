@@ -180,6 +180,7 @@ class CreateTaskRequest {
   final String? description;
   final String? parentId;
   final DateTime? dueDate;
+  final String? priority;
   final String transcription;
   final Map<String, dynamic>? aiPlacementJson;
 
@@ -189,6 +190,7 @@ class CreateTaskRequest {
     this.description,
     this.parentId,
     this.dueDate,
+    this.priority,
     required this.transcription,
     this.aiPlacementJson,
   });
@@ -200,6 +202,7 @@ class CreateTaskRequest {
       'description': description,
       'parent_id': parentId,
       'due_date': dueDate?.toIso8601String(),
+      'priority': priority,
       'transcription': transcription,
       'ai_placement_json': aiPlacementJson,
     };

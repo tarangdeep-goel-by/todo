@@ -38,7 +38,7 @@ def setup_logging(log_level: str = "INFO") -> None:
     use_json = os.environ.get("LOG_FORMAT", "json") != "console"
 
     shared_processors = [
-        structlog.contextvars.merge_contextvars_context,
+        structlog.contextvars.merge_contextvars,
         _add_context_vars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
