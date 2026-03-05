@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-cd /Users/tarang/Documents/Projects/todo/.claude-flow/worktrees/claude-flow/todo/improve-parent-task-detection-mmdddw0t-b
-(unset CLAUDECODE; claude -p "$(cat /Users/tarang/Documents/Projects/todo/.claude-flow/worktrees/claude-flow/todo/improve-parent-task-detection-mmdddw0t-b/.claude-flow/logs/76e8635b-dev-b.prompt)" --output-format json --model sonnet --allowedTools Edit,Write,Read,Grep,Glob,Bash,Agent --max-budget-usd 3) 2>&1 | tee /Users/tarang/Documents/Projects/todo/.claude-flow/worktrees/claude-flow/todo/improve-parent-task-detection-mmdddw0t-b/.claude-flow/logs/76e8635b-dev-b.log

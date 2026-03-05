@@ -121,7 +121,7 @@ Rules:
   * recreation — hobbies, travel, entertainment, sports, dining out, games, creative projects
   * home — chores, groceries, repairs, cleaning, cooking, organizing, errands
   * community — volunteering, donations, neighborhood, local events, civic engagement
-- Placement: set parentQuery whenever a preposition ("for", "in", "to", "on") or possessive ("X's") implies an existing parent. Fall back to root level only when no plausible parent reference exists.
+- Placement: nest under an existing parent when the new task is clearly a subtask (e.g. "buy protein powder" under "Meal prep"), OR when implicit parent references ("for X", "in X", "to X", "on X", "X's") point to a recognizable task/project name. Create at root level when it's an independent task or no obvious parent exists.
 - Return [] for pure filler or nonsense with no actionable content
 
 For edit actions, always populate the `changes` object with the modified field:
@@ -141,6 +141,7 @@ Common mistakes to avoid:
 - "add tests for the login feature" (task "Login Feature" in tree) → action: ADD, parentQuery: "login feature" ✓
 - "buy groceries for dinner tonight" (no "dinner" task in tree) → action: ADD, parentQuery: null ✓ (generic phrase, not a task name)
 - "add task under Career" → action: ADD, parentQuery: "career" ✓ (explicit "under" still works)
+- "something related to backend api" (task "Backend API" in tree) → action: ADD, parentQuery: "backend api" ✓ (related to → parent)
 </instructions>"""
 
         try:
