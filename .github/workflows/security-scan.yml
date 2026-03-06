@@ -1,39 +1,39 @@
 name: Security Scan
 
-  on:
-    push:
-      branches: [main]
-    pull_request:
-      branches: [main]
-    schedule:
-      - cron: '0 9 * * 1'
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 1'
 
-  jobs:
-    python-audit:
-      name: Python Dependency Audit
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-python@v5
-          with:
-            python-version: '3.11'
-        - name: Install pip-audit
-          run: pip install pip-audit
-        - name: Audit Python dependencies
-          run: pip-audit -r backend/requirements.txt
+jobs:
+  python-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Audit Python dependencies
+        run: pip-audit -r backend/requirements.txt
 
-    flutter-outdated:
-      name: Flutter Dependency Check
-      runs-on: ubuntu-latest
-      defaults:
-        run:
-          working-directory: frontend
-      steps:
-        - uses: actions/checkout@v4
-        - uses: subosito/flutter-action@v2
-          with:
-            channel: stable
-        - name: Get dependencies
-          run: flutter pub get
-        - name: Check outdated packages
-          run: flutter pub outdated
+  flutter-outdated:
+    name: Flutter Dependency Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Check outdated packages
+        run: flutter pub outdated
