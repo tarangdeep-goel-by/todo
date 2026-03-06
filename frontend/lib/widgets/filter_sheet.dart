@@ -8,6 +8,8 @@ import '../models/task_filter.dart';
 import '../providers/task_filter_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 
 class FilterSheet extends ConsumerStatefulWidget {
   const FilterSheet({super.key});
@@ -39,6 +41,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
   void _applyFilters() {
     HapticService.medium();
     ref.read(taskFilterProvider.notifier).state = _currentFilter;
+    Tracker.instance.outcome(type: 'filter_applied', detail: _currentFilter.toString());
     Navigator.pop(context);
   }
 
@@ -336,6 +339,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       .copyWith(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
                 GestureDetector(
+                  key: TK.clearAllButton,
                   onTap: _clearAll,
                   child: Text(
                     'Clear All',
@@ -532,6 +536,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                 Expanded(
                   flex: 2,
                   child: GestureDetector(
+                    key: TK.applyFiltersButton,
                     onTap: _applyFilters,
                     child: Container(
                       constraints: const BoxConstraints(minHeight: 48),

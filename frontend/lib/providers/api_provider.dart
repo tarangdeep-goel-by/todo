@@ -30,7 +30,9 @@ final speechServiceProvider = Provider<SpeechService>((ref) {
 
 /// Provider for ramble WebSocket service
 final rambleWebSocketProvider = Provider<RambleWebSocketService>((ref) {
-  final service = RambleWebSocketService();
+  final service = const bool.fromEnvironment('TEST_MODE', defaultValue: false)
+      ? RambleWebSocketService(tokenProvider: () async => 'test-token-e2e')
+      : RambleWebSocketService();
   ref.onDispose(() => service.dispose());
   return service;
 });

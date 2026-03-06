@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/constants.dart';
 import 'app_logger.dart';
-import 'analytics_service.dart';
+import 'tracker/tracker.dart';
 
 /// Connection state for ramble WebSocket.
 enum RambleConnectionState { disconnected, connecting, connected, reconnecting }
@@ -137,7 +137,7 @@ class RambleWebSocketService {
     _reconnectAttempt = 0;
 
     _send({'type': 'start'});
-    AnalyticsService.instance.trackRambleStarted();
+    Tracker.instance.outcome(type: 'ramble_started', method: 'voice');
     _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'start'});
   }
 
@@ -268,10 +268,7 @@ class RambleWebSocketService {
     final durationSeconds = _connectedAt != null
         ? DateTime.now().difference(_connectedAt!).inSeconds
         : 0;
-    AnalyticsService.instance.trackRambleCompleted(
-      durationSeconds: durationSeconds,
-      transcriptLength: result?.length ?? 0,
-    );
+    Tracker.instance.outcome(type: 'ramble_completed', detail: '${durationSeconds}s', count: result?.length ?? 0);
 
     _finalTranscriptCompleter = null;
     await _channel?.sink.close();
