@@ -5,6 +5,7 @@ import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/api_provider.dart';
+import '../providers/connectivity_provider.dart';
 import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/top_bar.dart';
@@ -40,6 +41,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final syncService = ref.read(syncServiceProvider);
       syncService.sync(); // Background: push pending + pull fresh (fire-and-forget)
       syncService.startPeriodicSync();
+      // Initialize connectivity listener (triggers sync on reconnect)
+      ref.read(isOnlineProvider);
       // Eagerly initialize speech recognition to avoid delay on first tap
       ref.read(speechServiceProvider).initialize();
       _checkWelcome();
