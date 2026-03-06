@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import '../database/app_database.dart';
 import '../models/api_error.dart';
 import '../models/api_response.dart';
 import '../models/task.dart';
@@ -85,9 +86,86 @@ class SyncService {
     stopPeriodicSync();
   }
 
+  // === Queue Compaction ===
+
+  /// Compact redundant mutations before push.
+  Future<void> compact() async {
+    final entries = await _localDb.getPendingMutations();
+    if (entries.length < 2) return;
+
+    // Group by entityId
+    final byEntity = <String, List<SyncQueueData>>{};
+    for (final e in entries) {
+      byEntity.putIfAbsent(e.entityId, () => []).add(e);
+    }
+
+    for (final group in byEntity.values) {
+      if (group.length < 2) continue;
+      final actions = group.map((e) => e.action).toList();
+
+      // create + delete → remove both + delete local row
+      if (actions.first == 'create' && actions.last == 'delete') {
+        for (final e in group) {
+          await _localDb.ackMutation(e.id);
+        }
+        await _localDb.deleteTask(group.first.entityId);
+        continue;
+      }
+
+      // Any sequence ending with delete → keep only the delete
+      if (actions.last == 'delete') {
+        for (var i = 0; i < group.length - 1; i++) {
+          await _localDb.ackMutation(group[i].id);
+        }
+        continue;
+      }
+
+      // create + update(s) → merge updates into create payload
+      if (actions.first == 'create') {
+        if (group.length > 1) {
+          var merged = jsonDecode(group.first.payload) as Map<String, dynamic>;
+          for (var i = 1; i < group.length; i++) {
+            if (group[i].action == 'update') {
+              final update = jsonDecode(group[i].payload) as Map<String, dynamic>;
+              merged = {...merged, ...update};
+              await _localDb.ackMutation(group[i].id);
+            }
+          }
+          // Re-enqueue the merged create (ack old, enqueue new)
+          await _localDb.ackMutation(group.first.id);
+          await _localDb.enqueueMutation(
+            entityType: 'task',
+            entityId: group.first.entityId,
+            action: 'create',
+            payload: merged,
+          );
+        }
+        continue;
+      }
+
+      // update + update → merge into single update (latest wins)
+      final updates = group.where((e) => e.action == 'update').toList();
+      if (updates.length > 1) {
+        var merged = <String, dynamic>{};
+        for (final u in updates) {
+          final payload = jsonDecode(u.payload) as Map<String, dynamic>;
+          merged = {...merged, ...payload};
+          await _localDb.ackMutation(u.id);
+        }
+        await _localDb.enqueueMutation(
+          entityType: 'task',
+          entityId: updates.first.entityId,
+          action: 'update',
+          payload: merged,
+        );
+      }
+    }
+  }
+
   // === Push: Local mutations → Server ===
 
   Future<void> push() async {
+    await compact();
     final entries = await _localDb.getPendingMutations();
     if (entries.isEmpty) return;
 
