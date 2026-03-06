@@ -94,30 +94,33 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode == 401) {
       _logger.warning('auth.token_expired', logger: 'AuthInterceptor', traceId: traceId);
 
-      // Attempt silent token refresh before giving up
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        try {
-          final newToken = await user.getIdToken(true);
-          if (newToken != null) {
-            _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
-            // Retry the original request with fresh token
-            final opts = err.requestOptions;
-            opts.headers['Authorization'] = 'Bearer $newToken';
-            final response = await Dio().fetch(opts);
-            return handler.resolve(response);
+      // Skip Firebase token refresh in test mode (Firebase not initialized)
+      if (!const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+        // Attempt silent token refresh before giving up
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          try {
+            final newToken = await user.getIdToken(true);
+            if (newToken != null) {
+              _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
+              // Retry the original request with fresh token
+              final opts = err.requestOptions;
+              opts.headers['Authorization'] = 'Bearer $newToken';
+              final response = await Dio().fetch(opts);
+              return handler.resolve(response);
+            }
+          } catch (refreshError) {
+            _logger.error('auth.refresh_failed', logger: 'AuthInterceptor', traceId: traceId,
+                data: {'error': refreshError.toString()});
           }
-        } catch (refreshError) {
-          _logger.error('auth.refresh_failed', logger: 'AuthInterceptor', traceId: traceId,
-              data: {'error': refreshError.toString()});
         }
-      }
 
-      // Refresh failed — notify app layer instead of silent signout
-      if (onReauthRequired != null) {
-        onReauthRequired!();
-      } else {
-        await FirebaseAuth.instance.signOut();
+        // Refresh failed — notify app layer instead of silent signout
+        if (onReauthRequired != null) {
+          onReauthRequired!();
+        } else {
+          await FirebaseAuth.instance.signOut();
+        }
       }
     }
     handler.next(err);

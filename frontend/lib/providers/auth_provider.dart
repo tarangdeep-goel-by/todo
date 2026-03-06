@@ -2,14 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/app_logger.dart';
-import '../services/analytics_service.dart';
+import '../services/tracker/tracker.dart';
 import '../services/notification_service.dart';
 
 /// Stream of Firebase auth state changes
 final authStateProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.authStateChanges().map((user) {
     if (user != null) {
-      AnalyticsService.instance.setUserId(user.uid);
+      Tracker.instance.setUserId(user.uid);
     }
     return user;
   });
@@ -59,7 +59,7 @@ class AuthService {
       _googleSignIn.signOut(),
     ]);
     _logger.info('auth.sign_out', logger: 'AuthService', data: {'success': true});
-    AnalyticsService.instance.setUserId('');
+    Tracker.instance.setUserId('');
   }
 
   Future<String?> getIdToken() async {

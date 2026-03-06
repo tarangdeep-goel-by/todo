@@ -6,6 +6,8 @@ import '../config/typography.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/grain_texture_painter.dart';
 import '../widgets/styled_snackbar.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -38,6 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
     });
     _controller.forward();
+    Tracker.instance.screenView(screen: 'login');
   }
 
   @override
@@ -52,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     try {
       final authService = ref.read(authServiceProvider);
       await authService.signInWithGoogle();
+      Tracker.instance.outcome(type: 'signup_completed', method: 'google');
     } on String catch (msg) {
       if (mounted) {
         showStyledSnackbar(context, message: msg, style: SnackbarStyle.error);
@@ -191,6 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   _staggered(
                     5,
                     GestureDetector(
+                      key: TK.signInButton,
                       onTap: _isLoading ? null : _signInWithGoogle,
                       child: Container(
                         width: double.infinity,

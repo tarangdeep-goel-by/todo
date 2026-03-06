@@ -10,6 +10,8 @@ import '../providers/auth_provider.dart';
 import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 import 'archive_screen.dart';
 
 /// Profile screen showing user info and sign out
@@ -18,6 +20,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Tracker.instance.screenView(screen: 'profile');
     final user = FirebaseAuth.instance.currentUser;
     final displayName = user?.displayName ?? 'User';
     final email = user?.email ?? '';
@@ -114,6 +117,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // Archive row
                     GestureDetector(
+                      key: TK.archiveLink,
                       onTap: () {
                         HapticService.light();
                         Navigator.of(context).push(
@@ -155,6 +159,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // Sign out button
                     GestureDetector(
+                      key: TK.signOutButton,
                       onTap: () => _confirmSignOut(context, ref),
                       behavior: HitTestBehavior.opaque,
                       child: Container(

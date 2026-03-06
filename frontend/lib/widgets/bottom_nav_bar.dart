@@ -8,6 +8,8 @@ import '../providers/recording_provider.dart';
 import '../providers/connectivity_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 import '../screens/ramble_screen.dart';
 import '../screens/profile_screen.dart';
 import 'add_task_sheet.dart';
@@ -122,6 +124,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
           children: [
             // Home
             _NavItem(
+              key: TK.homeTab,
               icon: Icons.home_rounded,
               label: 'Home',
               isActive: viewMode == ViewMode.node,
@@ -129,11 +132,13 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               inactiveColor: inactiveColor,
               onTap: () {
                 HapticService.selection();
+                Tracker.instance.tap(element: 'home_tab', screen: 'home', target: 'node');
                 ref.read(viewModeProvider.notifier).state = ViewMode.node;
               },
             ),
             // Flat
             _NavItem(
+              key: TK.flatTab,
               icon: Icons.list_rounded,
               label: 'Flat',
               isActive: viewMode == ViewMode.flat,
@@ -141,6 +146,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               inactiveColor: inactiveColor,
               onTap: () {
                 HapticService.selection();
+                Tracker.instance.tap(element: 'flat_tab', screen: 'home', target: 'flat');
                 ref.read(viewModeProvider.notifier).state = ViewMode.flat;
               },
             ),
@@ -150,6 +156,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               child: VoiceHintPulse(
                 isActive: !_voiceHintSeen,
                 child: _CenterPttButton(
+                  key: TK.pttButton,
                   isProcessing:
                       recordingState == RecordingState.processing,
                   showVoiceHint: !_voiceHintSeen,
@@ -160,6 +167,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
             ),
             // Calendar
             _NavItem(
+              key: TK.calTab,
               icon: Icons.calendar_today_rounded,
               label: 'Cal',
               isActive: viewMode == ViewMode.calendar,
@@ -167,11 +175,13 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               inactiveColor: inactiveColor,
               onTap: () {
                 HapticService.selection();
+                Tracker.instance.tap(element: 'cal_tab', screen: 'home', target: 'calendar');
                 ref.read(viewModeProvider.notifier).state = ViewMode.calendar;
               },
             ),
             // Profile
             _NavItem(
+              key: TK.profileTab,
               icon: Icons.person_outline_rounded,
               label: 'Profile',
               isActive: false,
@@ -179,6 +189,7 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               inactiveColor: inactiveColor,
               onTap: () {
                 HapticService.light();
+                Tracker.instance.tap(element: 'profile_tab', screen: 'home');
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
@@ -200,6 +211,7 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NavItem({
+    super.key,
     required this.icon,
     required this.label,
     required this.isActive,
@@ -240,6 +252,7 @@ class _CenterPttButton extends StatelessWidget {
   final VoidCallback onLongPress;
 
   const _CenterPttButton({
+    super.key,
     required this.isProcessing,
     required this.onTap,
     required this.onLongPress,

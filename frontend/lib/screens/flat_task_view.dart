@@ -14,7 +14,7 @@ import '../widgets/loading_state.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 import '../widgets/task_item.dart';
 import '../models/api_error.dart';
-import '../services/analytics_service.dart';
+import '../services/tracker/tracker.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
@@ -105,10 +105,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         query,
       );
       if (mounted && _searchController.text.trim() == query) {
-        AnalyticsService.instance.trackSearchPerformed(
-          queryLength: query.length,
-          resultCount: response.results.length,
-        );
+        Tracker.instance.outcome(type: 'search_performed', detail: query, count: response.results.length);
         setState(() {
           _searchResults = response.results.map((r) => r.task).toList();
           _searchLoading = false;
