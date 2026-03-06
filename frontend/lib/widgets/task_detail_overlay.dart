@@ -98,7 +98,8 @@ Future<double?> showEstimateDialog(
     ),
   );
 
-  controller.dispose();
+  // Don't dispose controller here — dialog dismiss animation may still
+  // reference it. Let GC handle cleanup of this local controller.
   return result;
 }
 
@@ -383,11 +384,18 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     if (_savingDueDate) return;
 
     final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
+    final now = DateTime.now();
+    final firstDate = now.subtract(const Duration(days: 365));
+    final lastDate = now.add(const Duration(days: 365 * 3));
+    final initialDate = task.dueDate != null && task.dueDate!.isBefore(firstDate)
+        ? firstDate
+        : (task.dueDate ?? now);
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: task.dueDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(

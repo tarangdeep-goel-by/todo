@@ -1,5 +1,5 @@
 """Categories API router."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from database import get_db
@@ -7,6 +7,7 @@ from auth import get_current_user
 from models.schemas import CategoryResponse, CreateCategoryRequest
 from services.task_service import TaskService
 from audit import audit_log
+from rate_limit import limiter
 from structured_logging import get_logger
 
 logger = get_logger(__name__)
@@ -26,23 +27,27 @@ async def get_categories(
 
 
 @router.post("", response_model=CategoryResponse, status_code=201)
+@limiter.limit("10/minute")
 async def create_category(
-    request: CreateCategoryRequest,
+    request: Request,
+    body: CreateCategoryRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CategoryResponse:
     """Create a new category (max 5, no duplicates)."""
     task_service = TaskService(db)
     try:
-        category = await task_service.create_category(user_id, request.name)
+        category = await task_service.create_category(user_id, body.name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    logger.info("category.create", name=request.name)
+    logger.info("category.create", name=body.name)
     return CategoryResponse.model_validate(category)
 
 
 @router.delete("/{category_id}")
+@limiter.limit("10/minute")
 async def delete_category(
+    request: Request,
     category_id: str,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

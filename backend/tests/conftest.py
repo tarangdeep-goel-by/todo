@@ -4,27 +4,21 @@ import sys
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock
-from urllib.parse import quote_plus
-
-# Derive DB credentials from the runtime DATABASE_URL (injected by docker-compose)
-# so tests don't break when .env password changes.
-_runtime_db_url = os.environ.get("DATABASE_URL", "")
-if _runtime_db_url:
-    # Extract password from URL: scheme://user:password@host:port/db
-    _after_scheme = _runtime_db_url.split("://", 1)[1]  # user:pass@host:port/db
-    _userpass, _hostrest = _after_scheme.rsplit("@", 1)
-    _user, _password = _userpass.split(":", 1)
-    _host_port = _hostrest.split("/", 1)[0]
-    _encoded_pw = quote_plus(_password)
-    _db_scheme = _runtime_db_url.split("://", 1)[0]
-else:
-    _db_scheme = "postgresql+asyncpg"
-    _user = "todo"
-    _encoded_pw = "todo123"
-    _host_port = "postgres:5432"
+from sqlalchemy.engine import URL
 
 # Set env vars before any app imports
-os.environ["DATABASE_URL"] = f"{_db_scheme}://{_user}:{_encoded_pw}@{_host_port}/todo_test"
+# Build URL via SQLAlchemy URL.create() — handles special chars (e.g. '/') that
+# break asyncpg when naively URL-encoded with quote_plus().
+_db_password = os.environ.get("POSTGRES_PASSWORD", "todo123")
+_test_db_url = URL.create(
+    drivername="postgresql+asyncpg",
+    username="todo",
+    password=_db_password,
+    host="postgres",
+    port=5432,
+    database="todo_test",
+)
+os.environ["DATABASE_URL"] = str(_test_db_url)
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("SARVAM_API_KEY", "test-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
@@ -44,14 +38,30 @@ from models.category import Category  # noqa: F401 — registers model on Base
 from services.task_service import TaskService
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
+from rate_limit import limiter
 
 TEST_USER_ID = "test-user"
 
 
+# ──────────────── Rate limiter reset ────────────────
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Reset slowapi rate limiter before every test to prevent cross-test pollution."""
+    limiter.reset()
+
+
 # ──────────────── Database fixtures ────────────────
 
-TEST_DB_URL = f"{_db_scheme}://{_user}:{_encoded_pw}@{_host_port}/todo_test"
-ADMIN_DB_URL = f"{_db_scheme}://{_user}:{_encoded_pw}@{_host_port}/todo_db"
+TEST_DB_URL = _test_db_url
+ADMIN_DB_URL = URL.create(
+    drivername="postgresql+asyncpg",
+    username="todo",
+    password=_db_password,
+    host="postgres",
+    port=5432,
+    database="todo_db",
+)
 
 _db_created = False
 

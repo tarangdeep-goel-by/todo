@@ -5,6 +5,7 @@ import '../config/typography.dart';
 import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/analytics_service.dart';
 
 /// View toggle button (Node/Flat/Calendar)
 class ViewToggle extends ConsumerWidget {
@@ -115,6 +116,11 @@ class ViewToggle extends ConsumerWidget {
       child: GestureDetector(
         onTap: () {
           HapticService.selection();
+          final from = ref.read(viewModeProvider);
+          AnalyticsService.instance.trackViewSwitched(
+            from: from.name,
+            to: mode.name,
+          );
           ref.read(viewModeProvider.notifier).state = mode;
         },
         child: Container(

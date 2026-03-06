@@ -13,6 +13,7 @@ import '../widgets/undo_snackbar.dart';
 import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
 import '../utils/string_extensions.dart';
+import '../services/analytics_service.dart';
 
 /// Task item widget for flat view with swipe actions.
 ///
@@ -67,12 +68,20 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       return;
     }
 
+    if (newStatus == 'completed') {
+      AnalyticsService.instance.trackTaskCompleted(
+        source: 'toggle',
+        daysToComplete: DateTime.now().difference(task.createdAt).inDays,
+      );
+    }
+
     // Optimistic upsert
     final optimistic = task.copyWith(
       status: newStatus,
       completedAt: newStatus == 'completed' ? DateTime.now() : null,
     );
     store.upsertTask(optimistic);
+    store.markPending(task.id);
 
     try {
       final apiService = ref.read(apiServiceProvider);
@@ -85,6 +94,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
               newStatus == 'active' ? const {'completed_at'} : const {},
         ),
       );
+      store.clearPending(task.id);
       store.upsertTask(updated);
 
       if (context.mounted) {
@@ -99,6 +109,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
         );
       }
     } catch (e) {
+      store.clearPending(task.id);
       store.upsertTask(task);
       if (context.mounted) {
         showStyledSnackbar(
@@ -156,9 +167,11 @@ class _TaskItemState extends ConsumerState<TaskItem> {
     try {
       // Optimistic remove
       store.removeTask(task.id);
+      store.markPending(task.id);
 
       final apiService = ref.read(apiServiceProvider);
       await apiService.deleteTask(task.id);
+      store.clearPending(task.id);
 
       if (context.mounted) {
         showStyledSnackbar(
@@ -171,6 +184,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       return true;
     } catch (e) {
       // Rollback
+      store.clearPending(task.id);
       store.upsertTask(task);
       if (context.mounted) {
         showStyledSnackbar(
@@ -219,6 +233,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
     final isCompleted = task.isCompleted;
     final isOverdue = task.isOverdue;
     final isDueSoon = task.isDueSoon;
+    final isPending = ref.watch(taskStoreProvider).pendingMutations.contains(task.id);
 
     // During tutorial, disable tap/long-press to prevent bypassing swipe steps
     final isTutorialMode = widget.onTutorialStepComplete != null;
@@ -311,6 +326,11 @@ class _TaskItemState extends ConsumerState<TaskItem> {
         ),
       ),
     );
+
+    // Subtle syncing indicator — reduced opacity while API call in flight
+    if (isPending) {
+      taskContent = Opacity(opacity: 0.6, child: taskContent);
+    }
 
     // Swipe direction and background based on task status
     final DismissDirection direction;

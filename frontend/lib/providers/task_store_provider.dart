@@ -4,6 +4,7 @@ import '../models/task_filter.dart';
 import '../models/category.dart';
 import '../config/theme.dart';
 import '../services/app_logger.dart';
+import '../services/analytics_service.dart';
 import 'api_provider.dart';
 import 'task_filter_provider.dart';
 
@@ -13,22 +14,30 @@ class TaskStoreState {
   final Map<String, Task> tasks;
   final bool isLoading;
   final String? error;
+  final bool hasLoadedOnce;
+  final Set<String> pendingMutations;
 
   const TaskStoreState({
     this.tasks = const {},
     this.isLoading = false,
     this.error,
+    this.hasLoadedOnce = false,
+    this.pendingMutations = const {},
   });
 
   TaskStoreState copyWith({
     Map<String, Task>? tasks,
     bool? isLoading,
     String? error,
+    bool? hasLoadedOnce,
+    Set<String>? pendingMutations,
   }) {
     return TaskStoreState(
       tasks: tasks ?? this.tasks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
+      pendingMutations: pendingMutations ?? this.pendingMutations,
     );
   }
 }
@@ -53,7 +62,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       const limit = 100;
 
       while (true) {
-        final response = await apiService.getTasksAdvanced(
+        final response = await apiService.getTasksAdvancedWithRetry(
           limit: limit,
           offset: offset,
         );
@@ -64,12 +73,16 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
       final map = {for (final t in allTasks) t.id: t};
       _logger.info('store.fetch', logger: 'TaskStore', data: {'task_count': map.length});
-      state = TaskStoreState(tasks: map);
+      state = TaskStoreState(tasks: map, hasLoadedOnce: true);
+
+      // Update analytics user properties
+      AnalyticsService.instance.setUserProperties(taskCount: map.length);
 
       // Fetch categories and update provider
       try {
         final categories = await apiService.getCategories();
         _ref.read(categoriesProvider.notifier).state = categories;
+        AnalyticsService.instance.setUserProperties(categoryCount: categories.length);
       } catch (_) {
         // Non-fatal — categories may not be available
       }
@@ -82,6 +95,20 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
   void upsertTask(Task task) {
     _logger.debug('store.upsert', logger: 'TaskStore', data: {'task_id': task.id});
     state = state.copyWith(tasks: {...state.tasks, task.id: task});
+  }
+
+  /// Mark a task as having an in-flight API call.
+  void markPending(String taskId) {
+    state = state.copyWith(
+      pendingMutations: {...state.pendingMutations, taskId},
+    );
+  }
+
+  /// Clear pending state for a task (on success or failure).
+  void clearPending(String taskId) {
+    state = state.copyWith(
+      pendingMutations: Set.from(state.pendingMutations)..remove(taskId),
+    );
   }
 
   /// Remove a task from the store.
