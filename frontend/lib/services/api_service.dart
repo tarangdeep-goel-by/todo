@@ -287,6 +287,30 @@ class ApiService {
     }
   }
 
+  /// Register FCM token with backend
+  Future<void> registerFcmToken(String token, String platform, String timezone) async {
+    try {
+      await _dio.post('/notifications/token', data: {
+        'token': token,
+        'platform': platform,
+        'timezone': timezone,
+      });
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Unregister FCM token from backend
+  Future<void> unregisterFcmToken(String token) async {
+    try {
+      await _dio.delete('/notifications/token', data: {
+        'token': token,
+      });
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Handle Dio errors — returns structured [ApiError].
   ApiError _handleError(DioException e) {
     if (e.response != null) {

@@ -6,6 +6,7 @@ import '../providers/view_mode_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/api_provider.dart';
 import '../services/onboarding_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/ptt_input_overlay.dart';
@@ -37,6 +38,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(taskStoreProvider.notifier).fetchAll();
       // Eagerly initialize speech recognition to avoid delay on first tap
       ref.read(speechServiceProvider).initialize();
+      // Initialize push notifications (registers FCM token with backend)
+      NotificationService.instance.initialize(ref.read(apiServiceProvider));
       _checkWelcome();
     });
   }

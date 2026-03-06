@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # Category limits
     max_categories: int = 8
 
+    # Notifications
+    notification_check_interval_minutes: int = 15
+
     @field_validator("search_engine")
     @classmethod
     def validate_search_engine(cls, v):
