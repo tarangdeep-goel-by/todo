@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from routers import agent, tasks, categories, ramble, logs
+from routers import agent, tasks, categories, ramble, logs, notifications
 from config import get_settings
 from rate_limit import limiter
 from structured_logging import get_logger
@@ -34,6 +34,7 @@ _logger = get_logger(__name__)
 
 PURGE_INTERVAL_HOURS = 24
 PURGE_RETENTION_DAYS = 30
+NOTIFICATION_CHECK_INTERVAL = settings.notification_check_interval_minutes * 60
 
 
 async def _purge_archived_loop():
@@ -53,15 +54,39 @@ async def _purge_archived_loop():
             _logger.error("purge.archived.error", error=str(e))
 
 
+async def _notification_loop():
+    """Background task: check for due tasks and send push notifications."""
+    from database import AsyncSessionLocal
+    from services.notification_service import NotificationService
+
+    while True:
+        await asyncio.sleep(NOTIFICATION_CHECK_INTERVAL)
+        try:
+            async with AsyncSessionLocal() as session:
+                svc = NotificationService(session)
+                count = await svc.check_and_send_due_reminders()
+                if count:
+                    _logger.info("notification.cycle_complete", tasks_notified=count)
+        except Exception as e:
+            _logger.error("notification.cycle_error", error=str(e))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: start background tasks, clean up on shutdown."""
     purge_task = asyncio.create_task(_purge_archived_loop())
-    _logger.info("app.startup", purge_interval_hours=PURGE_INTERVAL_HOURS)
+    notification_task = asyncio.create_task(_notification_loop())
+    _logger.info("app.startup", purge_interval_hours=PURGE_INTERVAL_HOURS,
+                 notification_interval_minutes=settings.notification_check_interval_minutes)
     yield
     purge_task.cancel()
+    notification_task.cancel()
     try:
         await purge_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await notification_task
     except asyncio.CancelledError:
         pass
     from database import engine
@@ -132,6 +157,7 @@ app.include_router(tasks.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(ramble.router)  # No /api prefix — WebSocket at /ws/ramble
 app.include_router(logs.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 
 # Prometheus metrics (after routers so all endpoints are instrumented)
 from prometheus_fastapi_instrumentator import Instrumentator
