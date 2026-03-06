@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from routers import agent, tasks, categories, ramble, logs, notifications
+from routers import agent, tasks, categories, ramble, logs, notifications, test_utils
 from config import get_settings
 from rate_limit import limiter
 from structured_logging import get_logger
@@ -158,6 +158,10 @@ app.include_router(categories.router, prefix="/api")
 app.include_router(ramble.router)  # No /api prefix — WebSocket at /ws/ramble
 app.include_router(logs.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+
+# Test utilities (guarded by APP_ENV != production)
+if settings.app_env != "production":
+    app.include_router(test_utils.router, prefix="/api")
 
 # Prometheus metrics (after routers so all endpoints are instrumented)
 from prometheus_fastapi_instrumentator import Instrumentator

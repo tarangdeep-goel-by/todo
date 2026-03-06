@@ -16,6 +16,15 @@ class AuthInterceptor extends Interceptor {
     // Stash trace ID for response/error logging
     options.extra['trace_id'] = traceId;
 
+    // In test mode, use a static test token instead of Firebase Auth
+    if (const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+      options.headers['Authorization'] = 'Bearer test-token-e2e';
+      _logger.info('api.request', logger: 'AuthInterceptor', traceId: traceId,
+          data: {'method': options.method, 'path': options.path, 'auth': 'test-token'});
+      handler.next(options);
+      return;
+    }
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
