@@ -12,7 +12,6 @@ import '../widgets/ptt_input_overlay.dart';
 import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
-import '../widgets/welcome_overlay.dart';
 import '../widgets/flat_view_nudge.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
@@ -27,7 +26,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _showWelcome = false;
   bool _tutorialActive = false;
   bool _flatViewNudgeSeen = false;
   bool _demoInjected = false;
@@ -45,17 +43,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _checkWelcome() async {
     final seen = await OnboardingService.hasSeenWelcome();
-    if (!seen && mounted) {
-      setState(() => _showWelcome = true);
-    } else if (seen) {
-      await _checkTutorial();
-    }
-  }
-
-  Future<void> _dismissWelcome() async {
-    await OnboardingService.markWelcomeSeen();
-    if (mounted) {
-      setState(() => _showWelcome = false);
+    if (!seen) {
+      await OnboardingService.markWelcomeSeen();
     }
     await _checkTutorial();
   }
@@ -112,11 +101,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show welcome overlay on first launch (data loads behind it)
-    if (_showWelcome) {
-      return WelcomeOverlay(onDismiss: _dismissWelcome);
-    }
-
     final viewMode = ref.watch(viewModeProvider);
     final taskCount = ref.watch(allTasksProvider).length;
 
