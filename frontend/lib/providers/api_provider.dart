@@ -8,7 +8,9 @@ import '../services/ramble_websocket_service.dart';
 /// Provider for API service singleton
 final apiServiceProvider = Provider<ApiService>((ref) {
   final service = ApiService();
-  AppLogger.instance.initShipping(service.dio);
+  if (!const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+    AppLogger.instance.initShipping(service.dio);
+  }
   return service;
 });
 
