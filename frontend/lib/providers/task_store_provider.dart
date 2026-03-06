@@ -4,7 +4,7 @@ import '../models/task_filter.dart';
 import '../models/category.dart';
 import '../config/theme.dart';
 import '../services/app_logger.dart';
-import '../services/analytics_service.dart';
+import '../services/tracker/tracker.dart';
 import 'api_provider.dart';
 import 'local_data_provider.dart';
 import 'task_filter_provider.dart';
@@ -113,7 +113,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       state = TaskStoreState(tasks: map, hasLoadedOnce: true);
 
       // Update analytics user properties
-      AnalyticsService.instance.setUserProperties(taskCount: map.length);
+      Tracker.instance.setUserProperties({'task_count': map.length.toString()});
 
       // Persist tasks to local DB
       try {
@@ -128,7 +128,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       try {
         final categories = await apiService.getCategories();
         _ref.read(categoriesProvider.notifier).state = categories;
-        AnalyticsService.instance.setUserProperties(categoryCount: categories.length);
+        Tracker.instance.setUserProperties({'category_count': categories.length.toString()});
         // Persist categories to local DB
         try {
           final localData = _ref.read(localDataServiceProvider);
