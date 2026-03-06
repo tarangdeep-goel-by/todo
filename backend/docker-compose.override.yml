@@ -1,9 +1,0 @@
-services:
-  postgres:
-    container_name: todo-archive-postgres
-    ports: !override
-      - "127.0.0.1:5434:5432"
-  backend:
-    container_name: todo-archive-backend
-    ports: !override
-      - "8002:8000"
