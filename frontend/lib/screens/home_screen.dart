@@ -33,8 +33,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(taskStoreProvider.notifier).fetchAll();
+    Future.microtask(() async {
+      final store = ref.read(taskStoreProvider.notifier);
+      await store.loadLocal(); // Instant: cached data → UI
+      store.fetchAll(); // Background: fresh data (fire-and-forget)
       // Eagerly initialize speech recognition to avoid delay on first tap
       ref.read(speechServiceProvider).initialize();
       _checkWelcome();
