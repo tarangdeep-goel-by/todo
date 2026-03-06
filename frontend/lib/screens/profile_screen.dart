@@ -7,6 +7,8 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/local_data_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/haptic_service.dart';
 import 'archive_screen.dart';
 
@@ -209,10 +211,12 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(); // Close profile screen
-              ref.read(authServiceProvider).signOut();
+              ref.read(syncServiceProvider).stopPeriodicSync();
+              await ref.read(localDataServiceProvider).clearAll();
+              await ref.read(authServiceProvider).signOut();
             },
             child: Text(
               'Sign out',

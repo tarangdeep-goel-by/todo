@@ -5,6 +5,7 @@ import '../config/typography.dart';
 import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/recording_provider.dart';
+import '../providers/connectivity_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
 import '../screens/ramble_screen.dart';
@@ -59,6 +60,17 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
   }
 
   Future<void> _onLongPress(BuildContext context) async {
+    final isOnline = ref.read(isOnlineProvider);
+    if (!isOnline) {
+      HapticService.light();
+      if (context.mounted) {
+        showStyledSnackbar(context,
+          message: 'Voice input requires an internet connection.',
+          style: SnackbarStyle.error,
+        );
+      }
+      return;
+    }
     HapticService.medium();
     final result = await Navigator.push<({bool success, String message})>(
       context,

@@ -6,6 +6,7 @@ import '../config/theme.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_filter_provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
@@ -327,8 +328,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
             child: RefreshIndicator(
               color: AppColors.darkText,
               backgroundColor: AppColors.darkBg,
-              onRefresh: () =>
-                  ref.read(taskStoreProvider.notifier).fetchAll(),
+              onRefresh: () => ref.read(syncServiceProvider).sync(),
               child: ListView.builder(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(

@@ -5,6 +5,10 @@ import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/api_provider.dart';
+import '../providers/connectivity_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/local_data_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/top_bar.dart';
@@ -34,8 +38,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(taskStoreProvider.notifier).fetchAll();
+    Future.microtask(() async {
+      final store = ref.read(taskStoreProvider.notifier);
+      final localDb = ref.read(localDataServiceProvider);
+      final currentUid = ref.read(currentUserIdProvider) ?? '';
+
+      // User-switch guard: clear local DB if a different user logged in
+      final lastUid = await localDb.getMeta('last_user_id');
+      if (lastUid != null && lastUid != currentUid) {
+        await localDb.clearAll();
+      }
+      await localDb.setMeta('last_user_id', currentUid);
+
+      await store.loadLocal(); // Instant: cached data → UI
+      final syncService = ref.read(syncServiceProvider);
+      syncService.sync(); // Background: push pending + pull fresh (fire-and-forget)
+      syncService.startPeriodicSync();
+      // Initialize connectivity provider
+      ref.read(isOnlineProvider);
       // Eagerly initialize speech recognition to avoid delay on first tap
       ref.read(speechServiceProvider).initialize();
       // Initialize push notifications (registers FCM token with backend)

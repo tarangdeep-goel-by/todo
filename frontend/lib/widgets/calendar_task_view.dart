@@ -5,8 +5,8 @@ import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task.dart';
-import '../models/api_response.dart';
-import '../providers/api_provider.dart';
+import '../providers/mutation_provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../utils/string_extensions.dart';
@@ -14,7 +14,6 @@ import 'task_detail_overlay.dart';
 import 'empty_state.dart';
 import 'loading_state.dart';
 import 'undo_snackbar.dart';
-import 'styled_snackbar.dart';
 
 /// Calendar timeline view — tasks grouped by due date sections.
 class CalendarTaskView extends ConsumerStatefulWidget {
@@ -69,7 +68,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     return RefreshIndicator(
       color: AppColors.darkText,
       backgroundColor: AppColors.darkBg,
-      onRefresh: () => ref.read(taskStoreProvider.notifier).fetchAll(),
+      onRefresh: () => ref.read(syncServiceProvider).sync(),
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
@@ -208,60 +207,40 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
 
   Future<void> _toggleTask(Task task) async {
     final newStatus = task.isCompleted ? 'active' : 'completed';
-    final store = ref.read(taskStoreProvider.notifier);
     final paletteMap = ref.read(domainPalettesProvider);
     final domain = DomainColors.getDomain(task.category, true, paletteMap);
 
     HapticService.light();
 
+    // Offline-first: optimistic update + enqueue for sync
     final optimistic = task.copyWith(
       status: newStatus,
       completedAt: newStatus == 'completed' ? DateTime.now() : null,
     );
-    store.upsertTask(optimistic);
+    final payload = <String, dynamic>{'status': newStatus};
+    if (newStatus == 'completed') {
+      payload['completed_at'] = DateTime.now().toIso8601String();
+    }
 
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final updated = await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          status: newStatus,
-          completedAt: newStatus == 'completed' ? DateTime.now() : null,
-          clearFields: newStatus == 'active' ? const {'completed_at'} : const {},
-        ),
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.updateTask(optimistic, payload);
+
+    if (mounted) {
+      final message = newStatus == 'completed'
+          ? 'Completed: ${task.sentenceTitle}'
+          : 'Restored: ${task.sentenceTitle}';
+      showUndoSnackbar(
+        context,
+        message: message,
+        domain: domain,
+        onUndo: () async {
+          final undoPayload = <String, dynamic>{'status': task.status};
+          if (task.isCompleted) {
+            undoPayload['completed_at'] = (task.completedAt ?? DateTime.now()).toIso8601String();
+          }
+          await mutation.updateTask(task, undoPayload);
+        },
       );
-      store.upsertTask(updated);
-
-      if (mounted) {
-        final message = newStatus == 'completed'
-            ? 'Completed: ${task.sentenceTitle}'
-            : 'Restored: ${task.sentenceTitle}';
-        showUndoSnackbar(
-          context,
-          message: message,
-          domain: domain,
-          onUndo: () async {
-            store.upsertTask(task);
-            try {
-              await apiService.updateTask(
-                task.id,
-                UpdateTaskRequest(
-                  status: task.status,
-                  completedAt: task.isCompleted ? task.completedAt ?? DateTime.now() : null,
-                ),
-              );
-            } catch (_) {}
-          },
-        );
-      }
-    } catch (e) {
-      store.upsertTask(task);
-      if (mounted) {
-        showStyledSnackbar(context,
-          message: 'Couldn\'t update task. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
     }
   }
 
