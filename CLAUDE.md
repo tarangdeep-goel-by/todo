@@ -134,6 +134,47 @@ Firebase Auth end-to-end. Backend verifies ID tokens, frontend manages auth stat
 **Frontend** (`frontend/lib/config/constants.dart`):
 - `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)
 
+## Worktree Development (MANDATORY for Small+ tasks)
+
+All feature work MUST use git worktrees — never develop directly in `todo/`.
+
+### Setup
+```bash
+git worktree add ../todo-<feature> -b feat/<name> main
+cd ../todo-<feature>/backend
+cp ../todo/backend/.env .env
+cp ../todo/backend/firebase-service-account.json firebase-service-account.json  # COPY, not symlink (Docker can't follow symlinks outside build context)
+```
+
+### Docker Stack — UNIQUE per worktree
+Each worktree MUST use a unique `COMPOSE_PROJECT_NAME`, `WT_NAME`, and ports to avoid collisions with other worktrees.
+
+```bash
+# Use a short, unique prefix per worktree (e.g., todo-pn for push-notifications, todo-e2e for e2e-tests)
+WT_NAME=todo-<abbrev> WT_API_PORT=<unique> WT_PG_PORT=<unique> COMPOSE_PROJECT_NAME=todo-<abbrev> \
+  docker compose -f docker-compose.worktree.yml up --build -d
+
+# Port allocation:
+#   Main stack:  API=8001, PG=5433
+#   Default WT:  API=8002, PG=5434
+#   Second WT:   API=8003, PG=5435
+#   Third WT:    API=8004, PG=5436
+
+# Test with the correct container name:
+docker exec todo-<abbrev>-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
+```
+
+### Cleanup after merge
+```bash
+COMPOSE_PROJECT_NAME=todo-<abbrev> docker compose -f docker-compose.worktree.yml down -v
+git worktree remove ../todo-<feature>
+```
+
+### Common Pitfalls
+- **Symlinks don't work in Docker**: `firebase-service-account.json` must be a real file, not a symlink
+- **COMPOSE_PROJECT_NAME collisions**: If two worktrees use the same project name, one runs the other's code. Always use unique names.
+- **Volume mounts**: Docker mounts the worktree directory (`.:/app`), so code changes reflect immediately
+
 ## Testing Notes
 
 - **Never create a local Python venv** — backend tests must run in Docker (PostgreSQL UUID/JSONB types incompatible with SQLite)
