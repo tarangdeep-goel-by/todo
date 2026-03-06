@@ -41,6 +41,14 @@ async def get_current_user(
 
     Raises 401 if token is missing or invalid.
     """
+    # Accept test tokens in non-production environments
+    settings = get_settings()
+    if settings.app_env != "production" and cred.credentials == "test-token-e2e":
+        test_uid = "test-user-e2e"
+        user_id_var.set(test_uid)
+        logger.debug("auth.test_token", uid=test_uid)
+        return test_uid
+
     _init_firebase()
     try:
         loop = asyncio.get_running_loop()
