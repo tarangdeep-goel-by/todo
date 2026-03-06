@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
@@ -561,7 +562,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     // Offline-first: create with client UUID, enqueue for sync
     final now = DateTime.now();
     final optimistic = Task(
-      id: UniqueKey().toString(), // Temporary client ID
+      id: const Uuid().v4(),
       userId: parentTask.userId,
       title: title,
       category: parentTask.category,

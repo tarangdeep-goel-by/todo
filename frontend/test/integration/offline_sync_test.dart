@@ -6,9 +6,15 @@ import 'package:frontend/models/api_response.dart';
 import 'package:frontend/models/task.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/local_data_service.dart';
+import 'package:frontend/services/connectivity_service.dart';
 import 'package:frontend/services/sync_service.dart';
 
 class MockApiService extends Mock implements ApiService {}
+
+class FakeConnectivityService extends Fake implements ConnectivityService {
+  @override
+  bool get isOnline => true;
+}
 
 class FakeCreateTaskRequest extends Fake implements CreateTaskRequest {}
 
@@ -35,6 +41,7 @@ void main() {
     syncService = SyncService(
       api: mockApi,
       localDb: localDb,
+      connectivity: FakeConnectivityService(),
       refreshStore: () async {
         final tasks = await localDb.getAllTasks();
         storeSnapshot = {for (final t in tasks) t.id: t};

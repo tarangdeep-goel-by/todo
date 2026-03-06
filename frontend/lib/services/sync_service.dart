@@ -4,6 +4,7 @@ import '../database/app_database.dart';
 import '../models/api_error.dart';
 import '../models/api_response.dart';
 import '../models/task.dart';
+import '../services/connectivity_service.dart';
 import 'api_service.dart';
 import 'app_logger.dart';
 import 'local_data_service.dart';
@@ -12,6 +13,7 @@ import 'local_data_service.dart';
 class SyncService {
   final ApiService _api;
   final LocalDataService _localDb;
+  final ConnectivityService _connectivity;
   final Future<void> Function() _refreshStore;
   final _logger = AppLogger.instance;
 
@@ -22,21 +24,28 @@ class SyncService {
   SyncService({
     required ApiService api,
     required LocalDataService localDb,
+    required ConnectivityService connectivity,
     required Future<void> Function() refreshStore,
   })  : _api = api,
         _localDb = localDb,
+        _connectivity = connectivity,
         _refreshStore = refreshStore;
 
   bool get isSyncing => _syncing;
 
   /// Full sync cycle: push then pull then refresh store.
   Future<void> sync() async {
-    if (_syncing) return;
+    if (_syncing) {
+      _logger.info('sync.skipped', logger: 'SyncService', data: {'reason': 'already syncing'});
+      return;
+    }
     _syncing = true;
+    _logger.info('sync.start', logger: 'SyncService');
     try {
       await push();
       await pull();
       await _refreshStore();
+      _logger.info('sync.done', logger: 'SyncService');
     } finally {
       _syncing = false;
     }
@@ -44,6 +53,7 @@ class SyncService {
 
   /// Trigger a push if online. Called after every local mutation.
   void triggerPush() {
+    if (!_connectivity.isOnline) return; // Skip when offline
     if (_syncing) {
       _pushPending = true;
       return;
@@ -93,18 +103,25 @@ class SyncService {
     final entries = await _localDb.getPendingMutations();
     if (entries.length < 2) return;
 
+    final beforeCount = entries.length;
+
     // Group by entityId
     final byEntity = <String, List<SyncQueueData>>{};
     for (final e in entries) {
       byEntity.putIfAbsent(e.entityId, () => []).add(e);
     }
 
+    int removedCount = 0;
     for (final group in byEntity.values) {
       if (group.length < 2) continue;
       final actions = group.map((e) => e.action).toList();
 
       // create + delete → remove both + delete local row
       if (actions.first == 'create' && actions.last == 'delete') {
+        _logger.debug('compact.create_delete', logger: 'SyncService', data: {
+          'entity': group.first.entityId, 'removed': group.length,
+        });
+        removedCount += group.length;
         for (final e in group) {
           await _localDb.ackMutation(e.id);
         }
@@ -114,6 +131,11 @@ class SyncService {
 
       // Any sequence ending with delete → keep only the delete
       if (actions.last == 'delete') {
+        final removed = group.length - 1;
+        _logger.debug('compact.keep_delete', logger: 'SyncService', data: {
+          'entity': group.first.entityId, 'removed': removed,
+        });
+        removedCount += removed;
         for (var i = 0; i < group.length - 1; i++) {
           await _localDb.ackMutation(group[i].id);
         }
@@ -123,6 +145,11 @@ class SyncService {
       // create + update(s) → merge updates into create payload
       if (actions.first == 'create') {
         if (group.length > 1) {
+          final removed = group.length - 1;
+          _logger.debug('compact.merge_into_create', logger: 'SyncService', data: {
+            'entity': group.first.entityId, 'merged': removed,
+          });
+          removedCount += removed;
           var merged = jsonDecode(group.first.payload) as Map<String, dynamic>;
           for (var i = 1; i < group.length; i++) {
             if (group[i].action == 'update') {
@@ -146,6 +173,11 @@ class SyncService {
       // update + update → merge into single update (latest wins)
       final updates = group.where((e) => e.action == 'update').toList();
       if (updates.length > 1) {
+        final removed = updates.length - 1;
+        _logger.debug('compact.merge_updates', logger: 'SyncService', data: {
+          'entity': updates.first.entityId, 'merged': removed,
+        });
+        removedCount += removed;
         var merged = <String, dynamic>{};
         for (final u in updates) {
           final payload = jsonDecode(u.payload) as Map<String, dynamic>;
@@ -159,6 +191,12 @@ class SyncService {
           payload: merged,
         );
       }
+    }
+
+    if (removedCount > 0) {
+      _logger.info('compact.done', logger: 'SyncService', data: {
+        'before': beforeCount, 'after': beforeCount - removedCount, 'removed': removedCount,
+      });
     }
   }
 
@@ -178,6 +216,7 @@ class SyncService {
           case 'create':
             final serverTask = await _api.createTask(
               CreateTaskRequest(
+                taskId: entry.entityId,
                 title: payload['title'] as String,
                 category: payload['category'] as String,
                 description: payload['description'] as String?,
@@ -190,7 +229,10 @@ class SyncService {
                 aiPlacementJson: payload['ai_placement_json'] as Map<String, dynamic>?,
               ),
             );
-            // Update local row with server response
+            // If server assigned a different ID, remove the old local row
+            if (serverTask.id != entry.entityId) {
+              await _localDb.deleteTask(entry.entityId);
+            }
             await _localDb.upsertTask(serverTask, pendingSync: false);
             break;
 
@@ -241,7 +283,10 @@ class SyncService {
           'error': e.toString(), 'statusCode': e.statusCode,
         });
 
-        if (e.type == ApiErrorType.validation) {
+        if (e.type == ApiErrorType.network || e.type == ApiErrorType.timeout) {
+          // Offline / unreachable — stop queue, don't burn retries
+          break;
+        } else if (e.type == ApiErrorType.validation) {
           // Permanent failure — mark failed
           await _localDb.failMutation(entry.id, e.message);
           if (entry.action == 'create') {
@@ -258,7 +303,7 @@ class SyncService {
           await _localDb.ackMutation(entry.id);
           await _localDb.deleteTask(entry.entityId);
         } else {
-          // Transient error — increment retry, stop queue
+          // Server error — increment retry, stop queue
           await _localDb.incrementRetry(entry.id, e.message);
           if (entry.retryCount + 1 >= 5) {
             await _localDb.failMutation(entry.id, 'Max retries exceeded: ${e.message}');
@@ -267,16 +312,11 @@ class SyncService {
           }
         }
       } catch (e) {
-        // Unexpected error — treat as transient
+        // Unexpected error — stop queue, don't burn retries
         _logger.error('sync.push.unexpected', logger: 'SyncService', data: {
           'id': entry.id, 'error': e.toString(),
         });
-        await _localDb.incrementRetry(entry.id, e.toString());
-        if (entry.retryCount + 1 >= 5) {
-          await _localDb.failMutation(entry.id, 'Max retries: ${e.toString()}');
-        } else {
-          break;
-        }
+        break;
       }
     }
   }
