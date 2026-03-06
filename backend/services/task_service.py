@@ -97,8 +97,9 @@ class TaskService:
         status: Optional[str] = None,
         parent_id: Optional[str] = None
     ) -> List[Task]:
-        """Get tasks with filters."""
+        """Get tasks with filters. Excludes archived by default."""
         query = select(Task).where(Task.user_id == user_id)
+        query = query.where(Task.archived_at.is_(None))
 
         if category:
             query = query.where(Task.category == category)
@@ -170,6 +171,65 @@ class TaskService:
         await self.db.commit()
 
         return len(task_ids)
+
+    async def archive_task_with_children(self, task_id: str) -> int:
+        """Archive task and all descendants (soft delete)."""
+        descendants = await self._get_all_descendants(task_id)
+        all_ids = [task_id] + [d.id for d in descendants]
+
+        now = datetime.now(timezone.utc)
+        await self.db.execute(
+            update(Task)
+            .where(Task.id.in_(all_ids))
+            .where(Task.status != "archived")
+            .values(status="archived", archived_at=now)
+        )
+        await self.db.commit()
+
+        return len(all_ids)
+
+    async def restore_task_with_children(self, task_id: str) -> int:
+        """Restore archived task and children archived at the same time."""
+        task = await self.get_task(task_id)
+        if not task or not task.archived_at:
+            return 0
+
+        archived_at = task.archived_at
+        descendants = await self._get_all_descendants(task_id)
+        all_ids = [task_id] + [
+            d.id for d in descendants if d.archived_at == archived_at
+        ]
+
+        await self.db.execute(
+            update(Task)
+            .where(Task.id.in_(all_ids))
+            .values(status="active", archived_at=None)
+        )
+        await self.db.commit()
+
+        return len(all_ids)
+
+    async def get_archived_tasks(self, user_id: str) -> List[Task]:
+        """Get all archived tasks for a user."""
+        result = await self.db.execute(
+            select(Task)
+            .where(Task.user_id == user_id, Task.archived_at.isnot(None))
+            .order_by(Task.archived_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def purge_old_archived(self, days: int = 30) -> int:
+        """Hard delete tasks archived more than `days` ago."""
+        from sqlalchemy import delete as sql_delete
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        result = await self.db.execute(
+            sql_delete(Task)
+            .where(Task.archived_at.isnot(None))
+            .where(Task.archived_at < cutoff)
+        )
+        await self.db.commit()
+        return result.rowcount
 
     async def delete_task_with_children(self, task_id: str) -> int:
         """Hard delete task and all descendants from DB."""
@@ -450,7 +510,7 @@ class TaskService:
             Task.due_date < soon,
         )
 
-        base_filter = Task.user_id == user_id
+        base_filter = and_(Task.user_id == user_id, Task.archived_at.is_(None))
 
         # --- Total + by_status + due_soon in one query ---
         totals_query = select(

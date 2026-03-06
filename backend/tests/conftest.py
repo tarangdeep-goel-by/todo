@@ -4,9 +4,27 @@ import sys
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock
+from urllib.parse import quote_plus
+
+# Derive DB credentials from the runtime DATABASE_URL (injected by docker-compose)
+# so tests don't break when .env password changes.
+_runtime_db_url = os.environ.get("DATABASE_URL", "")
+if _runtime_db_url:
+    # Extract password from URL: scheme://user:password@host:port/db
+    _after_scheme = _runtime_db_url.split("://", 1)[1]  # user:pass@host:port/db
+    _userpass, _hostrest = _after_scheme.rsplit("@", 1)
+    _user, _password = _userpass.split(":", 1)
+    _host_port = _hostrest.split("/", 1)[0]
+    _encoded_pw = quote_plus(_password)
+    _db_scheme = _runtime_db_url.split("://", 1)[0]
+else:
+    _db_scheme = "postgresql+asyncpg"
+    _user = "todo"
+    _encoded_pw = "todo123"
+    _host_port = "postgres:5432"
 
 # Set env vars before any app imports
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
+os.environ["DATABASE_URL"] = f"{_db_scheme}://{_user}:{_encoded_pw}@{_host_port}/todo_test"
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("SARVAM_API_KEY", "test-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
@@ -32,8 +50,8 @@ TEST_USER_ID = "test-user"
 
 # ──────────────── Database fixtures ────────────────
 
-TEST_DB_URL = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
-ADMIN_DB_URL = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_db"
+TEST_DB_URL = f"{_db_scheme}://{_user}:{_encoded_pw}@{_host_port}/todo_test"
+ADMIN_DB_URL = f"{_db_scheme}://{_user}:{_encoded_pw}@{_host_port}/todo_db"
 
 _db_created = False
 
