@@ -231,6 +231,48 @@ class TaskService:
         await self.db.commit()
         return result.rowcount
 
+    async def bulk_complete(self, task_ids: List[str], user_id: str) -> tuple[int, List[str]]:
+        """Complete multiple tasks with children. Returns (affected_count, errors)."""
+        if len(task_ids) > 50:
+            raise ValueError("Cannot process more than 50 tasks at once")
+
+        affected = 0
+        errors = []
+
+        for tid in task_ids:
+            task = await self.get_task(tid)
+            if not task:
+                errors.append(f"Task {tid} not found")
+                continue
+            if task.user_id != user_id:
+                errors.append(f"Task {tid} not authorized")
+                continue
+            count = await self.complete_task_with_children(tid)
+            affected += count
+
+        return affected, errors
+
+    async def bulk_archive(self, task_ids: List[str], user_id: str) -> tuple[int, List[str]]:
+        """Archive multiple tasks with children. Returns (affected_count, errors)."""
+        if len(task_ids) > 50:
+            raise ValueError("Cannot process more than 50 tasks at once")
+
+        affected = 0
+        errors = []
+
+        for tid in task_ids:
+            task = await self.get_task(tid)
+            if not task:
+                errors.append(f"Task {tid} not found")
+                continue
+            if task.user_id != user_id:
+                errors.append(f"Task {tid} not authorized")
+                continue
+            count = await self.archive_task_with_children(tid)
+            affected += count
+
+        return affected, errors
+
     async def delete_task_with_children(self, task_id: str) -> int:
         """Hard delete task and all descendants from DB."""
         from sqlalchemy import delete as sql_delete
