@@ -12,8 +12,13 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
 # Copy application code
 COPY . .
+
+RUN chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 8000
