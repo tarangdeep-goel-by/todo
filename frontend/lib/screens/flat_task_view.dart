@@ -6,12 +6,15 @@ import '../config/theme.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_filter_provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 import '../widgets/task_item.dart';
+import '../models/api_error.dart';
+import '../services/analytics_service.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
@@ -37,6 +40,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   Timer? _debounce;
   List<Task>? _searchResults;
   bool _searchLoading = false;
+  String? _searchError;
 
   @override
   void initState() {
@@ -84,6 +88,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       setState(() {
         _searchResults = null;
         _searchLoading = false;
+        _searchError = null;
       });
       return;
     }
@@ -100,14 +105,37 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         query,
       );
       if (mounted && _searchController.text.trim() == query) {
+        AnalyticsService.instance.trackSearchPerformed(
+          queryLength: query.length,
+          resultCount: response.results.length,
+        );
         setState(() {
           _searchResults = response.results.map((r) => r.task).toList();
           _searchLoading = false;
+          _searchError = null;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        setState(() => _searchLoading = false);
+        String message;
+        if (e is ApiError) {
+          switch (e.type) {
+            case ApiErrorType.network:
+              message = 'Network error — check your connection';
+            case ApiErrorType.timeout:
+              message = 'Search timed out — try again';
+            case ApiErrorType.server:
+              message = 'Server error — try again later';
+            default:
+              message = 'Search failed';
+          }
+        } else {
+          message = 'Search failed';
+        }
+        setState(() {
+          _searchError = message;
+          _searchLoading = false;
+        });
       }
     }
   }
@@ -117,6 +145,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     setState(() {
       _searchResults = null;
       _searchLoading = false;
+      _searchError = null;
     });
   }
 
@@ -147,7 +176,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       return const LoadingState();
     }
 
-    if (storeState.error != null && allFiltered.isEmpty) {
+    if (storeState.error != null && !storeState.hasLoadedOnce && allFiltered.isEmpty) {
       return EmptyState(
         message: 'Something went wrong loading your tasks.',
         textColor: AppColors.darkText,
@@ -221,6 +250,33 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
             ),
           ),
         ),
+        // Stale-data error banner (loaded before, but refresh failed)
+        if (storeState.error != null && storeState.hasLoadedOnce)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.navBg,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Couldn\'t refresh — showing cached data',
+                    style: TextStyle(
+                      color: AppColors.secondaryText,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => ref.read(taskStoreProvider.notifier).fetchAll(),
+                  child: Icon(Icons.refresh, color: AppColors.darkText, size: 18),
+                ),
+              ],
+            ),
+          ),
         // Search loading indicator
         if (_searchLoading)
           const Padding(
@@ -231,6 +287,26 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                 color: AppColors.darkText,
                 backgroundColor: AppColors.navBg,
               ),
+            ),
+          ),
+        // Search error indicator
+        if (_searchError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: AppColors.overdue, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  _searchError!,
+                  style: const TextStyle(color: AppColors.overdue, fontSize: 13),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _performSearch(_searchController.text.trim()),
+                  child: const Icon(Icons.refresh, color: AppColors.darkText, size: 18),
+                ),
+              ],
             ),
           ),
         // Search empty state
@@ -252,8 +328,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
             child: RefreshIndicator(
               color: AppColors.darkText,
               backgroundColor: AppColors.darkBg,
-              onRefresh: () =>
-                  ref.read(taskStoreProvider.notifier).fetchAll(),
+              onRefresh: () => ref.read(syncServiceProvider).sync(),
               child: ListView.builder(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(

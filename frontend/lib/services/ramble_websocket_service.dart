@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/constants.dart';
 import 'app_logger.dart';
+import 'analytics_service.dart';
 
 /// Connection state for ramble WebSocket.
 enum RambleConnectionState { disconnected, connecting, connected, reconnecting }
@@ -33,6 +34,8 @@ class RambleWebSocketService {
   String? _token;
   bool _intentionalClose = false;
   DateTime? _connectedAt;
+  int _reconnectAttempt = 0;
+  static const int _maxReconnectAttempts = 3;
 
   /// Completer for the final transcript — set in _handleMessage, awaited in stop().
   Completer<String>? _finalTranscriptCompleter;
@@ -73,9 +76,8 @@ class RambleWebSocketService {
       return;
     }
 
-    final url = '$_wsUrl?token=$_token';
     _logger.info('ws.connect', logger: 'RambleWS', data: {'url': _wsUrl});
-    _channel = _channelFactory(Uri.parse(url));
+    _channel = _channelFactory(Uri.parse(_wsUrl));
 
     try {
       await _channel!.ready;
@@ -87,11 +89,55 @@ class RambleWebSocketService {
       return;
     }
 
+    // Authenticate via first message (token never in URL)
+    _send({'type': 'auth', 'token': _token!});
+    _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'auth'});
+
+    // Wait for auth_ok before proceeding
+    try {
+      final authRaw = await _channel!.stream.first.timeout(
+        const Duration(seconds: 5),
+      );
+      final authMsg = jsonDecode(authRaw as String) as Map<String, dynamic>;
+      if (authMsg['type'] == 'auth_error') {
+        _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'message': authMsg['message']});
+        _setConnectionState(RambleConnectionState.disconnected);
+        _errorController.add(authMsg['message'] as String? ?? 'Authentication failed');
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
+      if (authMsg['type'] != 'auth_ok') {
+        _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'unexpected_type': authMsg['type']});
+        _setConnectionState(RambleConnectionState.disconnected);
+        _errorController.add('Unexpected auth response');
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
+    } on TimeoutException {
+      _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'reason': 'timeout'});
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Authentication timeout');
+      await _channel?.sink.close();
+      _channel = null;
+      return;
+    } catch (e) {
+      _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'error': e.toString()});
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Authentication failed: $e');
+      await _channel?.sink.close();
+      _channel = null;
+      return;
+    }
+
     _listenToChannel();
     _setConnectionState(RambleConnectionState.connected);
     _connectedAt = DateTime.now();
+    _reconnectAttempt = 0;
 
     _send({'type': 'start'});
+    AnalyticsService.instance.trackRambleStarted();
     _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'start'});
   }
 
@@ -125,9 +171,21 @@ class RambleWebSocketService {
   }
 
   Future<void> _attemptReconnect() async {
+    if (_reconnectAttempt >= _maxReconnectAttempts) {
+      _logger.warning('ws.reconnect', logger: 'RambleWS', data: {'exhausted': true, 'attempts': _reconnectAttempt});
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Connection lost after $_reconnectAttempt attempts. Tap to retry or keep what you have.');
+      return;
+    }
+
+    _reconnectAttempt++;
     _setConnectionState(RambleConnectionState.reconnecting);
-    _logger.info('ws.reconnect', logger: 'RambleWS');
-    await Future.delayed(const Duration(seconds: 2));
+    _statusController.add('reconnecting:$_reconnectAttempt/$_maxReconnectAttempts');
+    _logger.info('ws.reconnect', logger: 'RambleWS', data: {'attempt': _reconnectAttempt, 'max': _maxReconnectAttempts});
+
+    // Exponential backoff: 1s, 2s, 4s
+    final delaySeconds = 1 << (_reconnectAttempt - 1);
+    await Future.delayed(Duration(seconds: delaySeconds));
 
     // Refresh token for reconnect
     _token = await _tokenProvider();
@@ -137,19 +195,38 @@ class RambleWebSocketService {
       return;
     }
 
-    final url = '$_wsUrl?token=$_token';
-    _channel = _channelFactory(Uri.parse(url));
+    _channel = _channelFactory(Uri.parse(_wsUrl));
     try {
       await _channel!.ready;
-      _logger.info('ws.reconnect', logger: 'RambleWS', data: {'success': true});
+
+      // Authenticate via first message (token never in URL)
+      _send({'type': 'auth', 'token': _token!});
+      _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'auth'});
+
+      // Wait for auth_ok before proceeding
+      final authRaw = await _channel!.stream.first.timeout(
+        const Duration(seconds: 5),
+      );
+      final authMsg = jsonDecode(authRaw as String) as Map<String, dynamic>;
+      if (authMsg['type'] != 'auth_ok') {
+        _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'type': authMsg['type']});
+        _setConnectionState(RambleConnectionState.disconnected);
+        _errorController.add(authMsg['message'] as String? ?? 'Authentication failed');
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
+
       _listenToChannel();
+      _logger.info('ws.reconnect', logger: 'RambleWS', data: {'success': true, 'attempt': _reconnectAttempt});
       _setConnectionState(RambleConnectionState.connected);
       _connectedAt = DateTime.now();
+      _reconnectAttempt = 0;
       _send({'type': 'start'});
     } catch (e) {
-      _logger.error('ws.error', logger: 'RambleWS', data: {'reason': 'reconnect_failed', 'error': e.toString()});
-      _setConnectionState(RambleConnectionState.disconnected);
-      _errorController.add('Reconnect failed — editing with current transcript');
+      _logger.error('ws.error', logger: 'RambleWS', data: {'reason': 'reconnect_failed', 'attempt': _reconnectAttempt, 'error': e.toString()});
+      // Recurse to try next attempt
+      await _attemptReconnect();
     }
   }
 
@@ -161,6 +238,7 @@ class RambleWebSocketService {
       return; // Already attempting connection
     }
     _intentionalClose = false;
+    _reconnectAttempt = 0;
     await _attemptReconnect();
   }
 
@@ -186,6 +264,14 @@ class RambleWebSocketService {
     } catch (_) {
       result = null;
     }
+
+    final durationSeconds = _connectedAt != null
+        ? DateTime.now().difference(_connectedAt!).inSeconds
+        : 0;
+    AnalyticsService.instance.trackRambleCompleted(
+      durationSeconds: durationSeconds,
+      transcriptLength: result?.length ?? 0,
+    );
 
     _finalTranscriptCompleter = null;
     await _channel?.sink.close();

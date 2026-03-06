@@ -1,13 +1,17 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:frontend/database/app_database.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/audio_service.dart';
+import 'package:frontend/services/local_data_service.dart';
 import 'package:frontend/services/speech_service.dart';
 import 'package:frontend/services/ramble_websocket_service.dart';
+import 'package:frontend/providers/local_data_provider.dart';
 import 'package:frontend/config/theme.dart';
 import 'package:frontend/models/task.dart';
 
@@ -67,6 +71,7 @@ Task createTestTask({
   Map<String, dynamic>? aiPlacementJson,
   String? priority,
   double? estimatedHours,
+  DateTime? archivedAt,
 }) {
   final now = DateTime(2025, 1, 15);
   return Task(
@@ -86,6 +91,19 @@ Task createTestTask({
     aiPlacementJson: aiPlacementJson,
     priority: priority,
     estimatedHours: estimatedHours,
+    archivedAt: archivedAt,
+  );
+}
+
+/// Create an in-memory LocalDataService for tests.
+/// Returns a tuple of (service, override) so the provider container
+/// can be configured with the in-memory database.
+({LocalDataService service, Override override}) createTestLocalData() {
+  final db = AppDatabase(NativeDatabase.memory());
+  final svc = LocalDataService(db);
+  return (
+    service: svc,
+    override: localDataServiceProvider.overrideWithValue(svc),
   );
 }
 

@@ -32,6 +32,21 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)
 
 
+def _sentry_breadcrumb(logger, method_name, event_dict):
+    """Send structured log entries to Sentry as breadcrumbs."""
+    try:
+        import sentry_sdk
+        sentry_sdk.add_breadcrumb(
+            category="log",
+            message=event_dict.get("event", ""),
+            level=event_dict.get("level", "info"),
+            data={k: v for k, v in event_dict.items() if k not in ("event", "level", "timestamp")},
+        )
+    except Exception:
+        pass
+    return event_dict
+
+
 def setup_logging(log_level: str = "INFO") -> None:
     """Configure structlog + stdlib logging."""
     level = getattr(logging, log_level.upper(), logging.INFO)
@@ -40,6 +55,7 @@ def setup_logging(log_level: str = "INFO") -> None:
     shared_processors = [
         structlog.contextvars.merge_contextvars,
         _add_context_vars,
+        _sentry_breadcrumb,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),

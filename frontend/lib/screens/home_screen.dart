@@ -5,14 +5,18 @@ import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/api_provider.dart';
+import '../providers/connectivity_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/local_data_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/ptt_input_overlay.dart';
 import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
-import '../widgets/welcome_overlay.dart';
 import '../widgets/flat_view_nudge.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
@@ -27,7 +31,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _showWelcome = false;
   bool _tutorialActive = false;
   bool _flatViewNudgeSeen = false;
   bool _demoInjected = false;
@@ -35,27 +38,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(taskStoreProvider.notifier).fetchAll();
+    Future.microtask(() async {
+      final store = ref.read(taskStoreProvider.notifier);
+      final localDb = ref.read(localDataServiceProvider);
+      final currentUid = ref.read(currentUserIdProvider) ?? '';
+
+      // User-switch guard: clear local DB if a different user logged in
+      final lastUid = await localDb.getMeta('last_user_id');
+      if (lastUid != null && lastUid != currentUid) {
+        await localDb.clearAll();
+      }
+      await localDb.setMeta('last_user_id', currentUid);
+
+      await store.loadLocal(); // Instant: cached data → UI
+      final syncService = ref.read(syncServiceProvider);
+      syncService.sync(); // Background: push pending + pull fresh (fire-and-forget)
+      syncService.startPeriodicSync();
+      // Initialize connectivity provider
+      ref.read(isOnlineProvider);
       // Eagerly initialize speech recognition to avoid delay on first tap
       ref.read(speechServiceProvider).initialize();
+      // Initialize push notifications (registers FCM token with backend)
+      NotificationService.instance.initialize(ref.read(apiServiceProvider));
       _checkWelcome();
     });
   }
 
   Future<void> _checkWelcome() async {
     final seen = await OnboardingService.hasSeenWelcome();
-    if (!seen && mounted) {
-      setState(() => _showWelcome = true);
-    } else if (seen) {
-      await _checkTutorial();
-    }
-  }
-
-  Future<void> _dismissWelcome() async {
-    await OnboardingService.markWelcomeSeen();
-    if (mounted) {
-      setState(() => _showWelcome = false);
+    if (!seen) {
+      await OnboardingService.markWelcomeSeen();
     }
     await _checkTutorial();
   }
@@ -112,11 +124,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show welcome overlay on first launch (data loads behind it)
-    if (_showWelcome) {
-      return WelcomeOverlay(onDismiss: _dismissWelcome);
-    }
-
     final viewMode = ref.watch(viewModeProvider);
     final taskCount = ref.watch(allTasksProvider).length;
 

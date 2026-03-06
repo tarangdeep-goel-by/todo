@@ -1,4 +1,6 @@
 """Firebase Authentication dependency for FastAPI."""
+import asyncio
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -39,9 +41,20 @@ async def get_current_user(
 
     Raises 401 if token is missing or invalid.
     """
+    # Accept test tokens in non-production environments
+    settings = get_settings()
+    if settings.app_env != "production" and cred.credentials == "test-token-e2e":
+        test_uid = "test-user-e2e"
+        user_id_var.set(test_uid)
+        logger.debug("auth.test_token", uid=test_uid)
+        return test_uid
+
     _init_firebase()
     try:
-        decoded = firebase_auth.verify_id_token(cred.credentials)
+        loop = asyncio.get_running_loop()
+        decoded = await loop.run_in_executor(
+            None, firebase_auth.verify_id_token, cred.credentials
+        )
         uid = decoded["uid"]
         user_id_var.set(uid)
         logger.debug("auth.token_verify", uid=uid)

@@ -1,5 +1,6 @@
 """Ramble mode service — streams audio to Sarvam AI for transcription."""
 import asyncio
+import time
 from typing import Callable
 
 from sarvamai import AsyncSarvamAI
@@ -16,6 +17,9 @@ class RambleSession:
         self._ws = None
         self._context_manager = None
         self._accumulated_transcription: str = ""
+        self._session_start: float | None = None
+        self._audio_bytes: int = 0
+        self._first_transcript_at: float | None = None
 
     async def start(self) -> None:
         """Open Sarvam streaming STT connection in translate mode (→ English)."""
@@ -28,12 +32,14 @@ class RambleSession:
             input_audio_codec="pcm_s16le",
         )
         self._ws = await self._context_manager.__aenter__()
+        self._session_start = time.monotonic()
         logger.info("ramble.stt.open.done")
 
     async def send_audio(self, pcm_base64: str) -> None:
         """Send a chunk of base64-encoded 16kHz PCM audio."""
         if not self._ws:
             return
+        self._audio_bytes += len(pcm_base64)
         await self._ws.transcribe(
             audio=pcm_base64,
             encoding="audio/wav",
@@ -53,6 +59,10 @@ class RambleSession:
                 if getattr(message, "type", None) == "data" and hasattr(message, "data"):
                     transcript = getattr(message.data, "transcript", None)
                     if transcript:
+                        if self._first_transcript_at is None and self._session_start:
+                            self._first_transcript_at = time.monotonic()
+                            ttft_ms = round((self._first_transcript_at - self._session_start) * 1000, 1)
+                            logger.info("sarvam.api.ttft", time_to_first_transcript_ms=ttft_ms)
                         self._accumulated_transcription += " " + transcript
                         logger.debug("ramble.stt.chunk", length=len(transcript))
                         await on_message({
@@ -76,7 +86,12 @@ class RambleSession:
                 await on_message({"type": "error", "message": err_str})
 
     async def close(self) -> None:
-        """Close the Sarvam streaming connection."""
+        """Close the Sarvam streaming connection and log session metrics."""
+        if self._session_start:
+            duration_s = round(time.monotonic() - self._session_start, 1)
+            logger.info("sarvam.api.session", duration_s=duration_s,
+                        audio_bytes=self._audio_bytes,
+                        transcript_length=len(self._accumulated_transcription.strip()))
         if self._context_manager and self._ws:
             try:
                 await self._context_manager.__aexit__(None, None, None)

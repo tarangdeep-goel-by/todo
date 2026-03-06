@@ -4,9 +4,21 @@ import sys
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock
+from sqlalchemy.engine import URL
 
 # Set env vars before any app imports
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
+# Build URL via SQLAlchemy URL.create() — handles special chars (e.g. '/') that
+# break asyncpg when naively URL-encoded with quote_plus().
+_db_password = os.environ.get("POSTGRES_PASSWORD", "todo123")
+_test_db_url = URL.create(
+    drivername="postgresql+asyncpg",
+    username="todo",
+    password=_db_password,
+    host="postgres",
+    port=5432,
+    database="todo_test",
+)
+os.environ["DATABASE_URL"] = str(_test_db_url)
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("SARVAM_API_KEY", "test-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
@@ -23,17 +35,34 @@ from database import Base, get_db
 from auth import get_current_user
 from models.task import Task  # noqa: F401 — registers model on Base
 from models.category import Category  # noqa: F401 — registers model on Base
+from models.fcm_token import FcmToken  # noqa: F401 — registers model on Base
 from services.task_service import TaskService
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
+from rate_limit import limiter
 
 TEST_USER_ID = "test-user"
 
 
+# ──────────────── Rate limiter reset ────────────────
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Reset slowapi rate limiter before every test to prevent cross-test pollution."""
+    limiter.reset()
+
+
 # ──────────────── Database fixtures ────────────────
 
-TEST_DB_URL = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_test"
-ADMIN_DB_URL = "postgresql+asyncpg://todo:todo123@postgres:5432/todo_db"
+TEST_DB_URL = _test_db_url
+ADMIN_DB_URL = URL.create(
+    drivername="postgresql+asyncpg",
+    username="todo",
+    password=_db_password,
+    host="postgres",
+    port=5432,
+    database="todo_db",
+)
 
 _db_created = False
 
@@ -70,6 +99,7 @@ async def db_session(db_engine):
     async with session_factory() as cleanup:
         await cleanup.execute(text("DELETE FROM tasks"))
         await cleanup.execute(text("DELETE FROM categories"))
+        await cleanup.execute(text("DELETE FROM fcm_tokens"))
         await cleanup.commit()
 
 

@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from database import get_db
 from auth import get_current_user
-from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse, TaskSearchResult, TaskSearchResponse
+from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse, TaskSearchResult, TaskSearchResponse, BulkActionRequest, BulkActionResponse
 from services.task_service import TaskService
 from models.task import Task
 from rate_limit import limiter
@@ -31,6 +31,7 @@ def task_to_response(task: Task) -> TaskResponse:
         updated_at=task.updated_at,
         due_date=task.due_date,
         completed_at=task.completed_at,
+        archived_at=task.archived_at,
         transcription=task.transcription,
         ai_placement=task.ai_placement_json,
         priority=task.priority,
@@ -158,6 +159,53 @@ async def search_tasks(
     )
 
 
+@router.get("/archived", response_model=TaskListResponse)
+async def get_archived_tasks(
+    user_id: str = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db)
+) -> TaskListResponse:
+    """Get archived (soft-deleted) tasks."""
+    task_service = TaskService(db)
+    tasks = await task_service.get_archived_tasks(user_id)
+    total = len(tasks)
+    page = tasks[offset:offset + limit]
+    return TaskListResponse(
+        tasks=[task_to_response(t) for t in page],
+        total_count=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(page)) < total
+    )
+
+
+@router.post("/bulk", response_model=BulkActionResponse)
+@limiter.limit("5/minute")
+async def bulk_action(
+    request: Request,
+    body: BulkActionRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> BulkActionResponse:
+    """Perform bulk action (complete/archive) on multiple tasks."""
+    task_service = TaskService(db)
+
+    if body.action == "complete":
+        count, errors = await task_service.bulk_complete(body.task_ids, user_id)
+    elif body.action == "archive":
+        count, errors = await task_service.bulk_archive(body.task_ids, user_id)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {body.action}")
+
+    logger.info("task.bulk", action=body.action, affected_count=count, error_count=len(errors))
+    return BulkActionResponse(
+        success=True,
+        affected_count=count,
+        errors=errors,
+    )
+
+
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: str,
@@ -179,8 +227,10 @@ async def get_task(
 
 
 @router.post("", response_model=TaskResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_task(
-    request: CreateTaskRequest,
+    request: Request,
+    body: CreateTaskRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
@@ -188,8 +238,8 @@ async def create_task(
     task_service = TaskService(db)
 
     # Validate parent ownership
-    if request.parent_id:
-        parent = await task_service.get_task(request.parent_id)
+    if body.parent_id:
+        parent = await task_service.get_task(body.parent_id)
         if not parent:
             raise HTTPException(status_code=404, detail="Parent task not found")
         if parent.user_id != user_id:
@@ -197,26 +247,29 @@ async def create_task(
 
     task = await task_service.create_task(
         user_id=user_id,
-        title=request.title,
-        description=request.description,
-        category=request.category,
-        category_id=request.category_id,
-        parent_id=request.parent_id,
-        due_date=request.due_date,
-        transcription=request.transcription,
-        priority=request.priority,
-        tags=request.tags,
-        estimated_hours=request.estimated_hours
+        title=body.title,
+        description=body.description,
+        category=body.category,
+        category_id=body.category_id,
+        parent_id=body.parent_id,
+        due_date=body.due_date,
+        transcription=body.transcription,
+        priority=body.priority,
+        tags=body.tags,
+        estimated_hours=body.estimated_hours,
+        task_id=body.task_id,
     )
 
-    logger.info("task.create", task_id=str(task.id), category=request.category)
+    logger.info("task.create", task_id=str(task.id), category=body.category)
     return task_to_response(task)
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
+@limiter.limit("60/minute")
 async def update_task(
+    request: Request,
     task_id: str,
-    request: UpdateTaskRequest,
+    body: UpdateTaskRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
@@ -230,32 +283,32 @@ async def update_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Build update dict from request
+    # Build update dict from body
     updates = {}
-    if request.title is not None:
-        updates['title'] = request.title
-    if request.description is not None:
-        updates['description'] = request.description
-    if request.category is not None:
-        updates['category'] = request.category
-    if request.parent_id is not None:
-        if request.parent_id:  # non-empty string = move under a parent
-            parent = await task_service.get_task(request.parent_id)
+    if body.title is not None:
+        updates['title'] = body.title
+    if body.description is not None:
+        updates['description'] = body.description
+    if body.category is not None:
+        updates['category'] = body.category
+    if body.parent_id is not None:
+        if body.parent_id:  # non-empty string = move under a parent
+            parent = await task_service.get_task(body.parent_id)
             if not parent:
                 raise HTTPException(status_code=404, detail="Parent task not found")
             if parent.user_id != user_id:
                 raise HTTPException(status_code=403, detail="Not authorized to use this parent task")
-        updates['parent_id'] = request.parent_id
-    if request.due_date is not None:
-        updates['due_date'] = request.due_date
-    if request.status is not None:
-        updates['status'] = request.status.value
-    if request.priority is not None:
-        updates['priority'] = request.priority
-    if request.tags is not None:
-        updates['tags'] = request.tags
-    if request.estimated_hours is not None:
-        updates['estimated_hours'] = request.estimated_hours
+        updates['parent_id'] = body.parent_id
+    if body.due_date is not None:
+        updates['due_date'] = body.due_date
+    if body.status is not None:
+        updates['status'] = body.status.value
+    if body.priority is not None:
+        updates['priority'] = body.priority
+    if body.tags is not None:
+        updates['tags'] = body.tags
+    if body.estimated_hours is not None:
+        updates['estimated_hours'] = body.estimated_hours
 
     old_status = (await task_service.get_task(task_id)).status
     task = await task_service.update_task(task_id, **updates)
@@ -272,7 +325,9 @@ async def update_task(
 
 
 @router.put("/{task_id}/complete", response_model=TaskResponse)
+@limiter.limit("60/minute")
 async def complete_task(
+    request: Request,
     task_id: str,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -303,15 +358,16 @@ async def complete_task(
 
 
 @router.delete("/{task_id}")
+@limiter.limit("30/minute")
 async def delete_task(
+    request: Request,
     task_id: str,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Hard delete task and all descendants from DB."""
+    """Archive task and all descendants (soft delete)."""
     task_service = TaskService(db)
 
-    # Verify task exists and belongs to user
     task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -319,12 +375,67 @@ async def delete_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    count = await task_service.delete_task_with_children(task_id)
-    audit_log("task.deleted", user_id, task_id, deleted_count=count)
+    count = await task_service.archive_task_with_children(task_id)
+    audit_log("task.archived", user_id, task_id, archived_count=count)
 
-    logger.info("task.delete", task_id=task_id, deleted_count=count)
+    logger.info("task.archive", task_id=task_id, archived_count=count)
     return {
         "success": True,
-        "message": f"Deleted task and {count - 1} sub-tasks",
+        "message": f"Archived task and {count - 1} sub-tasks",
+        "archived_count": count
+    }
+
+
+@router.put("/{task_id}/restore", response_model=TaskResponse)
+@limiter.limit("30/minute")
+async def restore_task(
+    request: Request,
+    task_id: str,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> TaskResponse:
+    """Restore an archived task and its children."""
+    task_service = TaskService(db)
+
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if not task.archived_at:
+        raise HTTPException(status_code=400, detail="Task is not archived")
+
+    count = await task_service.restore_task_with_children(task_id)
+    audit_log("task.restored", user_id, task_id, restored_count=count)
+
+    task = await task_service.get_task(task_id)
+    logger.info("task.restore", task_id=task_id, restored_count=count)
+    return task_to_response(task)
+
+
+@router.delete("/{task_id}/permanent")
+@limiter.limit("10/minute")
+async def permanent_delete_task(
+    request: Request,
+    task_id: str,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Permanently hard-delete task and all descendants."""
+    task_service = TaskService(db)
+
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    count = await task_service.delete_task_with_children(task_id)
+    audit_log("task.permanent_deleted", user_id, task_id, deleted_count=count)
+
+    logger.info("task.permanent_delete", task_id=task_id, deleted_count=count)
+    return {
+        "success": True,
+        "message": f"Permanently deleted task and {count - 1} sub-tasks",
         "deleted_count": count
     }
