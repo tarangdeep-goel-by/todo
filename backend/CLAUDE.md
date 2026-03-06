@@ -110,18 +110,30 @@ For voice input: Client streams audio via WebSocket (`/ws/ramble`) → Sarvam AI
 - **Dependency override**: API tests swap `get_db` via `app.dependency_overrides[get_db]` to share test session
 - **Cleanup**: `conftest.py` deletes all tasks/categories after each test (real DB, not mocks)
 
+## Authentication & Security
+
+- **Firebase Auth**: `auth.py` — `get_current_user` dependency verifies Firebase ID tokens via `firebase-admin` SDK. Returns user UID. Used as `Depends(get_current_user)` on protected routes.
+- **Rate limiting**: `rate_limit.py` — `slowapi` limiter keyed by Bearer token (falls back to client IP). Applied via `@limiter.limit()` decorators on routes.
+- **Structured logging**: `structured_logging.py` — `structlog` JSON logs with context vars (`trace_id_var`, `user_id_var`, `session_id_var`). Use `get_logger(__name__)` in all modules.
+- **Request logging**: `middleware/request_logging.py` — logs every request/response with trace ID, duration, status code. Propagates `X-Request-Id` and `X-Session-Id` headers.
+
 ## Environment Variables
 
-All config from Docker environment (no `.env` file). Managed via Pydantic `Settings` in `config.py`:
+Config loaded from `.env` file via `docker-compose.yml` `env_file: .env`. Managed via Pydantic `Settings` in `config.py`:
 
 | Variable | Required | Default |
 |---|---|---|
 | `DATABASE_URL` | Yes | — |
 | `GEMINI_API_KEY` | Yes | — |
 | `SARVAM_API_KEY` | Yes | — |
+| `FIREBASE_PROJECT_ID` | Yes | — |
+| `GOOGLE_APPLICATION_CREDENTIALS` | No | — |
 | `APP_ENV` | No | `development` |
-| `DEBUG` | No | `True` |
+| `DEBUG` | No | `False` |
 | `SEARCH_ENGINE` | No | `fuzzy` (code), `pg_native` (Docker compose) |
+| `LOG_LEVEL` | No | `INFO` |
+| `CORS_ORIGINS` | No | `http://localhost:8000,http://localhost:8001` |
+| `MAX_CATEGORIES` | No | `8` |
 
 ## API Endpoints
 
