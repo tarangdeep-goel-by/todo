@@ -6,6 +6,7 @@ import '../config/theme.dart';
 import '../services/app_logger.dart';
 import '../services/analytics_service.dart';
 import 'api_provider.dart';
+import 'local_data_provider.dart';
 import 'task_filter_provider.dart';
 
 // --- State ---
@@ -50,6 +51,42 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
   TaskStoreNotifier(this._ref) : super(const TaskStoreState());
 
+  /// Load tasks and categories from local SQLite cache.
+  /// Returns instantly if cache is populated; sets hasLoadedOnce.
+  Future<void> loadLocal() async {
+    try {
+      final localData = _ref.read(localDataServiceProvider);
+      final tasks = await localData.getAllTasks();
+      final categories = await localData.getAllCategories();
+      if (tasks.isNotEmpty) {
+        final map = {for (final t in tasks) t.id: t};
+        _logger.info('store.loadLocal', logger: 'TaskStore', data: {'task_count': map.length});
+        state = TaskStoreState(tasks: map, hasLoadedOnce: true);
+        if (categories.isNotEmpty) {
+          _ref.read(categoriesProvider.notifier).state = categories;
+        }
+      }
+    } catch (e) {
+      _logger.error('store.loadLocal.error', logger: 'TaskStore', data: {'error': e.toString()});
+    }
+  }
+
+  /// Refresh the store from local DB (after sync updates local DB).
+  Future<void> refreshFromLocalDb() async {
+    try {
+      final localData = _ref.read(localDataServiceProvider);
+      final tasks = await localData.getAllTasks();
+      final categories = await localData.getAllCategories();
+      final map = {for (final t in tasks) t.id: t};
+      state = TaskStoreState(tasks: map, hasLoadedOnce: true);
+      if (categories.isNotEmpty) {
+        _ref.read(categoriesProvider.notifier).state = categories;
+      }
+    } catch (e) {
+      _logger.error('store.refreshLocal.error', logger: 'TaskStore', data: {'error': e.toString()});
+    }
+  }
+
   /// Fetch all tasks from backend and replace the store.
   /// Paginates through all results (backend max limit=100).
   Future<void> fetchAll() async {
@@ -78,11 +115,25 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       // Update analytics user properties
       AnalyticsService.instance.setUserProperties(taskCount: map.length);
 
+      // Persist tasks to local DB
+      try {
+        final localData = _ref.read(localDataServiceProvider);
+        await localData.upsertTasks(allTasks);
+        await localData.setMeta('last_pull_at', DateTime.now().toIso8601String());
+      } catch (_) {
+        // Non-fatal — cache write failure shouldn't block UI
+      }
+
       // Fetch categories and update provider
       try {
         final categories = await apiService.getCategories();
         _ref.read(categoriesProvider.notifier).state = categories;
         AnalyticsService.instance.setUserProperties(categoryCount: categories.length);
+        // Persist categories to local DB
+        try {
+          final localData = _ref.read(localDataServiceProvider);
+          await localData.replaceCategories(categories);
+        } catch (_) {}
       } catch (_) {
         // Non-fatal — categories may not be available
       }

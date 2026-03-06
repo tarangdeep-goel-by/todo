@@ -256,7 +256,8 @@ async def create_task(
         transcription=body.transcription,
         priority=body.priority,
         tags=body.tags,
-        estimated_hours=body.estimated_hours
+        estimated_hours=body.estimated_hours,
+        task_id=body.task_id,
     )
 
     logger.info("task.create", task_id=str(task.id), category=body.category)

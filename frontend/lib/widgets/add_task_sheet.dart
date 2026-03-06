@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../config/spacing.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
-import '../models/api_response.dart';
-import '../providers/api_provider.dart';
+import '../models/task.dart';
+import '../providers/auth_provider.dart';
+import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../widgets/task_parent_picker.dart';
@@ -469,17 +471,33 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     setState(() => _submitting = true);
 
     try {
-      final apiService = ref.read(apiServiceProvider);
-      final task = await apiService.createTask(CreateTaskRequest(
+      // Offline-first: create with client-generated task, enqueue for sync
+      final now = DateTime.now();
+      final userId = ref.read(currentUserIdProvider) ?? '';
+      final optimistic = Task(
+        id: const Uuid().v4(),
+        userId: userId,
         title: title,
         category: _activeCat,
         parentId: _parentId,
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
         dueDate: _dueDate,
         priority: _priority == 'none' ? null : _priority,
         transcription: title,
-      ));
+      );
+      final payload = <String, dynamic>{
+        'title': title,
+        'category': _activeCat,
+        if (_parentId != null) 'parent_id': _parentId,
+        if (_dueDate != null) 'due_date': _dueDate!.toIso8601String(),
+        if (_priority != 'none') 'priority': _priority,
+        'transcription': title,
+      };
 
-      ref.read(taskStoreProvider.notifier).upsertTask(task);
+      final mutation = ref.read(taskMutationServiceProvider);
+      await mutation.createTask(optimistic, payload);
 
       if (mounted) {
         Navigator.pop(context, true);
