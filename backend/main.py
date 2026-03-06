@@ -15,6 +15,7 @@ if _settings_init.sentry_dsn:
         environment=_settings_init.app_env,
     )
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -28,6 +29,17 @@ from rate_limit import limiter
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    # Shutdown: dispose DB engine
+    from database import engine
+    from structured_logging import get_logger
+    get_logger("main").info("app.shutdown")
+    await engine.dispose()
+
+
 # Create FastAPI app
 app = FastAPI(
     title="Amble API",
@@ -36,6 +48,7 @@ app = FastAPI(
     debug=settings.debug,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
+    lifespan=lifespan,
 )
 
 

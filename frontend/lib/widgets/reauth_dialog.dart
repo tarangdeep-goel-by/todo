@@ -8,12 +8,16 @@ import '../config/typography.dart';
 class ReauthDialog extends StatelessWidget {
   const ReauthDialog({super.key});
 
+  static bool _isShowing = false;
+
   static void show(BuildContext context) {
+    if (_isShowing) return;
+    _isShowing = true;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const ReauthDialog(),
-    );
+    ).then((_) => _isShowing = false);
   }
 
   @override
@@ -40,7 +44,7 @@ class ReauthDialog extends StatelessWidget {
               await FirebaseAuth.instance.signOut();
             },
             child: Text(
-              'Sign In',
+              'Sign Out',
               style: AppTypography.ctaLabelText(color: AppColors.darkText)
                   .copyWith(fontWeight: FontWeight.w700),
             ),

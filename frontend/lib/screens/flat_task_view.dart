@@ -12,6 +12,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 import '../widgets/task_item.dart';
+import '../models/api_error.dart';
 import '../services/analytics_service.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
@@ -113,10 +114,25 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
           _searchError = null;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        String message;
+        if (e is ApiError) {
+          switch (e.type) {
+            case ApiErrorType.network:
+              message = 'Network error — check your connection';
+            case ApiErrorType.timeout:
+              message = 'Search timed out — try again';
+            case ApiErrorType.server:
+              message = 'Server error — try again later';
+            default:
+              message = 'Search failed';
+          }
+        } else {
+          message = 'Search failed';
+        }
         setState(() {
-          _searchError = 'Search failed';
+          _searchError = message;
           _searchLoading = false;
         });
       }

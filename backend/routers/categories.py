@@ -29,18 +29,18 @@ async def get_categories(
 @router.post("", response_model=CategoryResponse, status_code=201)
 @limiter.limit("10/minute")
 async def create_category(
-    http_request: Request,
-    request: CreateCategoryRequest,
+    request: Request,
+    body: CreateCategoryRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CategoryResponse:
     """Create a new category (max 5, no duplicates)."""
     task_service = TaskService(db)
     try:
-        category = await task_service.create_category(user_id, request.name)
+        category = await task_service.create_category(user_id, body.name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    logger.info("category.create", name=request.name)
+    logger.info("category.create", name=body.name)
     return CategoryResponse.model_validate(category)
 
 

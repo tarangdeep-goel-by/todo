@@ -181,8 +181,8 @@ async def get_task(
 @router.post("", response_model=TaskResponse, status_code=201)
 @limiter.limit("30/minute")
 async def create_task(
-    http_request: Request,
-    request: CreateTaskRequest,
+    request: Request,
+    body: CreateTaskRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
@@ -190,8 +190,8 @@ async def create_task(
     task_service = TaskService(db)
 
     # Validate parent ownership
-    if request.parent_id:
-        parent = await task_service.get_task(request.parent_id)
+    if body.parent_id:
+        parent = await task_service.get_task(body.parent_id)
         if not parent:
             raise HTTPException(status_code=404, detail="Parent task not found")
         if parent.user_id != user_id:
@@ -199,28 +199,28 @@ async def create_task(
 
     task = await task_service.create_task(
         user_id=user_id,
-        title=request.title,
-        description=request.description,
-        category=request.category,
-        category_id=request.category_id,
-        parent_id=request.parent_id,
-        due_date=request.due_date,
-        transcription=request.transcription,
-        priority=request.priority,
-        tags=request.tags,
-        estimated_hours=request.estimated_hours
+        title=body.title,
+        description=body.description,
+        category=body.category,
+        category_id=body.category_id,
+        parent_id=body.parent_id,
+        due_date=body.due_date,
+        transcription=body.transcription,
+        priority=body.priority,
+        tags=body.tags,
+        estimated_hours=body.estimated_hours
     )
 
-    logger.info("task.create", task_id=str(task.id), category=request.category)
+    logger.info("task.create", task_id=str(task.id), category=body.category)
     return task_to_response(task)
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
 @limiter.limit("60/minute")
 async def update_task(
-    http_request: Request,
+    request: Request,
     task_id: str,
-    request: UpdateTaskRequest,
+    body: UpdateTaskRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
@@ -234,32 +234,32 @@ async def update_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Build update dict from request
+    # Build update dict from body
     updates = {}
-    if request.title is not None:
-        updates['title'] = request.title
-    if request.description is not None:
-        updates['description'] = request.description
-    if request.category is not None:
-        updates['category'] = request.category
-    if request.parent_id is not None:
-        if request.parent_id:  # non-empty string = move under a parent
-            parent = await task_service.get_task(request.parent_id)
+    if body.title is not None:
+        updates['title'] = body.title
+    if body.description is not None:
+        updates['description'] = body.description
+    if body.category is not None:
+        updates['category'] = body.category
+    if body.parent_id is not None:
+        if body.parent_id:  # non-empty string = move under a parent
+            parent = await task_service.get_task(body.parent_id)
             if not parent:
                 raise HTTPException(status_code=404, detail="Parent task not found")
             if parent.user_id != user_id:
                 raise HTTPException(status_code=403, detail="Not authorized to use this parent task")
-        updates['parent_id'] = request.parent_id
-    if request.due_date is not None:
-        updates['due_date'] = request.due_date
-    if request.status is not None:
-        updates['status'] = request.status.value
-    if request.priority is not None:
-        updates['priority'] = request.priority
-    if request.tags is not None:
-        updates['tags'] = request.tags
-    if request.estimated_hours is not None:
-        updates['estimated_hours'] = request.estimated_hours
+        updates['parent_id'] = body.parent_id
+    if body.due_date is not None:
+        updates['due_date'] = body.due_date
+    if body.status is not None:
+        updates['status'] = body.status.value
+    if body.priority is not None:
+        updates['priority'] = body.priority
+    if body.tags is not None:
+        updates['tags'] = body.tags
+    if body.estimated_hours is not None:
+        updates['estimated_hours'] = body.estimated_hours
 
     old_status = (await task_service.get_task(task_id)).status
     task = await task_service.update_task(task_id, **updates)
