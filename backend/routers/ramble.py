@@ -26,6 +26,10 @@ VALID_MSG_TYPES = {"start", "audio", "stop"}
 # Auth timeout for first message
 WS_AUTH_TIMEOUT_SECONDS = 5
 
+# Per-user active WebSocket connection tracking
+_active_connections: dict[str, int] = {}
+_connections_lock = asyncio.Lock()
+
 
 @router.websocket("/ws/ramble")
 async def ramble_websocket(websocket: WebSocket):
@@ -49,6 +53,8 @@ async def ramble_websocket(websocket: WebSocket):
       {"type": "error", "message": "..."}
     """
     await websocket.accept()
+
+    user_uid = None
 
     # Wait for auth message as first message
     try:
@@ -84,10 +90,22 @@ async def ramble_websocket(websocket: WebSocket):
 
     await websocket.send_json({"type": "auth_ok"})
 
+    # Check per-user connection limit
+    settings = get_settings()
+    async with _connections_lock:
+        current = _active_connections.get(user_uid, 0)
+        if current >= settings.max_ws_connections_per_user:
+            await websocket.send_json({
+                "type": "error",
+                "message": "Too many active connections"
+            })
+            await websocket.close(code=4009, reason="Connection limit exceeded")
+            return
+        _active_connections[user_uid] = current + 1
+
     trace_id_var.set(str(uuid.uuid4()))
     user_id_var.set(user_uid)
     logger.info("ws.connect")
-    settings = get_settings()
     session: RambleSession | None = None
     receive_task: asyncio.Task | None = None
     timer_task: asyncio.Task | None = None
@@ -233,4 +251,12 @@ async def ramble_websocket(websocket: WebSocket):
             await session.close()
         if receive_task:
             receive_task.cancel()
+        # Decrement active connection count
+        if user_uid is not None:
+            async with _connections_lock:
+                count = _active_connections.get(user_uid, 1) - 1
+                if count <= 0:
+                    _active_connections.pop(user_uid, None)
+                else:
+                    _active_connections[user_uid] = count
         logger.info("ws.disconnect", reason="cleanup")
