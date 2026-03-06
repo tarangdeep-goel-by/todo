@@ -5,6 +5,7 @@ import '../config/typography.dart';
 import '../config/theme.dart';
 import '../providers/connectivity_provider.dart';
 import '../providers/local_data_provider.dart';
+import '../providers/task_store_provider.dart';
 
 /// Top bar with app name, offline chip, and pending sync badge.
 class TopBar extends ConsumerWidget {
@@ -95,8 +96,9 @@ class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
 
   @override
   Widget build(BuildContext context) {
-    // Re-check count when online status changes
+    // Re-check count when online status or task store changes (sync completed)
     ref.listen(isOnlineProvider, (_, _) => _refresh());
+    ref.listen(taskStoreProvider, (_, _) => _refresh());
 
     if (_pendingCount == 0) return const SizedBox.shrink();
 

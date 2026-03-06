@@ -90,6 +90,7 @@ class BrainDumpSubmitResponse(BaseModel):
 
 class CreateTaskRequest(BaseModel):
     """Request schema for creating a task."""
+    task_id: Optional[str] = Field(None, description="Client-generated UUID; server uses it as PK if provided")
     title: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = Field(None, max_length=5000)
     category: str = Field(..., max_length=50)

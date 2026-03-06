@@ -6,6 +6,7 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task.dart';
 import '../providers/mutation_provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../utils/string_extensions.dart';
@@ -67,7 +68,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     return RefreshIndicator(
       color: AppColors.darkText,
       backgroundColor: AppColors.darkBg,
-      onRefresh: () => ref.read(taskStoreProvider.notifier).fetchAll(),
+      onRefresh: () => ref.read(syncServiceProvider).sync(),
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),

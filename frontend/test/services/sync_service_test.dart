@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -6,12 +5,17 @@ import 'package:frontend/database/app_database.dart';
 import 'package:frontend/models/api_error.dart';
 import 'package:frontend/models/api_response.dart';
 import 'package:frontend/models/task.dart';
-import 'package:frontend/models/category.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/services/local_data_service.dart';
+import 'package:frontend/services/connectivity_service.dart';
 import 'package:frontend/services/sync_service.dart';
 
 class MockApiService extends Mock implements ApiService {}
+
+class FakeConnectivityService extends Fake implements ConnectivityService {
+  @override
+  bool get isOnline => true;
+}
 
 class FakeCreateTaskRequest extends Fake implements CreateTaskRequest {}
 class FakeUpdateTaskRequest extends Fake implements UpdateTaskRequest {}
@@ -36,6 +40,7 @@ void main() {
     syncService = SyncService(
       api: mockApi,
       localDb: localDb,
+      connectivity: FakeConnectivityService(),
       refreshStore: () async { refreshCount++; },
     );
   });

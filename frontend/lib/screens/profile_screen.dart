@@ -211,12 +211,12 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(); // Close profile screen
               ref.read(syncServiceProvider).stopPeriodicSync();
-              ref.read(localDataServiceProvider).clearAll();
-              ref.read(authServiceProvider).signOut();
+              await ref.read(localDataServiceProvider).clearAll();
+              await ref.read(authServiceProvider).signOut();
             },
             child: Text(
               'Sign out',

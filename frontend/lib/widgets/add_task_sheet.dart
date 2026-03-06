@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../config/spacing.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
@@ -474,7 +475,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
       final now = DateTime.now();
       final userId = ref.read(currentUserIdProvider) ?? '';
       final optimistic = Task(
-        id: UniqueKey().toString(),
+        id: const Uuid().v4(),
         userId: userId,
         title: title,
         category: _activeCat,
