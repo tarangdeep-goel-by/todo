@@ -36,7 +36,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
       return const LoadingState();
     }
 
-    if (storeState.error != null && allTasks.isEmpty) {
+    if (storeState.error != null && !storeState.hasLoadedOnce && allTasks.isEmpty) {
       return EmptyState(
         message: 'Something went wrong loading your tasks.',
         textColor: AppColors.darkText,

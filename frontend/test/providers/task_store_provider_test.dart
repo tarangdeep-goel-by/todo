@@ -54,7 +54,7 @@ void main() {
         createTestTask(id: 'a', title: 'Alpha'),
         createTestTask(id: 'b', title: 'Beta'),
       ];
-      when(() => mockApi.getTasksAdvanced(
+      when(() => mockApi.getTasksAdvancedWithRetry(
         limit: any(named: 'limit'),
         offset: any(named: 'offset'),
       )).thenAnswer((_) async => TaskListResponse(
@@ -78,7 +78,7 @@ void main() {
       );
 
       // Fetch returns different set
-      when(() => mockApi.getTasksAdvanced(
+      when(() => mockApi.getTasksAdvancedWithRetry(
         limit: any(named: 'limit'),
         offset: any(named: 'offset'),
       )).thenAnswer((_) async => TaskListResponse(
@@ -98,7 +98,7 @@ void main() {
         createTestTask(id: 'existing'),
       );
 
-      when(() => mockApi.getTasksAdvanced(
+      when(() => mockApi.getTasksAdvancedWithRetry(
         limit: any(named: 'limit'),
         offset: any(named: 'offset'),
       )).thenThrow(Exception('network'));
