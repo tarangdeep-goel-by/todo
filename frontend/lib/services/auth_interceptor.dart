@@ -67,6 +67,10 @@ class AuthInterceptor extends Interceptor {
     handler.next(response);
   }
 
+  /// Callback invoked when token refresh fails and re-auth is needed.
+  /// Set by the app layer to show a dialog instead of silently signing out.
+  static void Function()? onReauthRequired;
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final traceId = err.requestOptions.extra['trace_id'] as String?;
@@ -77,9 +81,35 @@ class AuthInterceptor extends Interceptor {
           'status_code': err.response?.statusCode,
           'type': err.type.name,
         });
+
     if (err.response?.statusCode == 401) {
       _logger.warning('auth.token_expired', logger: 'AuthInterceptor', traceId: traceId);
-      await FirebaseAuth.instance.signOut();
+
+      // Attempt silent token refresh before giving up
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final newToken = await user.getIdToken(true);
+          if (newToken != null) {
+            _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
+            // Retry the original request with fresh token
+            final opts = err.requestOptions;
+            opts.headers['Authorization'] = 'Bearer $newToken';
+            final response = await Dio().fetch(opts);
+            return handler.resolve(response);
+          }
+        } catch (refreshError) {
+          _logger.error('auth.refresh_failed', logger: 'AuthInterceptor', traceId: traceId,
+              data: {'error': refreshError.toString()});
+        }
+      }
+
+      // Refresh failed — notify app layer instead of silent signout
+      if (onReauthRequired != null) {
+        onReauthRequired!();
+      } else {
+        await FirebaseAuth.instance.signOut();
+      }
     }
     handler.next(err);
   }

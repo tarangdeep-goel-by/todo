@@ -1,6 +1,7 @@
 """Rate limiting configuration (slowapi)."""
 from fastapi import Request
 from slowapi import Limiter
+from config import get_settings
 
 
 def _rate_limit_key(request: Request) -> str:
@@ -11,4 +12,10 @@ def _rate_limit_key(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-limiter = Limiter(key_func=_rate_limit_key)
+def _get_storage_uri() -> str | None:
+    """Return Redis URI for rate limit storage, or None for in-memory."""
+    settings = get_settings()
+    return settings.redis_url or None
+
+
+limiter = Limiter(key_func=_rate_limit_key, storage_uri=_get_storage_uri())

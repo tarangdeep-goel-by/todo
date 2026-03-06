@@ -30,7 +30,7 @@ void main() {
     });
 
     // Stub API calls that happen in initState via fetchAll()
-    when(() => mockApi.getTasksAdvanced(
+    when(() => mockApi.getTasksAdvancedWithRetry(
           limit: any(named: 'limit'),
           offset: any(named: 'offset'),
         )).thenAnswer((_) async => TaskListResponse(

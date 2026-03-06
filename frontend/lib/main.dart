@@ -1,15 +1,37 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'screens/auth_gate.dart';
+import 'services/auth_interceptor.dart';
+import 'widgets/reauth_dialog.dart';
+
+final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Crashlytics error handlers
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+
+  // Wire reauth dialog to auth interceptor
+  AuthInterceptor.onReauthRequired = () {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      ReauthDialog.show(context);
+    }
+  };
+
   runApp(
     const ProviderScope(
       child: AmbleApp(),
@@ -23,6 +45,7 @@ class AmbleApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Amble',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
