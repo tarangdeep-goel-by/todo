@@ -5,6 +5,8 @@ from config import get_settings as _get_settings
 # Initialize structured logging before any other imports that use logging
 setup_logging(_get_settings().log_level)
 
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -15,8 +17,44 @@ from slowapi.errors import RateLimitExceeded
 from routers import agent, tasks, categories, ramble
 from config import get_settings
 from rate_limit import limiter
+from structured_logging import get_logger
 
 settings = get_settings()
+_logger = get_logger(__name__)
+
+PURGE_INTERVAL_HOURS = 24
+PURGE_RETENTION_DAYS = 30
+
+
+async def _purge_archived_loop():
+    """Background task: hard-delete archived tasks older than retention period."""
+    from database import AsyncSessionLocal
+    from services.task_service import TaskService
+
+    while True:
+        await asyncio.sleep(PURGE_INTERVAL_HOURS * 3600)
+        try:
+            async with AsyncSessionLocal() as session:
+                svc = TaskService(session)
+                count = await svc.purge_old_archived(days=PURGE_RETENTION_DAYS)
+                if count:
+                    _logger.info("purge.archived", purged_count=count, retention_days=PURGE_RETENTION_DAYS)
+        except Exception as e:
+            _logger.error("purge.archived.error", error=str(e))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: start background tasks, clean up on shutdown."""
+    purge_task = asyncio.create_task(_purge_archived_loop())
+    _logger.info("app.startup", purge_interval_hours=PURGE_INTERVAL_HOURS)
+    yield
+    purge_task.cancel()
+    try:
+        await purge_task
+    except asyncio.CancelledError:
+        pass
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -26,6 +64,7 @@ app = FastAPI(
     debug=settings.debug,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
+    lifespan=lifespan,
 )
 
 

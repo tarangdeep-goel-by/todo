@@ -146,6 +146,39 @@ class TestArchiveTaskService:
         assert count == 1
         assert await task_service.get_task(task.id) is None
 
+    @pytest.mark.asyncio
+    async def test_permanent_delete_cascades_children(self, task_service):
+        """Hard delete removes parent and all descendants."""
+        parent = await task_service.create_task(**make_task(title="Parent perm"))
+        child = await task_service.create_task(**make_task(title="Child perm", parent_id=parent.id))
+
+        count = await task_service.delete_task_with_children(parent.id)
+
+        assert count == 2
+        assert await task_service.get_task(parent.id) is None
+        assert await task_service.get_task(child.id) is None
+
+    @pytest.mark.asyncio
+    async def test_purge_cascades_children(self, task_service, db_session):
+        """Purge deletes archived parent AND its archived children."""
+        parent = await task_service.create_task(**make_task(title="Old parent"))
+        child = await task_service.create_task(**make_task(title="Old child", parent_id=parent.id))
+        await task_service.archive_task_with_children(parent.id)
+
+        # Backdate both to 31 days ago
+        old_date = datetime.now(timezone.utc) - timedelta(days=31)
+        await db_session.execute(
+            text("UPDATE tasks SET archived_at = :dt WHERE id IN (:p, :c)"),
+            {"dt": old_date, "p": parent.id, "c": child.id}
+        )
+        await db_session.commit()
+
+        purged = await task_service.purge_old_archived(days=30)
+
+        assert purged == 2
+        assert await task_service.get_task(parent.id) is None
+        assert await task_service.get_task(child.id) is None
+
 
 class TestArchiveAPI:
     """Test archive API endpoints."""
@@ -198,6 +231,19 @@ class TestArchiveAPI:
 
         assert resp.status_code == 200
         assert await task_service.get_task(task.id) is None
+
+    @pytest.mark.asyncio
+    async def test_permanent_delete_endpoint_cascades(self, test_client, task_service):
+        """DELETE /tasks/{id}/permanent hard-deletes parent and children."""
+        parent = await task_service.create_task(**make_task(title="Perm parent"))
+        child = await task_service.create_task(**make_task(title="Perm child", parent_id=parent.id))
+
+        resp = await test_client.delete(f"/tasks/{parent.id}/permanent")
+
+        assert resp.status_code == 200
+        assert resp.json()["deleted_count"] == 2
+        assert await task_service.get_task(parent.id) is None
+        assert await task_service.get_task(child.id) is None
 
     @pytest.mark.asyncio
     async def test_get_tasks_excludes_archived(self, test_client, task_service):
