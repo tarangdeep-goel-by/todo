@@ -45,6 +45,7 @@ class Task(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     due_date = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    archived_at = Column(DateTime(timezone=True), nullable=True)
 
     # Audio and AI
     audio_file_uri = Column(Text, nullable=True)
@@ -54,7 +55,7 @@ class Task(Base):
     # Constraints
     __table_args__ = (
         # No category constraint - allows custom categories like "fitness", "learning", etc.
-        CheckConstraint("status IN ('active', 'completed')", name="check_status"),
+        CheckConstraint("status IN ('active', 'completed', 'archived')", name="check_status"),
         Index("idx_tasks_user_category", "user_id", "category"),
         Index("idx_tasks_user_category_id", "user_id", "category_id"),
         Index("idx_tasks_user_status", "user_id", "status"),

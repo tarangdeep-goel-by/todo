@@ -35,6 +35,10 @@ class QueryBuilder:
     def _apply_filters(query: select, params: TaskFilterParams) -> select:
         """Apply all filters to query."""
 
+        # Exclude archived unless explicitly requested
+        if not params.include_archived:
+            query = query.where(Task.archived_at.is_(None))
+
         # Multi-value filters (OR logic with IN clause)
         if params.category:
             values = [v.lower() for v in params.parse_multi_value(params.category)]
@@ -130,7 +134,8 @@ class QueryBuilder:
                 (and_(Task.status == "active", Task.due_date.isnot(None), Task.due_date >= now, Task.due_date < soon), 1),
                 (Task.status == "active", 2),
                 (Task.status == "completed", 3),
-                else_=4
+                (Task.status == "archived", 4),
+                else_=5
             )
             return status_case.desc() if direction == "desc" else status_case.asc()
 

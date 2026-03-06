@@ -10,6 +10,7 @@ class TaskStatus(str, Enum):
     """Task status enum — only real persisted states."""
     ACTIVE = "active"
     COMPLETED = "completed"
+    ARCHIVED = "archived"
 
 
 class WriteTaskStatus(str, Enum):
@@ -155,6 +156,7 @@ class TaskResponse(BaseModel):
     updated_at: datetime
     due_date: Optional[datetime]
     completed_at: Optional[datetime]
+    archived_at: Optional[datetime] = None
     transcription: str
     ai_placement: AIPlacement
     priority: Optional[str] = None
@@ -223,6 +225,9 @@ class TaskFilterParams(BaseModel):
     due_date_lte: Optional[datetime] = None
     completed_at_gte: Optional[datetime] = None
     completed_at_lte: Optional[datetime] = None
+
+    # Archive filter
+    include_archived: bool = False
 
     # Sorting
     sort: Optional[str] = "status:asc,due_date:asc,priority:desc,created_at:desc"

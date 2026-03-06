@@ -31,6 +31,7 @@ def task_to_response(task: Task) -> TaskResponse:
         updated_at=task.updated_at,
         due_date=task.due_date,
         completed_at=task.completed_at,
+        archived_at=task.archived_at,
         transcription=task.transcription,
         ai_placement=task.ai_placement_json,
         priority=task.priority,
@@ -155,6 +156,27 @@ async def search_tasks(
         results=search_results,
         query=q,
         total_count=len(search_results),
+    )
+
+
+@router.get("/archived", response_model=TaskListResponse)
+async def get_archived_tasks(
+    user_id: str = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db)
+) -> TaskListResponse:
+    """Get archived (soft-deleted) tasks."""
+    task_service = TaskService(db)
+    tasks = await task_service.get_archived_tasks(user_id)
+    total = len(tasks)
+    page = tasks[offset:offset + limit]
+    return TaskListResponse(
+        tasks=[task_to_response(t) for t in page],
+        total_count=total,
+        limit=limit,
+        offset=offset,
+        has_more=(offset + len(page)) < total
     )
 
 
@@ -308,10 +330,9 @@ async def delete_task(
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Hard delete task and all descendants from DB."""
+    """Archive task and all descendants (soft delete)."""
     task_service = TaskService(db)
 
-    # Verify task exists and belongs to user
     task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -319,12 +340,63 @@ async def delete_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    count = await task_service.delete_task_with_children(task_id)
-    audit_log("task.deleted", user_id, task_id, deleted_count=count)
+    count = await task_service.archive_task_with_children(task_id)
+    audit_log("task.archived", user_id, task_id, archived_count=count)
 
-    logger.info("task.delete", task_id=task_id, deleted_count=count)
+    logger.info("task.archive", task_id=task_id, archived_count=count)
     return {
         "success": True,
-        "message": f"Deleted task and {count - 1} sub-tasks",
+        "message": f"Archived task and {count - 1} sub-tasks",
+        "archived_count": count
+    }
+
+
+@router.put("/{task_id}/restore", response_model=TaskResponse)
+async def restore_task(
+    task_id: str,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> TaskResponse:
+    """Restore an archived task and its children."""
+    task_service = TaskService(db)
+
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if not task.archived_at:
+        raise HTTPException(status_code=400, detail="Task is not archived")
+
+    count = await task_service.restore_task_with_children(task_id)
+    audit_log("task.restored", user_id, task_id, restored_count=count)
+
+    task = await task_service.get_task(task_id)
+    logger.info("task.restore", task_id=task_id, restored_count=count)
+    return task_to_response(task)
+
+
+@router.delete("/{task_id}/permanent")
+async def permanent_delete_task(
+    task_id: str,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Permanently hard-delete task and all descendants."""
+    task_service = TaskService(db)
+
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    count = await task_service.delete_task_with_children(task_id)
+    audit_log("task.permanent_deleted", user_id, task_id, deleted_count=count)
+
+    logger.info("task.permanent_delete", task_id=task_id, deleted_count=count)
+    return {
+        "success": True,
+        "message": f"Permanently deleted task and {count - 1} sub-tasks",
         "deleted_count": count
     }
