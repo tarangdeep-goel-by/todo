@@ -8,6 +8,7 @@ import '../config/typography.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/haptic_service.dart';
+import 'archive_screen.dart';
 
 /// Profile screen showing user info and sign out
 class ProfileScreen extends ConsumerWidget {
@@ -106,6 +107,47 @@ class ProfileScreen extends ConsumerWidget {
                           letterSpacing: 0.3,
                         ),
                       ),
+
+                    const SizedBox(height: AppSpacing.xl),
+
+                    // Archive row
+                    GestureDetector(
+                      onTap: () {
+                        HapticService.light();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ArchiveScreen(),
+                          ),
+                        );
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.sm),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.archive_outlined,
+                              color: AppColors.secondaryText,
+                              size: 20,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'Archive',
+                              style: AppTypography.ctaLabelText(
+                                color: AppColors.darkText,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.chevron_right,
+                              color: AppColors.tertiaryText,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                     const Spacer(),
 
