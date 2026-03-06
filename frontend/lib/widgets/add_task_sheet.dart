@@ -4,11 +4,14 @@ import 'package:uuid/uuid.dart';
 import '../config/spacing.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
+import '../main.dart' show kTestMode;
 import '../models/task.dart';
 import '../providers/auth_provider.dart';
 import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 import '../widgets/task_parent_picker.dart';
 import 'styled_snackbar.dart';
 
@@ -40,6 +43,12 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
   DomainPalette get _domain =>
       DomainColors.getDomain(_activeCat, true, ref.read(domainPalettesProvider));
+
+  @override
+  void initState() {
+    super.initState();
+    Tracker.instance.impression(component: 'add_task_sheet', screen: 'home');
+  }
 
   @override
   void dispose() {
@@ -84,6 +93,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
             children: [
               Expanded(
                 child: TextField(
+                  key: TK.addTaskTextField,
                   controller: _titleController,
                   focusNode: _titleFocus,
                   autofocus: true,
@@ -137,6 +147,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
   Widget _buildSendButton(DomainPalette domain) {
     return GestureDetector(
+      key: TK.sendButton,
       onTap: _submitting ? null : _submit,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -173,6 +184,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     final label = _activeCat[0].toUpperCase() + _activeCat.substring(1);
 
     return GestureDetector(
+      key: TK.domainChip,
       onTap: _showDomainPicker,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -220,6 +232,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     }
 
     return GestureDetector(
+      key: TK.priorityChip,
       onTap: () {
         HapticService.light();
         const p = ['none', 'low', 'medium', 'high'];
@@ -271,6 +284,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     }
 
     return GestureDetector(
+      key: TK.dueDateChip,
       onTap: _pickDate,
       onLongPress: hasDate ? () {
         HapticService.light();
@@ -307,6 +321,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     final chipColor = hasParent ? domain.primary : AppColors.darkText.withValues(alpha: 0.3);
 
     return GestureDetector(
+      key: TK.parentChip,
       onTap: _openParentPicker,
       onLongPress: hasParent ? () {
         HapticService.light();
@@ -473,7 +488,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     try {
       // Offline-first: create with client-generated task, enqueue for sync
       final now = DateTime.now();
-      final userId = ref.read(currentUserIdProvider) ?? '';
+      final userId = kTestMode ? 'test-user-e2e' : (ref.read(currentUserIdProvider) ?? '');
       final optimistic = Task(
         id: const Uuid().v4(),
         userId: userId,
@@ -498,11 +513,13 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
 
       final mutation = ref.read(taskMutationServiceProvider);
       await mutation.createTask(optimistic, payload);
+      Tracker.instance.outcome(type: 'task_created', method: 'keyboard', category: _activeCat);
 
       if (mounted) {
         Navigator.pop(context, true);
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AddTaskSheet] _submit error: $e\n$st');
       setState(() => _submitting = false);
       if (mounted) {
         showStyledSnackbar(context,

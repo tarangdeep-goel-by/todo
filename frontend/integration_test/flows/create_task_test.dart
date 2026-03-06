@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:frontend/services/tracker/tracker_keys.dart';
 import '../helpers/test_app.dart';
 import '../helpers/api_cleanup.dart';
+import '../helpers/tracker_helpers.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +16,8 @@ void main() {
     // Step 1: Launch app → HomeScreen visible
     await pumpApp(tester);
 
-    // Step 2: Tap the center input pill (find by mic icon in bottom nav)
-    final inputPill = find.byIcon(Icons.mic_rounded);
+    // Step 2: Tap the center input pill
+    final inputPill = find.byKey(TK.pttButton);
     expect(inputPill, findsOneWidget);
     await tester.tap(inputPill);
     await settle(tester);
@@ -24,14 +25,14 @@ void main() {
     // Step 3: AddTaskSheet appeared — verify text field with hint
     expect(find.text('What needs to be done?'), findsOneWidget);
 
-    // Step 4: Type task title (find by hint text to avoid conflicts with other TextFields)
-    final textField = find.widgetWithText(TextField, 'What needs to be done?');
+    // Step 4: Type task title
+    final textField = find.byKey(TK.addTaskTextField);
     expect(textField, findsOneWidget);
     await tester.enterText(textField, 'Buy groceries for the week');
     await settle(tester, const Duration(seconds: 1));
 
-    // Step 5: Tap send button (circular button with arrow_upward icon)
-    final sendButton = find.byIcon(Icons.arrow_upward_rounded);
+    // Step 5: Tap send button
+    final sendButton = find.byKey(TK.sendButton);
     expect(sendButton, findsOneWidget);
     await tester.tap(sendButton);
 
@@ -40,9 +41,10 @@ void main() {
 
     // Step 8: Sheet should be dismissed — verify hint text is gone
     expect(find.text('What needs to be done?'), findsNothing);
+    expectOutcome('task_created');
 
     // Step 9: Switch to Flat view to see the task in a list
-    final flatTab = find.text('Flat');
+    final flatTab = find.byKey(TK.flatTab);
     expect(flatTab, findsOneWidget);
     await tester.tap(flatTab);
     await settle(tester);

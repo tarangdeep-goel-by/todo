@@ -8,6 +8,10 @@ import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'screens/auth_gate.dart';
 import 'services/auth_interceptor.dart';
+import 'services/tracker/tracker.dart';
+import 'services/tracker/firebase_adapter.dart';
+import 'services/tracker/dev_log_adapter.dart';
+import 'services/tracker/test_adapter.dart';
 import 'widgets/reauth_dialog.dart';
 
 /// Compile-time flag: `flutter test --dart-define=TEST_MODE=true`
@@ -45,6 +49,12 @@ void main() async {
         ReauthDialog.show(context);
       }
     };
+
+    // Initialize tracker with Firebase + DevLog
+    Tracker.instance.init([FirebaseAdapter(), DevLogAdapter()]);
+  } else {
+    // Test mode: use TestAdapter for E2E assertions + DevLog for console visibility
+    Tracker.instance.init([TestAdapter.instance, DevLogAdapter()]);
   }
 
   runApp(

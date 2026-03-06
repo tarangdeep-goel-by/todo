@@ -19,6 +19,8 @@ import '../widgets/styled_snackbar.dart';
 import '../widgets/task_parent_picker.dart';
 import '../utils/string_extensions.dart';
 import '../services/app_logger.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 
 /// Ramble mode phases
 enum _RamblePhase { recording, editing, processing, reviewing }
@@ -79,6 +81,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   @override
   void initState() {
     super.initState();
+    Tracker.instance.screenView(screen: 'ramble');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(transcriptionTextProvider.notifier).state = '';
       ref.read(waveformDataProvider.notifier).state = [];
@@ -448,6 +451,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
           _deselectedIds.clear();
           _phase = _RamblePhase.reviewing;
         });
+        Tracker.instance.impression(component: 'proposal_cards', screen: 'ramble', itemCount: _proposals.length);
       }
     } catch (e) {
       _logger.error('braindump.process', logger: 'RambleScreen', data: {'error': e.toString()});
@@ -491,6 +495,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       _logger.info('braindump.submit', logger: 'RambleScreen', data: {'step': 'fetch_done', 'duration_ms': stopwatch.elapsedMilliseconds});
 
       if (mounted) {
+        Tracker.instance.outcome(type: 'tasks_created_batch', count: selected.length, method: 'voice');
         _resetProviders();
         Navigator.pop(context, (
           success: true,
@@ -1402,6 +1407,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                 button: true,
                 label: 'Stop recording',
                 child: GestureDetector(
+                  key: TK.stopButton,
                   onTap: _canStopListening ? _stopAndEdit : null,
                   child: Container(
                     width: 64,
@@ -1588,6 +1594,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
           // Confirm button (expanded)
           Expanded(
             child: GestureDetector(
+              key: TK.submitButton,
               onTap: canSubmit ? _submitProposals : null,
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),

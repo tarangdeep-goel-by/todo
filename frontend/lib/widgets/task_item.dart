@@ -13,7 +13,7 @@ import '../widgets/undo_snackbar.dart';
 import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
 import '../utils/string_extensions.dart';
-import '../services/analytics_service.dart';
+import '../services/tracker/tracker.dart';
 
 /// Task item widget for flat view with swipe actions.
 ///
@@ -69,10 +69,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
     }
 
     if (newStatus == 'completed') {
-      AnalyticsService.instance.trackTaskCompleted(
-        source: 'toggle',
-        daysToComplete: DateTime.now().difference(task.createdAt).inDays,
-      );
+      Tracker.instance.outcome(type: 'task_completed', method: 'toggle', category: task.category);
     }
 
     // Offline-first: optimistic update + enqueue for sync

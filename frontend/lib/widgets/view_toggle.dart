@@ -5,7 +5,8 @@ import '../config/typography.dart';
 import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../services/haptic_service.dart';
-import '../services/analytics_service.dart';
+import '../services/tracker/tracker.dart';
+import '../services/tracker/tracker_keys.dart';
 
 /// View toggle button (Node/Flat/Calendar)
 class ViewToggle extends ConsumerWidget {
@@ -71,6 +72,7 @@ class ViewToggle extends ConsumerWidget {
                 bgColor: bgColor,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,
+                buttonKey: TK.nodeToggle,
               ),
               _buildButton(
                 ref: ref,
@@ -81,6 +83,7 @@ class ViewToggle extends ConsumerWidget {
                 bgColor: bgColor,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,
+                buttonKey: TK.flatToggle,
               ),
               _buildButton(
                 ref: ref,
@@ -91,6 +94,7 @@ class ViewToggle extends ConsumerWidget {
                 bgColor: bgColor,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,
+                buttonKey: TK.calToggle,
               ),
             ],
           ),
@@ -108,19 +112,17 @@ class ViewToggle extends ConsumerWidget {
     required Color bgColor,
     required Color activeColor,
     required Color inactiveColor,
+    Key? buttonKey,
   }) {
     final isActive = current == mode;
     final color = isActive ? bgColor : inactiveColor;
 
     return Expanded(
       child: GestureDetector(
+        key: buttonKey,
         onTap: () {
           HapticService.selection();
-          final from = ref.read(viewModeProvider);
-          AnalyticsService.instance.trackViewSwitched(
-            from: from.name,
-            to: mode.name,
-          );
+          Tracker.instance.tap(element: '${mode.name}_toggle', screen: 'home', target: mode.name);
           ref.read(viewModeProvider.notifier).state = mode;
         },
         child: Container(

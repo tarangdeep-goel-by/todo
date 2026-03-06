@@ -1,5 +1,7 @@
 import '../models/task.dart';
+import '../models/api_response.dart';
 import '../providers/task_store_provider.dart';
+import 'api_service.dart';
 import 'local_data_service.dart';
 
 class TaskMutationService {
@@ -67,4 +69,61 @@ class TaskMutationService {
     );
     _onPush?.call();
   }
+}
+
+/// Test-mode mutation service: optimistic update + direct API call (no local DB).
+class TestMutationService extends TaskMutationService {
+  final ApiService _api;
+
+  TestMutationService({
+    required super.store,
+    required ApiService api,
+  })  : _api = api,
+        super(localDb: _NoOpLocalDb());
+
+  @override
+  Future<void> createTask(Task optimistic, Map<String, dynamic> createPayload) async {
+    // Skip optimistic insert — use API response directly to avoid duplicate
+    // (test backend may not honour client-provided task_id)
+    final created = await _api.createTask(CreateTaskRequest(
+      taskId: optimistic.id,
+      title: createPayload['title'] as String,
+      category: createPayload['category'] as String? ?? 'home',
+      parentId: createPayload['parent_id'] as String?,
+      dueDate: createPayload['due_date'] != null ? DateTime.parse(createPayload['due_date'] as String) : null,
+      priority: createPayload['priority'] as String?,
+      transcription: createPayload['transcription'] as String? ?? createPayload['title'] as String,
+    ));
+    _store.upsertTask(created);
+  }
+
+  @override
+  Future<void> updateTask(Task optimistic, Map<String, dynamic> updatePayload) async {
+    _store.upsertTask(optimistic);
+    await _api.updateTask(optimistic.id, UpdateTaskRequest(
+      title: updatePayload['title'] as String?,
+      category: updatePayload['category'] as String?,
+      parentId: updatePayload['parent_id'] as String?,
+      status: updatePayload['status'] as String?,
+      priority: updatePayload['priority'] as String?,
+    ));
+  }
+
+  @override
+  Future<void> completeTask(Task task) async {
+    _store.completeWithDescendants(task.id);
+    await _api.completeTask(task.id);
+  }
+
+  @override
+  Future<void> deleteTask(Task task) async {
+    _store.removeTask(task.id);
+    await _api.deleteTask(task.id);
+  }
+}
+
+/// No-op local DB for test mode (satisfies the super constructor).
+class _NoOpLocalDb implements LocalDataService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
