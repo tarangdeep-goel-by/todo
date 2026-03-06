@@ -67,6 +67,7 @@ Task createTestTask({
   Map<String, dynamic>? aiPlacementJson,
   String? priority,
   double? estimatedHours,
+  DateTime? archivedAt,
 }) {
   final now = DateTime(2025, 1, 15);
   return Task(
@@ -86,6 +87,7 @@ Task createTestTask({
     aiPlacementJson: aiPlacementJson,
     priority: priority,
     estimatedHours: estimatedHours,
+    archivedAt: archivedAt,
   );
 }
 

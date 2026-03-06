@@ -150,6 +150,9 @@ class _TaskItemState extends ConsumerState<TaskItem> {
   Future<bool> _deleteTask(BuildContext context) async {
     final task = widget.task;
     final store = ref.read(taskStoreProvider.notifier);
+    final paletteMap = ref.read(domainPalettesProvider);
+    final domain =
+        DomainColors.getDomain(task.category, widget.isDark, paletteMap);
 
     HapticService.medium();
 
@@ -174,10 +177,24 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       store.clearPending(task.id);
 
       if (context.mounted) {
-        showStyledSnackbar(
+        showUndoSnackbar(
           context,
-          message: 'Deleted: ${task.sentenceTitle}',
-          style: SnackbarStyle.success,
+          message: 'Archived: ${task.sentenceTitle}',
+          domain: domain,
+          onUndo: () async {
+            try {
+              final restoredTask = await apiService.restoreTask(task.id);
+              store.upsertTask(restoredTask);
+            } catch (_) {
+              if (context.mounted) {
+                showStyledSnackbar(
+                  context,
+                  message: 'Couldn\'t restore task. Check your connection.',
+                  style: SnackbarStyle.error,
+                );
+              }
+            }
+          },
         );
       }
 
@@ -189,7 +206,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       if (context.mounted) {
         showStyledSnackbar(
           context,
-          message: 'Couldn\'t delete task. Check your connection.',
+          message: 'Couldn\'t archive task. Check your connection.',
           style: SnackbarStyle.error,
         );
       }
@@ -374,7 +391,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         child: const Icon(
-          Icons.delete_forever,
+          Icons.archive_rounded,
           color: AppColors.darkBg,
           size: 32,
         ),

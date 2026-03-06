@@ -236,6 +236,41 @@ class ApiService {
     }
   }
 
+  /// Get archived tasks
+  Future<List<Task>> getArchivedTasks({int limit = 50, int offset = 0}) async {
+    try {
+      final response = await _dio.get('/tasks/archived', queryParameters: {
+        'limit': limit,
+        'offset': offset,
+      });
+      final tasks = (response.data['tasks'] as List)
+          .map((json) => Task.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return tasks;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Restore an archived task
+  Future<Task> restoreTask(String taskId) async {
+    try {
+      final response = await _dio.put('/tasks/$taskId/restore');
+      return Task.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Permanently delete an archived task
+  Future<void> permanentDeleteTask(String taskId) async {
+    try {
+      await _dio.delete('/tasks/$taskId/permanent');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Search tasks by query string
   Future<TaskSearchResponse> searchTasks(
     String query, {
