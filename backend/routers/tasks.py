@@ -179,7 +179,9 @@ async def get_task(
 
 
 @router.post("", response_model=TaskResponse, status_code=201)
+@limiter.limit("30/minute")
 async def create_task(
+    http_request: Request,
     request: CreateTaskRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -214,7 +216,9 @@ async def create_task(
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
+@limiter.limit("60/minute")
 async def update_task(
+    http_request: Request,
     task_id: str,
     request: UpdateTaskRequest,
     user_id: str = Depends(get_current_user),
@@ -272,7 +276,9 @@ async def update_task(
 
 
 @router.put("/{task_id}/complete", response_model=TaskResponse)
+@limiter.limit("60/minute")
 async def complete_task(
+    request: Request,
     task_id: str,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -303,7 +309,9 @@ async def complete_task(
 
 
 @router.delete("/{task_id}")
+@limiter.limit("30/minute")
 async def delete_task(
+    request: Request,
     task_id: str,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/constants.dart';
 import 'app_logger.dart';
+import 'analytics_service.dart';
 
 /// Connection state for ramble WebSocket.
 enum RambleConnectionState { disconnected, connecting, connected, reconnecting }
@@ -33,6 +34,8 @@ class RambleWebSocketService {
   String? _token;
   bool _intentionalClose = false;
   DateTime? _connectedAt;
+  int _reconnectAttempt = 0;
+  static const int _maxReconnectAttempts = 3;
 
   /// Completer for the final transcript — set in _handleMessage, awaited in stop().
   Completer<String>? _finalTranscriptCompleter;
@@ -90,8 +93,10 @@ class RambleWebSocketService {
     _listenToChannel();
     _setConnectionState(RambleConnectionState.connected);
     _connectedAt = DateTime.now();
+    _reconnectAttempt = 0;
 
     _send({'type': 'start'});
+    AnalyticsService.instance.trackRambleStarted();
     _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'start'});
   }
 
@@ -125,9 +130,21 @@ class RambleWebSocketService {
   }
 
   Future<void> _attemptReconnect() async {
+    if (_reconnectAttempt >= _maxReconnectAttempts) {
+      _logger.warning('ws.reconnect', logger: 'RambleWS', data: {'exhausted': true, 'attempts': _reconnectAttempt});
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Connection lost after $_reconnectAttempt attempts. Tap to retry or keep what you have.');
+      return;
+    }
+
+    _reconnectAttempt++;
     _setConnectionState(RambleConnectionState.reconnecting);
-    _logger.info('ws.reconnect', logger: 'RambleWS');
-    await Future.delayed(const Duration(seconds: 2));
+    _statusController.add('reconnecting:$_reconnectAttempt/$_maxReconnectAttempts');
+    _logger.info('ws.reconnect', logger: 'RambleWS', data: {'attempt': _reconnectAttempt, 'max': _maxReconnectAttempts});
+
+    // Exponential backoff: 1s, 2s, 4s
+    final delaySeconds = 1 << (_reconnectAttempt - 1);
+    await Future.delayed(Duration(seconds: delaySeconds));
 
     // Refresh token for reconnect
     _token = await _tokenProvider();
@@ -141,15 +158,16 @@ class RambleWebSocketService {
     _channel = _channelFactory(Uri.parse(url));
     try {
       await _channel!.ready;
-      _logger.info('ws.reconnect', logger: 'RambleWS', data: {'success': true});
+      _logger.info('ws.reconnect', logger: 'RambleWS', data: {'success': true, 'attempt': _reconnectAttempt});
       _listenToChannel();
       _setConnectionState(RambleConnectionState.connected);
       _connectedAt = DateTime.now();
+      _reconnectAttempt = 0;
       _send({'type': 'start'});
     } catch (e) {
-      _logger.error('ws.error', logger: 'RambleWS', data: {'reason': 'reconnect_failed', 'error': e.toString()});
-      _setConnectionState(RambleConnectionState.disconnected);
-      _errorController.add('Reconnect failed — editing with current transcript');
+      _logger.error('ws.error', logger: 'RambleWS', data: {'reason': 'reconnect_failed', 'attempt': _reconnectAttempt, 'error': e.toString()});
+      // Recurse to try next attempt
+      await _attemptReconnect();
     }
   }
 
@@ -161,6 +179,7 @@ class RambleWebSocketService {
       return; // Already attempting connection
     }
     _intentionalClose = false;
+    _reconnectAttempt = 0;
     await _attemptReconnect();
   }
 
@@ -186,6 +205,14 @@ class RambleWebSocketService {
     } catch (_) {
       result = null;
     }
+
+    final durationSeconds = _connectedAt != null
+        ? DateTime.now().difference(_connectedAt!).inSeconds
+        : 0;
+    AnalyticsService.instance.trackRambleCompleted(
+      durationSeconds: durationSeconds,
+      transcriptLength: result?.length ?? 0,
+    );
 
     _finalTranscriptCompleter = null;
     await _channel?.sink.close();

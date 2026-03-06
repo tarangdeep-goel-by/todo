@@ -48,7 +48,10 @@ async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
     _init_firebase()
     try:
         from firebase_admin import auth as firebase_auth
-        decoded = firebase_auth.verify_id_token(token)
+        loop = asyncio.get_running_loop()
+        decoded = await loop.run_in_executor(
+            None, firebase_auth.verify_id_token, token
+        )
         user_uid = decoded.get("uid", "unknown")
     except Exception as e:
         logger.warning("ws.error", reason=str(e))
