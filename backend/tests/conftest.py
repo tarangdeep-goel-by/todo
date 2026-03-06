@@ -35,6 +35,7 @@ from database import Base, get_db
 from auth import get_current_user
 from models.task import Task  # noqa: F401 — registers model on Base
 from models.category import Category  # noqa: F401 — registers model on Base
+from models.fcm_token import FcmToken  # noqa: F401 — registers model on Base
 from services.task_service import TaskService
 from services.gemini_service import GeminiService
 from services.agent_service import AgentService
@@ -98,6 +99,7 @@ async def db_session(db_engine):
     async with session_factory() as cleanup:
         await cleanup.execute(text("DELETE FROM tasks"))
         await cleanup.execute(text("DELETE FROM categories"))
+        await cleanup.execute(text("DELETE FROM fcm_tokens"))
         await cleanup.commit()
 
 
