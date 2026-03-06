@@ -10,6 +10,9 @@ import 'screens/auth_gate.dart';
 import 'services/auth_interceptor.dart';
 import 'widgets/reauth_dialog.dart';
 
+/// Compile-time flag: `flutter test --dart-define=TEST_MODE=true`
+const bool kTestMode = bool.fromEnvironment('TEST_MODE', defaultValue: false);
+
 final navigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
@@ -19,27 +22,30 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
-  // FCM background message handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  if (!kTestMode) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Crashlytics error handlers
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    // FCM background message handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Wire reauth dialog to auth interceptor
-  AuthInterceptor.onReauthRequired = () {
-    final context = navigatorKey.currentContext;
-    if (context != null) {
-      ReauthDialog.show(context);
-    }
-  };
+    // Crashlytics error handlers
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    // Wire reauth dialog to auth interceptor
+    AuthInterceptor.onReauthRequired = () {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        ReauthDialog.show(context);
+      }
+    };
+  }
 
   runApp(
     const ProviderScope(
