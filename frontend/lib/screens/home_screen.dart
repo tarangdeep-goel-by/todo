@@ -18,6 +18,7 @@ import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
 import '../widgets/flat_view_nudge.dart';
+import '../widgets/connection_banner.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
 import '../widgets/calendar_task_view.dart';
@@ -148,6 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Column(
               children: [
                 const TopBar(),
+                const ConnectionBanner(),
                 // Active filter chips (only in flat view)
                 if (viewMode == ViewMode.flat) const ActiveFilterChips(),
                 Expanded(

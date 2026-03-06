@@ -250,33 +250,6 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
             ),
           ),
         ),
-        // Stale-data error banner (loaded before, but refresh failed)
-        if (storeState.error != null && storeState.hasLoadedOnce)
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.navBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Couldn\'t refresh — showing cached data',
-                    style: TextStyle(
-                      color: AppColors.secondaryText,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => ref.read(taskStoreProvider.notifier).fetchAll(),
-                  child: Icon(Icons.refresh, color: AppColors.darkText, size: 18),
-                ),
-              ],
-            ),
-          ),
         // Search loading indicator
         if (_searchLoading)
           const Padding(

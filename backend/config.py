@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     # Notifications
     notification_check_interval_minutes: int = 15
 
+    # Rate limiting — proxy awareness
+    trusted_proxy_count: int = 0
+
+    # WebSocket connection limits
+    max_ws_connections_per_user: int = 3
+
     @field_validator("search_engine")
     @classmethod
     def validate_search_engine(cls, v):

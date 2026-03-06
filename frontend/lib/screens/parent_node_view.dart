@@ -15,6 +15,7 @@ import '../widgets/loading_state.dart';
 import '../widgets/styled_snackbar.dart';
 import '../utils/liquid_focus_scroll.dart';
 import '../services/haptic_service.dart';
+import '../providers/sync_provider.dart';
 
 /// Parent node view with liquid focus domain cards
 /// All cards visible at once, scrolling changes focus
@@ -284,12 +285,18 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
           availableHeight: constraints.maxHeight,
         );
 
-        return SizedBox(
-          width: double.infinity,
-          height: double.infinity,
-          // Listener doesn't participate in the gesture arena, so
-          // Dismissible's horizontal swipe is never blocked.
-          child: Listener(
+        return RefreshIndicator(
+          color: AppColors.darkText,
+          backgroundColor: AppColors.darkBg,
+          onRefresh: () => ref.read(syncServiceProvider).sync(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              width: double.infinity,
+              height: constraints.maxHeight,
+              // Listener doesn't participate in the gesture arena, so
+              // Dismissible's horizontal swipe is never blocked.
+              child: Listener(
             onPointerDown: _onPointerDown,
             onPointerMove: (e) =>
                 _onPointerMove(e, domains.length),
@@ -383,8 +390,11 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
               ),
             ),
           ),
-        );
+        ),
+      ),
+    );
       },
     );
   }
 }
+

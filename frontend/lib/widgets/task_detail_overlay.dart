@@ -14,6 +14,7 @@ import 'domain_root_view.dart';
 import 'task_parent_picker.dart';
 import 'task_row_tile.dart';
 import 'styled_snackbar.dart';
+import 'undo_snackbar.dart';
 import '../screens/ramble_screen.dart';
 import '../utils/string_extensions.dart';
 
@@ -294,6 +295,32 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     final mutation = ref.read(taskMutationServiceProvider);
     try {
       await mutation.updateTask(optimistic, payload);
+      // Show undo snackbar for field edits (skip status changes — those have their own undo)
+      if (mounted && status == null) {
+        final domain = DomainColors.getDomain(
+          currentTask.category, true, ref.read(domainPalettesProvider),
+        );
+        // Build reverse payload from the pre-edit task
+        final reversePayload = <String, dynamic>{};
+        if (title != null) reversePayload['title'] = currentTask.title;
+        if (description != null) reversePayload['description'] = currentTask.description ?? '';
+        if (priority != null) reversePayload['priority'] = currentTask.priority ?? 'none';
+        if (!identical(dueDate, _noChange)) {
+          reversePayload['due_date'] = currentTask.dueDate?.toIso8601String();
+        }
+        if (!identical(estimatedHours, _noChange)) {
+          reversePayload['estimated_hours'] = currentTask.estimatedHours;
+        }
+        showUndoSnackbar(
+          context,
+          message: 'Updated',
+          domain: domain,
+          onUndo: () {
+            store.upsertTask(currentTask);
+            mutation.updateTask(currentTask, reversePayload);
+          },
+        );
+      }
     } catch (e) {
       store.upsertTask(currentTask);
       if (mounted) {
