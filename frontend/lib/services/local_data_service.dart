@@ -24,6 +24,16 @@ class LocalDataService {
         tasks.map((t) => _taskToCompanion(t, pendingSync: pendingSync)).toList(),
       );
 
+  Future<Task?> getTaskById(String id) async {
+    final row = await _db.taskDao.getTaskById(id);
+    return row != null ? _rowToTask(row) : null;
+  }
+
+  Future<bool> isTaskPendingSync(String id) async {
+    final row = await _db.taskDao.getTaskById(id);
+    return row?.pendingSync ?? false;
+  }
+
   Future<void> deleteTask(String id) => _db.taskDao.deleteTask(id);
 
   Future<void> markPendingSync(String id, bool pending) =>

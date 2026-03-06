@@ -5,6 +5,7 @@ import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/api_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -36,7 +37,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Future.microtask(() async {
       final store = ref.read(taskStoreProvider.notifier);
       await store.loadLocal(); // Instant: cached data → UI
-      store.fetchAll(); // Background: fresh data (fire-and-forget)
+      final syncService = ref.read(syncServiceProvider);
+      syncService.sync(); // Background: push pending + pull fresh (fire-and-forget)
+      syncService.startPeriodicSync();
       // Eagerly initialize speech recognition to avoid delay on first tap
       ref.read(speechServiceProvider).initialize();
       _checkWelcome();
