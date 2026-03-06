@@ -12,7 +12,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  LocalTasksCompanion _makeTask({
+  LocalTasksCompanion makeTask({
     String id = 'task-1',
     String userId = 'user-1',
     String title = 'Test task',
@@ -34,7 +34,7 @@ void main() {
 
   group('TaskDao', () {
     test('insert and retrieve task', () async {
-      await db.taskDao.upsertTask(_makeTask());
+      await db.taskDao.upsertTask(makeTask());
       final tasks = await db.taskDao.getAllTasks();
       expect(tasks, hasLength(1));
       expect(tasks.first.id, 'task-1');
@@ -43,16 +43,16 @@ void main() {
     });
 
     test('upsert updates existing task', () async {
-      await db.taskDao.upsertTask(_makeTask());
-      await db.taskDao.upsertTask(_makeTask(title: 'Updated title'));
+      await db.taskDao.upsertTask(makeTask());
+      await db.taskDao.upsertTask(makeTask(title: 'Updated title'));
       final tasks = await db.taskDao.getAllTasks();
       expect(tasks, hasLength(1));
       expect(tasks.first.title, 'Updated title');
     });
 
     test('getTaskById returns correct task', () async {
-      await db.taskDao.upsertTask(_makeTask(id: 'a'));
-      await db.taskDao.upsertTask(_makeTask(id: 'b', title: 'Second'));
+      await db.taskDao.upsertTask(makeTask(id: 'a'));
+      await db.taskDao.upsertTask(makeTask(id: 'b', title: 'Second'));
       final task = await db.taskDao.getTaskById('b');
       expect(task, isNotNull);
       expect(task!.title, 'Second');
@@ -64,16 +64,16 @@ void main() {
     });
 
     test('deleteTask removes task', () async {
-      await db.taskDao.upsertTask(_makeTask());
+      await db.taskDao.upsertTask(makeTask());
       await db.taskDao.deleteTask('task-1');
       final tasks = await db.taskDao.getAllTasks();
       expect(tasks, isEmpty);
     });
 
     test('deleteNonPendingTasks preserves pending', () async {
-      await db.taskDao.upsertTask(_makeTask(id: 'synced'));
+      await db.taskDao.upsertTask(makeTask(id: 'synced'));
       await db.taskDao.upsertTask(
-          _makeTask(id: 'pending', pendingSync: true));
+          makeTask(id: 'pending', pendingSync: true));
       await db.taskDao.deleteNonPendingTasks();
       final tasks = await db.taskDao.getAllTasks();
       expect(tasks, hasLength(1));
@@ -81,7 +81,7 @@ void main() {
     });
 
     test('markPendingSync updates flag', () async {
-      await db.taskDao.upsertTask(_makeTask());
+      await db.taskDao.upsertTask(makeTask());
       await db.taskDao.markPendingSync('task-1', true);
       final task = await db.taskDao.getTaskById('task-1');
       expect(task!.pendingSync, isTrue);
@@ -89,9 +89,9 @@ void main() {
 
     test('upsertTasks batch inserts', () async {
       await db.taskDao.upsertTasks([
-        _makeTask(id: '1', title: 'First'),
-        _makeTask(id: '2', title: 'Second'),
-        _makeTask(id: '3', title: 'Third'),
+        makeTask(id: '1', title: 'First'),
+        makeTask(id: '2', title: 'Second'),
+        makeTask(id: '3', title: 'Third'),
       ]);
       final tasks = await db.taskDao.getAllTasks();
       expect(tasks, hasLength(3));
@@ -137,8 +137,8 @@ void main() {
 
     test('deleteAllTasks removes everything', () async {
       await db.taskDao.upsertTasks([
-        _makeTask(id: '1'),
-        _makeTask(id: '2', pendingSync: true),
+        makeTask(id: '1'),
+        makeTask(id: '2', pendingSync: true),
       ]);
       await db.taskDao.deleteAllTasks();
       final tasks = await db.taskDao.getAllTasks();

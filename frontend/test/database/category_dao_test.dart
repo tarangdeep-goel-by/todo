@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/database/app_database.dart';
@@ -12,7 +11,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  LocalCategoriesCompanion _makeCat({
+  LocalCategoriesCompanion makeCat({
     String id = 'cat-1',
     String name = 'career',
     int position = 0,
@@ -27,8 +26,8 @@ void main() {
   group('CategoryDao', () {
     test('replaceAll inserts categories', () async {
       await db.categoryDao.replaceAll([
-        _makeCat(id: '1', name: 'career', position: 0),
-        _makeCat(id: '2', name: 'health', position: 1),
+        makeCat(id: '1', name: 'career', position: 0),
+        makeCat(id: '2', name: 'health', position: 1),
       ]);
       final cats = await db.categoryDao.getAllCategories();
       expect(cats, hasLength(2));
@@ -37,10 +36,10 @@ void main() {
 
     test('replaceAll clears old data', () async {
       await db.categoryDao.replaceAll([
-        _makeCat(id: '1', name: 'career'),
+        makeCat(id: '1', name: 'career'),
       ]);
       await db.categoryDao.replaceAll([
-        _makeCat(id: '2', name: 'health'),
+        makeCat(id: '2', name: 'health'),
       ]);
       final cats = await db.categoryDao.getAllCategories();
       expect(cats, hasLength(1));
@@ -49,8 +48,8 @@ void main() {
 
     test('deleteAllCategories empties table', () async {
       await db.categoryDao.replaceAll([
-        _makeCat(id: '1'),
-        _makeCat(id: '2', name: 'health'),
+        makeCat(id: '1'),
+        makeCat(id: '2', name: 'health'),
       ]);
       await db.categoryDao.deleteAllCategories();
       final cats = await db.categoryDao.getAllCategories();

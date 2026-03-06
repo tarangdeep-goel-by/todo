@@ -4,8 +4,8 @@ import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task.dart';
-import '../models/api_response.dart';
 import '../providers/api_provider.dart';
+import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
@@ -75,76 +75,44 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       );
     }
 
-    // Optimistic upsert
+    // Offline-first: optimistic update + enqueue for sync
     final optimistic = task.copyWith(
       status: newStatus,
       completedAt: newStatus == 'completed' ? DateTime.now() : null,
     );
-    store.upsertTask(optimistic);
-    store.markPending(task.id);
+    final payload = <String, dynamic>{
+      'status': newStatus,
+    };
+    if (newStatus == 'completed') {
+      payload['completed_at'] = DateTime.now().toIso8601String();
+    }
 
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final updated = await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          status: newStatus,
-          completedAt: newStatus == 'completed' ? DateTime.now() : null,
-          clearFields:
-              newStatus == 'active' ? const {'completed_at'} : const {},
-        ),
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.updateTask(optimistic, payload);
+
+    if (context.mounted) {
+      final message = newStatus == 'completed'
+          ? 'Completed: ${task.sentenceTitle}'
+          : 'Restored: ${task.sentenceTitle}';
+      showUndoSnackbar(
+        context,
+        message: message,
+        domain: domain,
+        onUndo: () => _undoToggle(context),
       );
-      store.clearPending(task.id);
-      store.upsertTask(updated);
-
-      if (context.mounted) {
-        final message = newStatus == 'completed'
-            ? 'Completed: ${task.sentenceTitle}'
-            : 'Restored: ${task.sentenceTitle}';
-        showUndoSnackbar(
-          context,
-          message: message,
-          domain: domain,
-          onUndo: () => _undoToggle(context),
-        );
-      }
-    } catch (e) {
-      store.clearPending(task.id);
-      store.upsertTask(task);
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Couldn\'t update task. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
     }
   }
 
   Future<void> _undoToggle(BuildContext context) async {
     final task = widget.task;
-    final store = ref.read(taskStoreProvider.notifier);
-    store.upsertTask(task);
-
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          status: task.status,
-          completedAt:
-              task.isCompleted ? task.completedAt ?? DateTime.now() : null,
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Couldn\'t undo. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
+    final payload = <String, dynamic>{
+      'status': task.status,
+    };
+    if (task.isCompleted) {
+      payload['completed_at'] = (task.completedAt ?? DateTime.now()).toIso8601String();
     }
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.updateTask(task, payload);
   }
 
   Future<bool> _deleteTask(BuildContext context) async {
@@ -167,51 +135,35 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       return true;
     }
 
-    try {
-      // Optimistic remove
-      store.removeTask(task.id);
-      store.markPending(task.id);
+    // Offline-first: remove from store + enqueue delete for sync
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.deleteTask(task);
 
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.deleteTask(task.id);
-      store.clearPending(task.id);
-
-      if (context.mounted) {
-        showUndoSnackbar(
-          context,
-          message: 'Archived: ${task.sentenceTitle}',
-          domain: domain,
-          onUndo: () async {
-            try {
-              final restoredTask = await apiService.restoreTask(task.id);
-              store.upsertTask(restoredTask);
-            } catch (_) {
-              if (context.mounted) {
-                showStyledSnackbar(
-                  context,
-                  message: 'Couldn\'t restore task. Check your connection.',
-                  style: SnackbarStyle.error,
-                );
-              }
+    if (context.mounted) {
+      showUndoSnackbar(
+        context,
+        message: 'Archived: ${task.sentenceTitle}',
+        domain: domain,
+        onUndo: () async {
+          // Restore requires online — calls API directly
+          try {
+            final apiService = ref.read(apiServiceProvider);
+            final restoredTask = await apiService.restoreTask(task.id);
+            store.upsertTask(restoredTask);
+          } catch (_) {
+            if (context.mounted) {
+              showStyledSnackbar(
+                context,
+                message: 'Couldn\'t restore task. Check your connection.',
+                style: SnackbarStyle.error,
+              );
             }
-          },
-        );
-      }
-
-      return true;
-    } catch (e) {
-      // Rollback
-      store.clearPending(task.id);
-      store.upsertTask(task);
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Couldn\'t archive task. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
-      return false;
+          }
+        },
+      );
     }
+
+    return true;
   }
 
   Widget _buildBadge({

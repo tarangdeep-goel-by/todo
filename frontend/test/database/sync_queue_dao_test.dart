@@ -11,7 +11,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<int> _enqueue({
+  Future<int> enqueue({
     String entityType = 'task',
     String entityId = 'task-1',
     String action = 'create',
@@ -26,9 +26,9 @@ void main() {
 
   group('SyncQueueDao', () {
     test('enqueue and getPending returns FIFO order', () async {
-      await _enqueue(entityId: 'a', action: 'create');
-      await _enqueue(entityId: 'b', action: 'update');
-      await _enqueue(entityId: 'c', action: 'delete');
+      await enqueue(entityId: 'a', action: 'create');
+      await enqueue(entityId: 'b', action: 'update');
+      await enqueue(entityId: 'c', action: 'delete');
 
       final entries = await db.syncQueueDao.getPending();
       expect(entries, hasLength(3));
@@ -38,21 +38,21 @@ void main() {
     });
 
     test('ack removes entry', () async {
-      final id = await _enqueue();
+      final id = await enqueue();
       await db.syncQueueDao.ack(id);
       final entries = await db.syncQueueDao.getPending();
       expect(entries, isEmpty);
     });
 
     test('markFailed excludes from getPending', () async {
-      final id = await _enqueue();
+      final id = await enqueue();
       await db.syncQueueDao.markFailed(id, 'validation error');
       final entries = await db.syncQueueDao.getPending();
       expect(entries, isEmpty);
     });
 
     test('incrementRetry updates count', () async {
-      final id = await _enqueue();
+      final id = await enqueue();
       await db.syncQueueDao.incrementRetry(id, 'timeout');
       await db.syncQueueDao.incrementRetry(id, 'timeout 2');
       final entries = await db.syncQueueDao.getPending();
@@ -61,9 +61,9 @@ void main() {
     });
 
     test('pendingCount returns correct number', () async {
-      await _enqueue(entityId: 'a');
-      await _enqueue(entityId: 'b');
-      final failedId = await _enqueue(entityId: 'c');
+      await enqueue(entityId: 'a');
+      await enqueue(entityId: 'b');
+      final failedId = await enqueue(entityId: 'c');
       await db.syncQueueDao.markFailed(failedId, 'err');
 
       final count = await db.syncQueueDao.pendingCount();
@@ -71,9 +71,9 @@ void main() {
     });
 
     test('markFailedForEntity marks all entries for entity', () async {
-      await _enqueue(entityId: 'x', action: 'create');
-      await _enqueue(entityId: 'x', action: 'update');
-      await _enqueue(entityId: 'y', action: 'create');
+      await enqueue(entityId: 'x', action: 'create');
+      await enqueue(entityId: 'x', action: 'update');
+      await enqueue(entityId: 'y', action: 'create');
 
       await db.syncQueueDao.markFailedForEntity('x');
       final pending = await db.syncQueueDao.getPending();
@@ -82,9 +82,9 @@ void main() {
     });
 
     test('getAllForEntity returns ordered', () async {
-      await _enqueue(entityId: 'x', action: 'create');
-      await _enqueue(entityId: 'y', action: 'create');
-      await _enqueue(entityId: 'x', action: 'update');
+      await enqueue(entityId: 'x', action: 'create');
+      await enqueue(entityId: 'y', action: 'create');
+      await enqueue(entityId: 'x', action: 'update');
 
       final entries = await db.syncQueueDao.getAllForEntity('x');
       expect(entries, hasLength(2));
@@ -93,9 +93,9 @@ void main() {
     });
 
     test('deleteAllForEntity removes entries', () async {
-      await _enqueue(entityId: 'x', action: 'create');
-      await _enqueue(entityId: 'x', action: 'update');
-      await _enqueue(entityId: 'y', action: 'create');
+      await enqueue(entityId: 'x', action: 'create');
+      await enqueue(entityId: 'x', action: 'update');
+      await enqueue(entityId: 'y', action: 'create');
 
       await db.syncQueueDao.deleteAllForEntity('x');
       final entries = await db.syncQueueDao.getPending();
@@ -104,8 +104,8 @@ void main() {
     });
 
     test('deleteAll clears everything', () async {
-      await _enqueue(entityId: 'a');
-      await _enqueue(entityId: 'b');
+      await enqueue(entityId: 'a');
+      await enqueue(entityId: 'b');
       await db.syncQueueDao.deleteAll();
       expect(await db.syncQueueDao.pendingCount(), 0);
     });
