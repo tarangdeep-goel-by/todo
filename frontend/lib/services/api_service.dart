@@ -13,6 +13,9 @@ class ApiService {
   final _logger = AppLogger.instance;
   final Dio _dio;
 
+  /// Exposed for AppLogger log shipping initialization.
+  Dio get dio => _dio;
+
   ApiService({String? baseUrl, Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(

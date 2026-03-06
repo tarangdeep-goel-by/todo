@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_service.dart';
+import '../services/app_logger.dart';
 import '../services/audio_service.dart';
 import '../services/speech_service.dart';
 import '../services/ramble_websocket_service.dart';
 
 /// Provider for API service singleton
 final apiServiceProvider = Provider<ApiService>((ref) {
-  return ApiService();
+  final service = ApiService();
+  AppLogger.instance.initShipping(service.dio);
+  return service;
 });
 
 /// Provider for audio service singleton
