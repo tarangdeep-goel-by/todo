@@ -8,6 +8,7 @@ import '../providers/recording_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
 import '../screens/ramble_screen.dart';
+import '../screens/profile_screen.dart';
 import 'add_task_sheet.dart';
 import 'styled_snackbar.dart';
 import 'voice_hint_pulse.dart';
@@ -166,8 +167,9 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               inactiveColor: inactiveColor,
               onTap: () {
                 HapticService.light();
-                showStyledSnackbar(context,
-                    message: 'Coming soon', style: SnackbarStyle.info);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
               },
             ),
           ],
