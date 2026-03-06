@@ -14,8 +14,10 @@ void main() {
 
   setUp(() {
     mockApi = MockApiService();
+    final localData = createTestLocalData();
     container = ProviderContainer(overrides: [
       apiServiceProvider.overrideWithValue(mockApi),
+      localData.override,
     ]);
   });
 

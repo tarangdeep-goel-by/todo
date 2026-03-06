@@ -115,11 +115,25 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       // Update analytics user properties
       AnalyticsService.instance.setUserProperties(taskCount: map.length);
 
+      // Persist tasks to local DB
+      try {
+        final localData = _ref.read(localDataServiceProvider);
+        await localData.upsertTasks(allTasks);
+        await localData.setMeta('last_pull_at', DateTime.now().toIso8601String());
+      } catch (_) {
+        // Non-fatal — cache write failure shouldn't block UI
+      }
+
       // Fetch categories and update provider
       try {
         final categories = await apiService.getCategories();
         _ref.read(categoriesProvider.notifier).state = categories;
         AnalyticsService.instance.setUserProperties(categoryCount: categories.length);
+        // Persist categories to local DB
+        try {
+          final localData = _ref.read(localDataServiceProvider);
+          await localData.replaceCategories(categories);
+        } catch (_) {}
       } catch (_) {
         // Non-fatal — categories may not be available
       }

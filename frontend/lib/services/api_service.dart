@@ -66,6 +66,7 @@ class ApiService {
     DateTime? createdAtLte,
     DateTime? dueDateGte,
     DateTime? dueDateLte,
+    DateTime? updatedAtGte,
     String? sort,
     int limit = 50,
     int offset = 0,
@@ -93,6 +94,9 @@ class ApiService {
       if (dueDateLte != null) {
         queryParams['due_date_lte'] = dueDateLte.toIso8601String();
       }
+      if (updatedAtGte != null) {
+        queryParams['updated_at_gte'] = updatedAtGte.toIso8601String();
+      }
       if (sort != null) queryParams['sort'] = sort;
 
       final response = await _dio.get('/tasks', queryParameters: queryParams);
@@ -109,6 +113,7 @@ class ApiService {
     String? status,
     String? parentId,
     String? tags,
+    DateTime? updatedAtGte,
     String? sort,
     int limit = 50,
     int offset = 0,
@@ -119,6 +124,7 @@ class ApiService {
           status: status,
           parentId: parentId,
           tags: tags,
+          updatedAtGte: updatedAtGte,
           sort: sort,
           limit: limit,
           offset: offset,
