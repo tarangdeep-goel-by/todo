@@ -1,4 +1,5 @@
 """Gemini AI service for brain dump detection and subtask generation."""
+import asyncio
 import re
 import time
 from google import genai
@@ -6,6 +7,7 @@ from google.genai import types
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 import json
+from config import get_settings
 from structured_logging import get_logger
 
 logger = get_logger(__name__)
@@ -187,14 +189,18 @@ Common mistakes to avoid:
 </instructions>"""
 
         try:
+            settings = get_settings()
             t0 = time.monotonic()
-            response = await self.client.aio.models.generate_content(
-                model=self.MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type='application/json',
-                    response_schema=list[BrainDumpAction],
+            response = await asyncio.wait_for(
+                self.client.aio.models.generate_content(
+                    model=self.MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type='application/json',
+                        response_schema=list[BrainDumpAction],
+                    ),
                 ),
+                timeout=settings.gemini_timeout_seconds,
             )
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
 
@@ -230,6 +236,12 @@ Common mistakes to avoid:
 
             return result
 
+        except asyncio.TimeoutError:
+            latency_ms = round((time.monotonic() - t0) * 1000, 1)
+            logger.error("gemini.api.timeout", endpoint="detect_brain_dump",
+                         timeout_seconds=settings.gemini_timeout_seconds,
+                         latency_ms=latency_ms)
+            return []
         except Exception as e:
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
             logger.error("gemini.api.error", endpoint="detect_brain_dump",
@@ -265,15 +277,19 @@ Generate 4-6 actionable subtasks for the task above. Each subtask should be:
 Respond ONLY with a valid JSON array of strings. Example:
 ["Research options", "Create outline", "Draft first version", "Review and revise", "Submit final"]
 """
+        settings = get_settings()
         t0 = time.monotonic()
         try:
-            response = await self.client.aio.models.generate_content(
-                model=self.MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type='application/json',
-                    response_schema=list[str],
+            response = await asyncio.wait_for(
+                self.client.aio.models.generate_content(
+                    model=self.MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type='application/json',
+                        response_schema=list[str],
+                    ),
                 ),
+                timeout=settings.gemini_subtask_timeout_seconds,
             )
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
 
@@ -286,6 +302,12 @@ Respond ONLY with a valid JSON array of strings. Example:
                         latency_ms=latency_ms, count=len(result), task_title=task_title)
             return result
 
+        except asyncio.TimeoutError:
+            latency_ms = round((time.monotonic() - t0) * 1000, 1)
+            logger.error("gemini.api.timeout", endpoint="generate_subtasks",
+                         timeout_seconds=settings.gemini_subtask_timeout_seconds,
+                         latency_ms=latency_ms)
+            return []
         except Exception as e:
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
             logger.error("gemini.api.error", endpoint="generate_subtasks",

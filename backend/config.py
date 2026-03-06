@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Redis (optional — memory storage if not set)
     redis_url: str = ""
 
+    # API timeouts (seconds)
+    gemini_timeout_seconds: int = 15
+    gemini_subtask_timeout_seconds: int = 10
+
     # Category limits
     max_categories: int = 8
 
