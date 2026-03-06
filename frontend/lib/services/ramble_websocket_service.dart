@@ -76,9 +76,8 @@ class RambleWebSocketService {
       return;
     }
 
-    final url = '$_wsUrl?token=$_token';
     _logger.info('ws.connect', logger: 'RambleWS', data: {'url': _wsUrl});
-    _channel = _channelFactory(Uri.parse(url));
+    _channel = _channelFactory(Uri.parse(_wsUrl));
 
     try {
       await _channel!.ready;
@@ -87,6 +86,48 @@ class RambleWebSocketService {
       _logger.error('ws.error', logger: 'RambleWS', data: {'reason': 'connect_failed', 'error': e.toString()});
       _setConnectionState(RambleConnectionState.disconnected);
       _errorController.add('WebSocket connect failed: $e');
+      return;
+    }
+
+    // Authenticate via first message (token never in URL)
+    _send({'type': 'auth', 'token': _token!});
+    _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'auth'});
+
+    // Wait for auth_ok before proceeding
+    try {
+      final authRaw = await _channel!.stream.first.timeout(
+        const Duration(seconds: 5),
+      );
+      final authMsg = jsonDecode(authRaw as String) as Map<String, dynamic>;
+      if (authMsg['type'] == 'auth_error') {
+        _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'message': authMsg['message']});
+        _setConnectionState(RambleConnectionState.disconnected);
+        _errorController.add(authMsg['message'] as String? ?? 'Authentication failed');
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
+      if (authMsg['type'] != 'auth_ok') {
+        _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'unexpected_type': authMsg['type']});
+        _setConnectionState(RambleConnectionState.disconnected);
+        _errorController.add('Unexpected auth response');
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
+    } on TimeoutException {
+      _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'reason': 'timeout'});
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Authentication timeout');
+      await _channel?.sink.close();
+      _channel = null;
+      return;
+    } catch (e) {
+      _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'error': e.toString()});
+      _setConnectionState(RambleConnectionState.disconnected);
+      _errorController.add('Authentication failed: $e');
+      await _channel?.sink.close();
+      _channel = null;
       return;
     }
 
@@ -154,12 +195,30 @@ class RambleWebSocketService {
       return;
     }
 
-    final url = '$_wsUrl?token=$_token';
-    _channel = _channelFactory(Uri.parse(url));
+    _channel = _channelFactory(Uri.parse(_wsUrl));
     try {
       await _channel!.ready;
-      _logger.info('ws.reconnect', logger: 'RambleWS', data: {'success': true, 'attempt': _reconnectAttempt});
+
+      // Authenticate via first message (token never in URL)
+      _send({'type': 'auth', 'token': _token!});
+      _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'auth'});
+
+      // Wait for auth_ok before proceeding
+      final authRaw = await _channel!.stream.first.timeout(
+        const Duration(seconds: 5),
+      );
+      final authMsg = jsonDecode(authRaw as String) as Map<String, dynamic>;
+      if (authMsg['type'] != 'auth_ok') {
+        _logger.error('ws.auth_failed', logger: 'RambleWS', data: {'type': authMsg['type']});
+        _setConnectionState(RambleConnectionState.disconnected);
+        _errorController.add(authMsg['message'] as String? ?? 'Authentication failed');
+        await _channel?.sink.close();
+        _channel = null;
+        return;
+      }
+
       _listenToChannel();
+      _logger.info('ws.reconnect', logger: 'RambleWS', data: {'success': true, 'attempt': _reconnectAttempt});
       _setConnectionState(RambleConnectionState.connected);
       _connectedAt = DateTime.now();
       _reconnectAttempt = 0;
