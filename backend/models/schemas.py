@@ -317,3 +317,22 @@ class CategoryResponse(BaseModel):
 class CreateCategoryRequest(BaseModel):
     """Request schema for creating a category."""
     name: str = Field(..., min_length=1, max_length=50)
+
+
+class BulkAction(str, Enum):
+    """Supported bulk actions."""
+    COMPLETE = "complete"
+    ARCHIVE = "archive"
+
+
+class BulkActionRequest(BaseModel):
+    """Request for bulk task operations."""
+    task_ids: List[str] = Field(..., min_length=1, max_length=50)
+    action: BulkAction
+
+
+class BulkActionResponse(BaseModel):
+    """Response for bulk task operations."""
+    success: bool
+    affected_count: int
+    errors: List[str] = []

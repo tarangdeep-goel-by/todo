@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from database import get_db
 from auth import get_current_user
-from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse, TaskSearchResult, TaskSearchResponse
+from models.schemas import TaskResponse, CreateTaskRequest, UpdateTaskRequest, TaskFilterParams, TaskListResponse, TaskStatsResponse, TaskSearchResult, TaskSearchResponse, BulkActionRequest, BulkActionResponse
 from services.task_service import TaskService
 from models.task import Task
 from rate_limit import limiter
@@ -177,6 +177,32 @@ async def get_archived_tasks(
         limit=limit,
         offset=offset,
         has_more=(offset + len(page)) < total
+    )
+
+
+@router.post("/bulk", response_model=BulkActionResponse)
+@limiter.limit("5/minute")
+async def bulk_action(
+    request: Request,
+    body: BulkActionRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> BulkActionResponse:
+    """Perform bulk action (complete/archive) on multiple tasks."""
+    task_service = TaskService(db)
+
+    if body.action == "complete":
+        count, errors = await task_service.bulk_complete(body.task_ids, user_id)
+    elif body.action == "archive":
+        count, errors = await task_service.bulk_archive(body.task_ids, user_id)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {body.action}")
+
+    logger.info("task.bulk", action=body.action, affected_count=count, error_count=len(errors))
+    return BulkActionResponse(
+        success=True,
+        affected_count=count,
+        errors=errors,
     )
 
 
