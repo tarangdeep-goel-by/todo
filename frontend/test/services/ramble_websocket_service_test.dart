@@ -75,6 +75,16 @@ void main() {
     late StreamController<dynamic> streamController;
     late RambleWebSocketService service;
 
+    /// Schedule an auth_ok response shortly after connect begins.
+    /// The service sends {type: auth} then awaits stream.first for auth_ok.
+    void scheduleAuthOk() {
+      Future.delayed(const Duration(milliseconds: 10), () {
+        if (!streamController.isClosed) {
+          streamController.add(jsonEncode({'type': 'auth_ok'}));
+        }
+      });
+    }
+
     setUp(() {
       mockChannel = MockWebSocketChannel();
       mockSink = MockWebSocketSink();
@@ -100,16 +110,21 @@ void main() {
       }
     });
 
-    test('connect sends start message', () async {
+    test('connect sends auth then start message', () async {
+      scheduleAuthOk();
       await service.connect();
 
       final captured = verify(() => mockSink.add(captureAny())).captured;
-      final startMsg = jsonDecode(captured.first as String) as Map<String, dynamic>;
+      expect(captured.length, 2);
+      final authMsg = jsonDecode(captured[0] as String) as Map<String, dynamic>;
+      final startMsg = jsonDecode(captured[1] as String) as Map<String, dynamic>;
+      expect(authMsg['type'], 'auth');
+      expect(authMsg['token'], 'test-token');
       expect(startMsg['type'], 'start');
-      expect(startMsg.containsKey('user_id'), false);
     });
 
     test('connect sets state to connected', () async {
+      scheduleAuthOk();
       await service.connect();
 
       // After connect returns, the state should be connected
@@ -117,6 +132,7 @@ void main() {
     });
 
     test('sendAudioChunk sends audio message', () async {
+      scheduleAuthOk();
       await service.connect();
       reset(mockSink);
       when(() => mockSink.add(any())).thenReturn(null);
@@ -132,6 +148,7 @@ void main() {
     });
 
     test('transcriptionStream emits on transcription message', () async {
+      scheduleAuthOk();
       await service.connect();
 
       final future = service.transcriptionStream.first;
@@ -144,6 +161,7 @@ void main() {
     });
 
     test('finalTranscriptStream emits on final_transcript message', () async {
+      scheduleAuthOk();
       await service.connect();
 
       final future = service.finalTranscriptStream.first;
@@ -156,6 +174,7 @@ void main() {
     });
 
     test('statusStream emits on status message', () async {
+      scheduleAuthOk();
       await service.connect();
 
       final future = service.statusStream.first;
@@ -168,6 +187,7 @@ void main() {
     });
 
     test('timeRemainingStream emits seconds on time_remaining status', () async {
+      scheduleAuthOk();
       await service.connect();
 
       final future = service.timeRemainingStream.first;
@@ -181,6 +201,7 @@ void main() {
     });
 
     test('errorStream emits on error message', () async {
+      scheduleAuthOk();
       await service.connect();
 
       final future = service.errorStream.first;
@@ -193,6 +214,7 @@ void main() {
     });
 
     test('stop sends stop message and waits for final transcript', () async {
+      scheduleAuthOk();
       await service.connect();
       reset(mockSink);
       when(() => mockSink.add(any())).thenReturn(null);
@@ -220,6 +242,7 @@ void main() {
       final states = <RambleConnectionState>[];
       service.connectionStateStream.listen(states.add);
 
+      scheduleAuthOk();
       await service.connect();
       // Allow any pending microtasks to flush
       await Future<void>.delayed(Duration.zero);

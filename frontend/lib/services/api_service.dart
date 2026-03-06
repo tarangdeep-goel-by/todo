@@ -1,15 +1,20 @@
 import 'package:dio/dio.dart';
 import '../models/task.dart';
 import '../models/api_response.dart';
+import '../models/api_error.dart';
 import '../models/category.dart';
 import '../config/constants.dart';
 import 'auth_interceptor.dart';
+import 'api_retry.dart';
 import 'app_logger.dart';
 
 /// Service for backend API communication
 class ApiService {
   final _logger = AppLogger.instance;
   final Dio _dio;
+
+  /// Exposed for AppLogger log shipping initialization.
+  Dio get dio => _dio;
 
   ApiService({String? baseUrl, Dio? dio})
       : _dio = dio ??
@@ -61,6 +66,7 @@ class ApiService {
     DateTime? createdAtLte,
     DateTime? dueDateGte,
     DateTime? dueDateLte,
+    DateTime? updatedAtGte,
     String? sort,
     int limit = 50,
     int offset = 0,
@@ -88,6 +94,9 @@ class ApiService {
       if (dueDateLte != null) {
         queryParams['due_date_lte'] = dueDateLte.toIso8601String();
       }
+      if (updatedAtGte != null) {
+        queryParams['updated_at_gte'] = updatedAtGte.toIso8601String();
+      }
       if (sort != null) queryParams['sort'] = sort;
 
       final response = await _dio.get('/tasks', queryParameters: queryParams);
@@ -97,39 +106,68 @@ class ApiService {
     }
   }
 
+  /// [getTasksAdvanced] with automatic retry on transient errors.
+  Future<TaskListResponse> getTasksAdvancedWithRetry({
+    String? category,
+    String? priority,
+    String? status,
+    String? parentId,
+    String? tags,
+    DateTime? updatedAtGte,
+    String? sort,
+    int limit = 50,
+    int offset = 0,
+  }) {
+    return retryWithBackoff(() => getTasksAdvanced(
+          category: category,
+          priority: priority,
+          status: status,
+          parentId: parentId,
+          tags: tags,
+          updatedAtGte: updatedAtGte,
+          sort: sort,
+          limit: limit,
+          offset: offset,
+        ));
+  }
+
   /// Process brain dump — extract task proposals from voice transcription
   Future<BrainDumpResponse> processBrainDump({
     required String transcription,
     String? category,
     String? parentId,
   }) async {
-    try {
-      final data = <String, dynamic>{
-        'transcription': transcription,
-      };
-      if (category != null) data['category'] = category;
-      if (parentId != null) data['parent_id'] = parentId;
-      final response = await _dio.post('/agent/braindump', data: data);
-      return BrainDumpResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
+    return retryWithBackoff(() async {
+      try {
+        final data = <String, dynamic>{
+          'transcription': transcription,
+        };
+        if (category != null) data['category'] = category;
+        if (parentId != null) data['parent_id'] = parentId;
+        final response = await _dio.post('/agent/braindump', data: data);
+        return BrainDumpResponse.fromJson(response.data);
+      } on DioException catch (e) {
+        throw _handleError(e);
+      }
+    });
   }
 
   /// Submit reviewed brain dump tasks
   Future<BrainDumpSubmitResponse> submitBrainDump({
     required List<BrainDumpTaskProposal> tasks,
   }) async {
-    try {
-      final payload = {
-        'tasks': tasks.map((t) => t.toJson()).toList(),
-      };
-      _logger.info('braindump.submit', logger: 'ApiService', data: {'task_count': tasks.length});
-      final response = await _dio.post('/agent/braindump/submit', data: payload);
-      return BrainDumpSubmitResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
+    return retryWithBackoff(() async {
+      try {
+        final payload = {
+          'tasks': tasks.map((t) => t.toJson()).toList(),
+        };
+        _logger.info('braindump.submit', logger: 'ApiService', data: {'task_count': tasks.length});
+        final response = await _dio.post('/agent/braindump/submit', data: payload);
+        return BrainDumpSubmitResponse.fromJson(response.data);
+      } on DioException catch (e) {
+        throw _handleError(e);
+      }
+    });
   }
 
   /// Create task manually
@@ -204,6 +242,41 @@ class ApiService {
     }
   }
 
+  /// Get archived tasks
+  Future<List<Task>> getArchivedTasks({int limit = 50, int offset = 0}) async {
+    try {
+      final response = await _dio.get('/tasks/archived', queryParameters: {
+        'limit': limit,
+        'offset': offset,
+      });
+      final tasks = (response.data['tasks'] as List)
+          .map((json) => Task.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return tasks;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Restore an archived task
+  Future<Task> restoreTask(String taskId) async {
+    try {
+      final response = await _dio.put('/tasks/$taskId/restore');
+      return Task.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Permanently delete an archived task
+  Future<void> permanentDeleteTask(String taskId) async {
+    try {
+      await _dio.delete('/tasks/$taskId/permanent');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Search tasks by query string
   Future<TaskSearchResponse> searchTasks(
     String query, {
@@ -220,19 +293,65 @@ class ApiService {
     }
   }
 
-  /// Handle Dio errors
-  String _handleError(DioException e) {
+  /// Register FCM token with backend
+  Future<void> registerFcmToken(String token, String platform, String timezone) async {
+    try {
+      await _dio.post('/notifications/token', data: {
+        'token': token,
+        'platform': platform,
+        'timezone': timezone,
+      });
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Unregister FCM token from backend
+  Future<void> unregisterFcmToken(String token) async {
+    try {
+      await _dio.delete('/notifications/token', data: {
+        'token': token,
+      });
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Handle Dio errors — returns structured [ApiError].
+  ApiError _handleError(DioException e) {
     if (e.response != null) {
-      final detail = e.response!.data['detail'];
-      if (detail is String) return detail;
-      if (detail is List) return detail.map((d) => d['msg'] ?? d.toString()).join(', ');
-      return 'Server error occurred';
-    } else if (e.type == DioExceptionType.connectionTimeout) {
-      return 'Connection timeout';
-    } else if (e.type == DioExceptionType.receiveTimeout) {
-      return 'Receive timeout';
-    } else {
-      return 'Network error occurred';
+      final statusCode = e.response!.statusCode ?? 500;
+      String message;
+      try {
+        final detail = e.response!.data['detail'];
+        if (detail is String) {
+          message = detail;
+        } else if (detail is List) {
+          message = detail.map((d) => d['msg'] ?? d.toString()).join(', ');
+        } else {
+          message = 'Server error occurred';
+        }
+      } catch (_) {
+        message = 'Server error occurred';
+      }
+
+      if (statusCode == 401) {
+        return ApiError(message: message, type: ApiErrorType.auth, statusCode: statusCode);
+      } else if (statusCode == 400 || statusCode == 422) {
+        return ApiError(message: message, type: ApiErrorType.validation, statusCode: statusCode);
+      } else {
+        return ApiError(message: message, type: ApiErrorType.server, statusCode: statusCode);
+      }
+    }
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+        return const ApiError(message: 'Connection timeout', type: ApiErrorType.timeout);
+      case DioExceptionType.receiveTimeout:
+        return const ApiError(message: 'Receive timeout', type: ApiErrorType.timeout);
+      default:
+        return const ApiError(message: 'Network error occurred', type: ApiErrorType.network);
     }
   }
 }

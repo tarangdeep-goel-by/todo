@@ -20,6 +20,7 @@ class Task {
   final Map<String, dynamic>? aiPlacementJson;
   final String? priority; // high, medium, low
   final double? estimatedHours;
+  final DateTime? archivedAt;
 
   Task({
     required this.id,
@@ -39,6 +40,7 @@ class Task {
     this.aiPlacementJson,
     this.priority,
     this.estimatedHours,
+    this.archivedAt,
   });
 
   /// Create Task from JSON
@@ -64,6 +66,9 @@ class Task {
       aiPlacementJson: json['ai_placement_json'] as Map<String, dynamic>?,
       priority: json['priority'] as String?,
       estimatedHours: (json['estimated_hours'] as num?)?.toDouble(),
+      archivedAt: json['archived_at'] != null
+          ? DateTime.parse(json['archived_at'])
+          : null,
     );
   }
 
@@ -87,6 +92,7 @@ class Task {
       'ai_placement_json': aiPlacementJson,
       'priority': priority,
       'estimated_hours': estimatedHours,
+      'archived_at': archivedAt?.toIso8601String(),
     };
   }
 
@@ -111,6 +117,7 @@ class Task {
     Map<String, dynamic>? aiPlacementJson,
     String? priority,
     Object? estimatedHours = _undefined,
+    Object? archivedAt = _undefined,
   }) {
     return Task(
       id: id ?? this.id,
@@ -130,6 +137,7 @@ class Task {
       aiPlacementJson: aiPlacementJson ?? this.aiPlacementJson,
       priority: priority ?? this.priority,
       estimatedHours: identical(estimatedHours, _undefined) ? this.estimatedHours : estimatedHours as double?,
+      archivedAt: identical(archivedAt, _undefined) ? this.archivedAt : archivedAt as DateTime?,
     );
   }
 
@@ -146,4 +154,5 @@ class Task {
       !dueDate!.isBefore(DateTime.now()) &&
       dueDate!.isBefore(DateTime.now().add(const Duration(hours: 48)));
   bool get isActive => status == 'active';
+  bool get isArchived => archivedAt != null;
 }

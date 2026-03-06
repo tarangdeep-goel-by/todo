@@ -100,16 +100,80 @@ Frontend mutations update `TaskStoreNotifier` immediately, then sync to backend 
 ### 8-Domain Limit
 Categories (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) are enforced in `agent_service.py` (max 8). The frontend dynamically creates domain palettes from backend categories.
 
+## Authentication
+
+Firebase Auth end-to-end. Backend verifies ID tokens, frontend manages auth state.
+
+- **Backend**: `auth.py` → `get_current_user` dependency verifies Firebase ID tokens. Used as `Depends(get_current_user)` on protected routes. Returns user UID string.
+- **Frontend**: `auth_provider.dart` manages Firebase Auth state (login/signup/logout). `auth_interceptor.dart` is a Dio interceptor that attaches `Authorization: Bearer <idToken>` to all API requests.
+- **Rate limiting**: `rate_limit.py` uses `slowapi` — keyed by Bearer token (one bucket per auth session), falls back to client IP.
+
+## Security & Observability
+
+- **Structured logging**: `structured_logging.py` uses `structlog` for JSON-formatted logs with context vars (`trace_id`, `user_id`, `session_id`).
+- **Request logging middleware**: `middleware/request_logging.py` logs `api.request`/`api.response` with trace IDs, duration, status. Skips `/health`, `/docs`.
+- **Trace propagation**: Client sends `X-Request-Id` and `X-Session-Id` headers; middleware sets context vars for downstream log entries.
+
 ## Environment
 
-**Backend** (Docker env in `docker-compose.yml`):
-- `DATABASE_URL`: `postgresql+asyncpg://todo:todo123@postgres:5432/todo_db`
-- `GEMINI_API_KEY`: Google Gemini API key
-- `SEARCH_ENGINE`: `pg_native` (pg_trgm trigram search) or `fuzzy` (RapidFuzz). Code default: `fuzzy`, Docker default: `pg_native`
+**Backend** (Docker env via `.env` file, referenced by `docker-compose.yml` `env_file: .env`):
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | — | Auto-composed in docker-compose from `POSTGRES_*` vars |
+| `GEMINI_API_KEY` | Yes | — | Google Gemini API key |
+| `SARVAM_API_KEY` | Yes | — | Sarvam AI streaming STT |
+| `FIREBASE_PROJECT_ID` | Yes | — | Firebase project for auth |
+| `GOOGLE_APPLICATION_CREDENTIALS` | No | — | Path to Firebase service account JSON (mapped to `/app/firebase-service-account.json` in Docker) |
+| `SEARCH_ENGINE` | No | `fuzzy` (code) / `pg_native` (Docker) | `pg_native` (pg_trgm) or `fuzzy` (RapidFuzz) |
+| `LOG_LEVEL` | No | `INFO` | Structured logging level |
+| `CORS_ORIGINS` | No | `http://localhost:8000,http://localhost:8001` | Comma-separated allowed origins |
+| `APP_ENV` | No | `development` | Environment name |
+| `DEBUG` | No | `False` | Debug mode |
 
 **Frontend** (`frontend/lib/config/constants.dart`):
 - `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)
-- `defaultUserId`: `default-user` (no auth in MVP)
+
+## Worktree Development (MANDATORY for Small+ tasks)
+
+All feature work MUST use git worktrees — never develop directly in `todo/`.
+
+### Setup
+```bash
+git worktree add ../todo-<feature> -b feat/<name> main
+cd ../todo-<feature>/backend
+cp ../todo/backend/.env .env
+cp ../todo/backend/firebase-service-account.json firebase-service-account.json  # COPY, not symlink (Docker can't follow symlinks outside build context)
+```
+
+### Docker Stack — UNIQUE per worktree
+Each worktree MUST use a unique `COMPOSE_PROJECT_NAME`, `WT_NAME`, and ports to avoid collisions with other worktrees.
+
+```bash
+# Use a short, unique prefix per worktree (e.g., todo-pn for push-notifications, todo-e2e for e2e-tests)
+WT_NAME=todo-<abbrev> WT_API_PORT=<unique> WT_PG_PORT=<unique> COMPOSE_PROJECT_NAME=todo-<abbrev> \
+  docker compose -f docker-compose.worktree.yml up --build -d
+
+# Port allocation:
+#   Main stack:  API=8001, PG=5433
+#   Default WT:  API=8002, PG=5434
+#   Second WT:   API=8003, PG=5435
+#   Third WT:    API=8004, PG=5436
+
+# Test with the correct container name:
+docker exec todo-<abbrev>-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
+```
+
+### Cleanup after merge
+```bash
+COMPOSE_PROJECT_NAME=todo-<abbrev> docker compose -f docker-compose.worktree.yml down -v
+git worktree remove ../todo-<feature>
+```
+
+### Common Pitfalls
+- **Symlinks don't work in Docker**: `firebase-service-account.json` must be a real file, not a symlink
+- **COMPOSE_PROJECT_NAME collisions**: If two worktrees use the same project name, one runs the other's code. Always use unique names.
+- **Volume mounts**: Docker mounts the worktree directory (`.:/app`), so code changes reflect immediately
 
 ## Testing Notes
 
@@ -118,3 +182,4 @@ Categories (Career, Finance, Health, Relationships, Growth, Recreation, Home, Co
 - Backend uses real `todo_test` database, not mocks for DB layer
 - Test UUIDs must be valid format (`"00000000-0000-0000-0000-000000000001"`), not arbitrary strings
 - Frontend tests use `mocktail` + `ProviderContainer` with `MockApiService`
+- Current counts: ~175 backend tests, ~342 frontend tests

@@ -4,7 +4,7 @@ import json
 import time
 import uuid
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from services.ramble_service import RambleSession
 from config import get_settings
@@ -23,40 +23,66 @@ MAX_MESSAGE_SIZE = 262_144  # 256 KB per message
 MAX_AUDIO_CHUNK_SIZE = 200_000  # ~5 seconds at 16kHz base64
 VALID_MSG_TYPES = {"start", "audio", "stop"}
 
+# Auth timeout for first message
+WS_AUTH_TIMEOUT_SECONDS = 5
+
 
 @router.websocket("/ws/ramble")
-async def ramble_websocket(websocket: WebSocket, token: str = Query(...)):
+async def ramble_websocket(websocket: WebSocket):
     """
     WebSocket endpoint for streaming ramble mode (transcription-only).
 
-    Auth: Pass Firebase ID token as ?token=xxx query param.
+    Auth: Send {"type": "auth", "token": "<firebase_id_token>"} as first message.
+    Server responds with {"type": "auth_ok"} or closes with 4001.
 
     Client->Server messages (JSON):
+      {"type": "auth", "token": "<firebase_id_token>"}  (MUST be first message)
       {"type": "start"}
       {"type": "audio", "data": "<base64 PCM 16kHz mono>"}
       {"type": "stop"}
 
     Server->Client messages (JSON):
+      {"type": "auth_ok"}
       {"type": "transcription", "text": "..."}
       {"type": "final_transcript", "text": "..."}
       {"type": "status", "status": "connected"|"closed"}
       {"type": "error", "message": "..."}
     """
-    # Auth: Firebase token verified at connect time. Session max is 5 minutes
-    # (RAMBLE_MAX_DURATION_SECONDS=300), well within the 1-hour token lifetime.
-    # No mid-session re-verification needed — risk is negligible.
+    await websocket.accept()
+
+    # Wait for auth message as first message
+    try:
+        raw = await asyncio.wait_for(
+            websocket.receive_text(), timeout=WS_AUTH_TIMEOUT_SECONDS
+        )
+        msg = json.loads(raw)
+        if msg.get("type") != "auth" or "token" not in msg:
+            await websocket.send_json({"type": "auth_error", "message": "Expected auth message"})
+            await websocket.close(code=4001, reason="Invalid auth message")
+            return
+    except asyncio.TimeoutError:
+        await websocket.close(code=4008, reason="Auth timeout")
+        return
+    except (json.JSONDecodeError, Exception):
+        await websocket.close(code=4001, reason="Invalid auth message")
+        return
+
+    # Verify Firebase token
     _init_firebase()
     try:
         from firebase_admin import auth as firebase_auth
-        decoded = firebase_auth.verify_id_token(token)
+        loop = asyncio.get_running_loop()
+        decoded = await loop.run_in_executor(
+            None, firebase_auth.verify_id_token, msg["token"]
+        )
         user_uid = decoded.get("uid", "unknown")
     except Exception as e:
-        logger.warning("ws.error", reason=str(e))
+        logger.warning("ws.auth_failed", reason=str(e))
+        await websocket.send_json({"type": "auth_error", "message": "Authentication failed"})
         await websocket.close(code=4001, reason="Authentication failed")
         return
 
-    # Only accept after auth succeeds
-    await websocket.accept()
+    await websocket.send_json({"type": "auth_ok"})
 
     trace_id_var.set(str(uuid.uuid4()))
     user_id_var.set(user_uid)

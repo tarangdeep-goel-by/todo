@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ${WT_NAME:-todo-wt}-postgres
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-todo_db}
+    ports:
+      - "127.0.0.1:${WT_PG_PORT:-5434}:5432"
+    volumes:
+      - wt_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todo -d todo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: ${WT_NAME:-todo-wt}-backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-todo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-todo_db}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SARVAM_API_KEY: ${SARVAM_API_KEY}
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-False}
+      SEARCH_ENGINE: ${SEARCH_ENGINE:-pg_native}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+    ports:
+      - "${WT_API_PORT:-8002}:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  wt_postgres_data:

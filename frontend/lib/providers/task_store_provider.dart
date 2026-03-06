@@ -4,7 +4,9 @@ import '../models/task_filter.dart';
 import '../models/category.dart';
 import '../config/theme.dart';
 import '../services/app_logger.dart';
+import '../services/analytics_service.dart';
 import 'api_provider.dart';
+import 'local_data_provider.dart';
 import 'task_filter_provider.dart';
 
 // --- State ---
@@ -13,22 +15,30 @@ class TaskStoreState {
   final Map<String, Task> tasks;
   final bool isLoading;
   final String? error;
+  final bool hasLoadedOnce;
+  final Set<String> pendingMutations;
 
   const TaskStoreState({
     this.tasks = const {},
     this.isLoading = false,
     this.error,
+    this.hasLoadedOnce = false,
+    this.pendingMutations = const {},
   });
 
   TaskStoreState copyWith({
     Map<String, Task>? tasks,
     bool? isLoading,
     String? error,
+    bool? hasLoadedOnce,
+    Set<String>? pendingMutations,
   }) {
     return TaskStoreState(
       tasks: tasks ?? this.tasks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
+      pendingMutations: pendingMutations ?? this.pendingMutations,
     );
   }
 }
@@ -40,6 +50,42 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
   final _logger = AppLogger.instance;
 
   TaskStoreNotifier(this._ref) : super(const TaskStoreState());
+
+  /// Load tasks and categories from local SQLite cache.
+  /// Returns instantly if cache is populated; sets hasLoadedOnce.
+  Future<void> loadLocal() async {
+    try {
+      final localData = _ref.read(localDataServiceProvider);
+      final tasks = await localData.getAllTasks();
+      final categories = await localData.getAllCategories();
+      if (tasks.isNotEmpty) {
+        final map = {for (final t in tasks) t.id: t};
+        _logger.info('store.loadLocal', logger: 'TaskStore', data: {'task_count': map.length});
+        state = TaskStoreState(tasks: map, hasLoadedOnce: true);
+        if (categories.isNotEmpty) {
+          _ref.read(categoriesProvider.notifier).state = categories;
+        }
+      }
+    } catch (e) {
+      _logger.error('store.loadLocal.error', logger: 'TaskStore', data: {'error': e.toString()});
+    }
+  }
+
+  /// Refresh the store from local DB (after sync updates local DB).
+  Future<void> refreshFromLocalDb() async {
+    try {
+      final localData = _ref.read(localDataServiceProvider);
+      final tasks = await localData.getAllTasks();
+      final categories = await localData.getAllCategories();
+      final map = {for (final t in tasks) t.id: t};
+      state = TaskStoreState(tasks: map, hasLoadedOnce: true);
+      if (categories.isNotEmpty) {
+        _ref.read(categoriesProvider.notifier).state = categories;
+      }
+    } catch (e) {
+      _logger.error('store.refreshLocal.error', logger: 'TaskStore', data: {'error': e.toString()});
+    }
+  }
 
   /// Fetch all tasks from backend and replace the store.
   /// Paginates through all results (backend max limit=100).
@@ -53,7 +99,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
       const limit = 100;
 
       while (true) {
-        final response = await apiService.getTasksAdvanced(
+        final response = await apiService.getTasksAdvancedWithRetry(
           limit: limit,
           offset: offset,
         );
@@ -64,12 +110,30 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
 
       final map = {for (final t in allTasks) t.id: t};
       _logger.info('store.fetch', logger: 'TaskStore', data: {'task_count': map.length});
-      state = TaskStoreState(tasks: map);
+      state = TaskStoreState(tasks: map, hasLoadedOnce: true);
+
+      // Update analytics user properties
+      AnalyticsService.instance.setUserProperties(taskCount: map.length);
+
+      // Persist tasks to local DB
+      try {
+        final localData = _ref.read(localDataServiceProvider);
+        await localData.upsertTasks(allTasks);
+        await localData.setMeta('last_pull_at', DateTime.now().toIso8601String());
+      } catch (_) {
+        // Non-fatal — cache write failure shouldn't block UI
+      }
 
       // Fetch categories and update provider
       try {
         final categories = await apiService.getCategories();
         _ref.read(categoriesProvider.notifier).state = categories;
+        AnalyticsService.instance.setUserProperties(categoryCount: categories.length);
+        // Persist categories to local DB
+        try {
+          final localData = _ref.read(localDataServiceProvider);
+          await localData.replaceCategories(categories);
+        } catch (_) {}
       } catch (_) {
         // Non-fatal — categories may not be available
       }
@@ -82,6 +146,20 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
   void upsertTask(Task task) {
     _logger.debug('store.upsert', logger: 'TaskStore', data: {'task_id': task.id});
     state = state.copyWith(tasks: {...state.tasks, task.id: task});
+  }
+
+  /// Mark a task as having an in-flight API call.
+  void markPending(String taskId) {
+    state = state.copyWith(
+      pendingMutations: {...state.pendingMutations, taskId},
+    );
+  }
+
+  /// Clear pending state for a task (on success or failure).
+  void clearPending(String taskId) {
+    state = state.copyWith(
+      pendingMutations: Set.from(state.pendingMutations)..remove(taskId),
+    );
   }
 
   /// Remove a task from the store.

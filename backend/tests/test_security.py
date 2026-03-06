@@ -57,7 +57,7 @@ class TestAuditLogging:
         audit_entries = [r for r in caplog.records if r.name == "audit"]
         assert len(audit_entries) >= 1
         entry = json.loads(audit_entries[-1].message)
-        assert entry["event"] == "task.deleted"
+        assert entry["event"] == "task.archived"
         assert entry["resource_id"] == task_id
 
     async def test_category_delete_audit_log(self, test_client, caplog):

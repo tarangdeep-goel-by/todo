@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/task.dart';
-import '../models/api_response.dart';
-import '../providers/api_provider.dart';
+import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'domain_root_view.dart';
@@ -98,7 +98,8 @@ Future<double?> showEstimateDialog(
     ),
   );
 
-  controller.dispose();
+  // Don't dispose controller here — dialog dismiss animation may still
+  // reference it. Let GC handle cleanup of this local controller.
   return result;
 }
 
@@ -274,31 +275,26 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
     store.upsertTask(optimistic);
 
+    // Offline-first: enqueue update for sync
+    final payload = <String, dynamic>{};
+    if (title != null) payload['title'] = title;
+    if (description != null) payload['description'] = description;
+    if (status != null) payload['status'] = status;
+    if (priority != null) payload['priority'] = priority;
+    if (!identical(completedAt, _noChange)) {
+      payload['completed_at'] = completedAt != null ? (completedAt as DateTime).toIso8601String() : null;
+    }
+    if (!identical(dueDate, _noChange)) {
+      payload['due_date'] = dueDate != null ? (dueDate as DateTime).toIso8601String() : null;
+    }
+    if (!identical(estimatedHours, _noChange)) {
+      payload['estimated_hours'] = estimatedHours;
+    }
+
+    final mutation = ref.read(taskMutationServiceProvider);
     try {
-      final apiService = ref.read(apiServiceProvider);
-
-      // Build clear fields set for nullable fields being set to null
-      final clearFields = <String>{};
-      if (!identical(completedAt, _noChange) && completedAt == null) clearFields.add('completed_at');
-      if (!identical(dueDate, _noChange) && dueDate == null) clearFields.add('due_date');
-      if (!identical(estimatedHours, _noChange) && estimatedHours == null) clearFields.add('estimated_hours');
-
-      final updated = await apiService.updateTask(
-        currentTask.id,
-        UpdateTaskRequest(
-          title: title,
-          description: description,
-          status: status,
-          priority: priority,
-          completedAt: (!identical(completedAt, _noChange) && completedAt != null) ? completedAt as DateTime : null,
-          dueDate: (!identical(dueDate, _noChange) && dueDate != null) ? dueDate as DateTime : null,
-          estimatedHours: (!identical(estimatedHours, _noChange) && estimatedHours != null) ? estimatedHours as double : null,
-          clearFields: clearFields,
-        ),
-      );
-      store.upsertTask(updated);
+      await mutation.updateTask(optimistic, payload);
     } catch (e) {
-      // Rollback
       store.upsertTask(currentTask);
       if (mounted) {
         showStyledSnackbar(context,
@@ -383,11 +379,18 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     if (_savingDueDate) return;
 
     final domain = DomainColors.getDomain(task.category, true, ref.read(domainPalettesProvider));
+    final now = DateTime.now();
+    final firstDate = now.subtract(const Duration(days: 365));
+    final lastDate = now.add(const Duration(days: 365 * 3));
+    final initialDate = task.dueDate != null && task.dueDate!.isBefore(firstDate)
+        ? firstDate
+        : (task.dueDate ?? now);
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: task.dueDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
@@ -431,23 +434,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     final store = ref.read(taskStoreProvider.notifier);
 
     if (newStatus == 'completed') {
-      // Optimistic: complete task + all descendants in store
-      store.completeWithDescendants(task.id);
-      try {
-        final apiService = ref.read(apiServiceProvider);
-        await apiService.completeTask(task.id);
-        // Refresh store to sync all descendant statuses from backend
-        await store.fetchAll();
-      } catch (e) {
-        // Rollback via full refresh on failure
-        await store.fetchAll();
-        if (mounted) {
-          showStyledSnackbar(context,
-            message: 'Couldn\'t complete task. Try again.',
-            style: SnackbarStyle.error,
-          );
-        }
-      }
+      // Offline-first: complete task + descendants in store, enqueue for sync
+      final mutation = ref.read(taskMutationServiceProvider);
+      await mutation.completeTask(task);
     } else {
       // Undo: use existing PATCH flow + activate ancestor chain
       await _updateField(task, status: newStatus, completedAt: null);
@@ -518,20 +507,20 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
     store.upsertTask(optimistic);
 
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final clearFields = <String>{};
-      if (result.taskId == null) clearFields.add('parent_id');
+    // Offline-first: enqueue move for sync
+    final payload = <String, dynamic>{};
+    if (result.taskId != null) {
+      payload['parent_id'] = result.taskId;
+    } else {
+      payload['parent_id'] = null;
+    }
+    if (result.category != task.category) {
+      payload['category'] = result.category;
+    }
 
-      final updated = await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          parentId: result.taskId,
-          category: result.category != task.category ? result.category : null,
-          clearFields: clearFields,
-        ),
-      );
-      store.upsertTask(updated);
+    final mutation = ref.read(taskMutationServiceProvider);
+    try {
+      await mutation.updateTask(optimistic, payload);
       if (mounted) {
         final target = result.taskTitle?.capitalize ?? 'top level';
         showStyledSnackbar(context,
@@ -540,7 +529,6 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         );
       }
     } catch (e) {
-      // Rollback
       store.upsertTask(task);
       if (mounted) {
         showStyledSnackbar(context,
@@ -571,18 +559,31 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       return;
     }
     setState(() => _savingSubtask = true);
+    // Offline-first: create with client UUID, enqueue for sync
+    final now = DateTime.now();
+    final optimistic = Task(
+      id: const Uuid().v4(),
+      userId: parentTask.userId,
+      title: title,
+      category: parentTask.category,
+      parentId: parentTask.id,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      transcription: title,
+    );
+    final payload = {
+      'title': title,
+      'category': parentTask.category,
+      'parent_id': parentTask.id,
+      'transcription': title,
+    };
+
     try {
-      final apiService = ref.read(apiServiceProvider);
-      final newTask = await apiService.createTask(CreateTaskRequest(
-        title: title,
-        category: parentTask.category,
-        parentId: parentTask.id,
-        transcription: title,
-      ));
+      final mutation = ref.read(taskMutationServiceProvider);
+      await mutation.createTask(optimistic, payload);
       final store = ref.read(taskStoreProvider.notifier);
-      store.upsertTask(newTask);
-      // Backend activates ancestor chain; mirror optimistically on client
-      store.activateAncestorChain(newTask.id);
+      store.activateAncestorChain(optimistic.id);
       if (mounted) {
         setState(() {
           _addingSubtask = false;

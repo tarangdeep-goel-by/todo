@@ -12,7 +12,7 @@ Voice-first AI-powered hierarchical todo app. Flutter frontend communicates with
 # Run app (physical device — update apiBaseUrl in lib/config/constants.dart to your machine IP)
 flutter run
 
-# Run all tests (125 tests)
+# Run all tests (~342 tests)
 flutter test
 
 # Run single test file
@@ -42,9 +42,9 @@ cd ../backend && ./seed_deep_tasks.sh   # 62-task deep hierarchy
 lib/
 ├── config/        → constants, theme, spacing, typography
 ├── models/        → task, category, task_filter, api_response
-├── providers/     → task_store, task_filter, view_mode, api, recording
+├── providers/     → task_store, task_filter, view_mode, api, recording, auth
 ├── screens/       → home, parent_node_view, flat_task_view, ramble_screen
-├── services/      → api, audio, speech, haptic, onboarding, ramble_websocket
+├── services/      → api, audio, speech, haptic, onboarding, ramble_websocket, auth_interceptor
 ├── utils/         → liquid_focus_scroll, string_extensions
 └── widgets/       → reusable UI components (overlays, sheets, painters, buttons)
 ```
@@ -129,6 +129,7 @@ No router library — single `HomeScreen` entry point with Material navigation:
 | `transcriptionTextProvider` | StateProvider | Partial/final transcript text |
 | `viewModeProvider` | StateProvider | Node / Flat / Calendar toggle |
 | `categoriesProvider` | StateProvider | Backend categories (fetched separately) |
+| `authProvider` | StateNotifierProvider | Firebase Auth state (login/signup/logout) |
 | `audioServiceProvider` | Provider | Native audio recording + amplitude |
 | `rambleWebSocketProvider` | Provider | WebSocket client for `/ws/ramble` |
 
@@ -167,7 +168,7 @@ expect(result, hasLength(1));
 - **API base URL**: Hardcoded in `lib/config/constants.dart` — must match your network IP for physical device testing (Android emulator uses `10.0.2.2`)
 - **8 domains**: Career, Finance, Health, Relationships, Growth, Recreation, Home, Community — domains come from backend categories
 - **Task statuses**: Only `active` and `completed` stored; `overdue` is computed client-side
-- **User ID**: Hardcoded `default-user` (MVP, no auth)
+- **Authentication**: Firebase Auth via `auth_provider.dart` (login/signup/logout state). `auth_interceptor.dart` Dio interceptor attaches `Authorization: Bearer <idToken>` to all requests. `firebase_options.dart` has platform config.
 - **Key widgets**: `RambleScreen` (brain dump + review UI), `AnimatedWaveform` (60fps ticker-driven), `PushToTalkButton` (dual-mode: tap=keyboard, long-press=voice)
 - **Animations**: Custom curves in `AppAnimations` (constants.dart) — `easeOutQuint`, `easeOutCubic`
 - **Theme**: OKLCH color system with 8 domain palettes in `lib/config/theme.dart` (dark mode only, no theme provider)

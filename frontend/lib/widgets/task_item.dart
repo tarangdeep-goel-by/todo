@@ -4,8 +4,8 @@ import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../models/task.dart';
-import '../models/api_response.dart';
 import '../providers/api_provider.dart';
+import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
@@ -13,6 +13,7 @@ import '../widgets/undo_snackbar.dart';
 import '../widgets/styled_snackbar.dart';
 import 'task_detail_overlay.dart';
 import '../utils/string_extensions.dart';
+import '../services/analytics_service.dart';
 
 /// Task item widget for flat view with swipe actions.
 ///
@@ -67,78 +68,59 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       return;
     }
 
-    // Optimistic upsert
+    if (newStatus == 'completed') {
+      AnalyticsService.instance.trackTaskCompleted(
+        source: 'toggle',
+        daysToComplete: DateTime.now().difference(task.createdAt).inDays,
+      );
+    }
+
+    // Offline-first: optimistic update + enqueue for sync
     final optimistic = task.copyWith(
       status: newStatus,
       completedAt: newStatus == 'completed' ? DateTime.now() : null,
     );
-    store.upsertTask(optimistic);
+    final payload = <String, dynamic>{
+      'status': newStatus,
+    };
+    if (newStatus == 'completed') {
+      payload['completed_at'] = DateTime.now().toIso8601String();
+    }
 
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final updated = await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          status: newStatus,
-          completedAt: newStatus == 'completed' ? DateTime.now() : null,
-          clearFields:
-              newStatus == 'active' ? const {'completed_at'} : const {},
-        ),
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.updateTask(optimistic, payload);
+
+    if (context.mounted) {
+      final message = newStatus == 'completed'
+          ? 'Completed: ${task.sentenceTitle}'
+          : 'Restored: ${task.sentenceTitle}';
+      showUndoSnackbar(
+        context,
+        message: message,
+        domain: domain,
+        onUndo: () => _undoToggle(context),
       );
-      store.upsertTask(updated);
-
-      if (context.mounted) {
-        final message = newStatus == 'completed'
-            ? 'Completed: ${task.sentenceTitle}'
-            : 'Restored: ${task.sentenceTitle}';
-        showUndoSnackbar(
-          context,
-          message: message,
-          domain: domain,
-          onUndo: () => _undoToggle(context),
-        );
-      }
-    } catch (e) {
-      store.upsertTask(task);
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Couldn\'t update task. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
     }
   }
 
   Future<void> _undoToggle(BuildContext context) async {
     final task = widget.task;
-    final store = ref.read(taskStoreProvider.notifier);
-    store.upsertTask(task);
-
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.updateTask(
-        task.id,
-        UpdateTaskRequest(
-          status: task.status,
-          completedAt:
-              task.isCompleted ? task.completedAt ?? DateTime.now() : null,
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Couldn\'t undo. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
+    final payload = <String, dynamic>{
+      'status': task.status,
+    };
+    if (task.isCompleted) {
+      payload['completed_at'] = (task.completedAt ?? DateTime.now()).toIso8601String();
     }
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.updateTask(task, payload);
   }
 
   Future<bool> _deleteTask(BuildContext context) async {
     final task = widget.task;
     final store = ref.read(taskStoreProvider.notifier);
+    final paletteMap = ref.read(domainPalettesProvider);
+    final domain =
+        DomainColors.getDomain(task.category, widget.isDark, paletteMap);
 
     HapticService.medium();
 
@@ -153,34 +135,35 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       return true;
     }
 
-    try {
-      // Optimistic remove
-      store.removeTask(task.id);
+    // Offline-first: remove from store + enqueue delete for sync
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.deleteTask(task);
 
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.deleteTask(task.id);
-
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Deleted: ${task.sentenceTitle}',
-          style: SnackbarStyle.success,
-        );
-      }
-
-      return true;
-    } catch (e) {
-      // Rollback
-      store.upsertTask(task);
-      if (context.mounted) {
-        showStyledSnackbar(
-          context,
-          message: 'Couldn\'t delete task. Check your connection.',
-          style: SnackbarStyle.error,
-        );
-      }
-      return false;
+    if (context.mounted) {
+      showUndoSnackbar(
+        context,
+        message: 'Archived: ${task.sentenceTitle}',
+        domain: domain,
+        onUndo: () async {
+          // Restore requires online — calls API directly
+          try {
+            final apiService = ref.read(apiServiceProvider);
+            final restoredTask = await apiService.restoreTask(task.id);
+            store.upsertTask(restoredTask);
+          } catch (_) {
+            if (context.mounted) {
+              showStyledSnackbar(
+                context,
+                message: 'Couldn\'t restore task. Check your connection.',
+                style: SnackbarStyle.error,
+              );
+            }
+          }
+        },
+      );
     }
+
+    return true;
   }
 
   Widget _buildBadge({
@@ -219,6 +202,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
     final isCompleted = task.isCompleted;
     final isOverdue = task.isOverdue;
     final isDueSoon = task.isDueSoon;
+    final isPending = ref.watch(taskStoreProvider).pendingMutations.contains(task.id);
 
     // During tutorial, disable tap/long-press to prevent bypassing swipe steps
     final isTutorialMode = widget.onTutorialStepComplete != null;
@@ -312,6 +296,11 @@ class _TaskItemState extends ConsumerState<TaskItem> {
       ),
     );
 
+    // Subtle syncing indicator — reduced opacity while API call in flight
+    if (isPending) {
+      taskContent = Opacity(opacity: 0.6, child: taskContent);
+    }
+
     // Swipe direction and background based on task status
     final DismissDirection direction;
     final Widget? background;
@@ -354,7 +343,7 @@ class _TaskItemState extends ConsumerState<TaskItem> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSpacing.lg),
         child: const Icon(
-          Icons.delete_forever,
+          Icons.archive_rounded,
           color: AppColors.darkBg,
           size: 32,
         ),

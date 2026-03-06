@@ -2,10 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/app_logger.dart';
+import '../services/analytics_service.dart';
+import '../services/notification_service.dart';
 
 /// Stream of Firebase auth state changes
 final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
+  return FirebaseAuth.instance.authStateChanges().map((user) {
+    if (user != null) {
+      AnalyticsService.instance.setUserId(user.uid);
+    }
+    return user;
+  });
 });
 
 /// Current user's UID (null if not signed in)
@@ -19,36 +26,6 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final _logger = AppLogger.instance;
-
-  Future<UserCredential> signInWithEmail(String email, String password) async {
-    _logger.info('auth.sign_in', logger: 'AuthService', data: {'email': email});
-    try {
-      final cred = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _logger.info('auth.sign_in', logger: 'AuthService', data: {'uid': cred.user?.uid, 'success': true});
-      return cred;
-    } on FirebaseAuthException catch (e) {
-      _logger.warning('auth.sign_in', logger: 'AuthService', data: {'error': e.code});
-      throw _mapFirebaseError(e);
-    }
-  }
-
-  Future<UserCredential> signUpWithEmail(String email, String password) async {
-    _logger.info('auth.sign_up', logger: 'AuthService', data: {'email': email});
-    try {
-      final cred = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _logger.info('auth.sign_up', logger: 'AuthService', data: {'uid': cred.user?.uid, 'success': true});
-      return cred;
-    } on FirebaseAuthException catch (e) {
-      _logger.warning('auth.sign_up', logger: 'AuthService', data: {'error': e.code});
-      throw _mapFirebaseError(e);
-    }
-  }
 
   Future<UserCredential?> signInWithGoogle() async {
     _logger.info('auth.google_sign_in', logger: 'AuthService');
@@ -76,11 +53,13 @@ class AuthService {
   Future<void> signOut() async {
     final uid = _auth.currentUser?.uid;
     _logger.info('auth.sign_out', logger: 'AuthService', data: {'uid': uid});
+    await NotificationService.instance.unregister();
     await Future.wait([
       _auth.signOut(),
       _googleSignIn.signOut(),
     ]);
     _logger.info('auth.sign_out', logger: 'AuthService', data: {'success': true});
+    AnalyticsService.instance.setUserId('');
   }
 
   Future<String?> getIdToken() async {

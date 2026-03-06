@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend/screens/home_screen.dart';
 import 'package:frontend/providers/api_provider.dart';
+import 'package:frontend/providers/auth_provider.dart';
 import 'package:frontend/models/api_response.dart';
 import 'package:frontend/models/category.dart';
 import 'package:frontend/widgets/top_bar.dart';
@@ -30,7 +31,7 @@ void main() {
     });
 
     // Stub API calls that happen in initState via fetchAll()
-    when(() => mockApi.getTasksAdvanced(
+    when(() => mockApi.getTasksAdvancedWithRetry(
           limit: any(named: 'limit'),
           offset: any(named: 'offset'),
         )).thenAnswer((_) async => TaskListResponse(
@@ -46,11 +47,14 @@ void main() {
   });
 
   Widget buildHomeScreen() {
+    final testLocal = createTestLocalData();
     return buildTestApp(
       const HomeScreen(),
       overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
         speechServiceProvider.overrideWithValue(mockSpeech),
+        testLocal.override,
+        currentUserIdProvider.overrideWithValue('test-user'),
       ],
     );
   }

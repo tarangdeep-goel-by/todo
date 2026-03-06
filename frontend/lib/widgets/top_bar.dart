@@ -3,14 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
-import '../providers/auth_provider.dart';
+import '../providers/connectivity_provider.dart';
+import '../providers/local_data_provider.dart';
+import '../providers/task_store_provider.dart';
 
-/// Top bar with app name and sign-out action
+/// Top bar with app name, offline chip, and pending sync badge.
 class TopBar extends ConsumerWidget {
   const TopBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOnline = ref.watch(isOnlineProvider);
+
     return Container(
       height: AppSpacing.topBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -25,50 +29,99 @@ class TopBar extends ConsumerWidget {
               fontSize: 16,
             ),
           ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => _confirmSignOut(context, ref),
-            child: Icon(
-              Icons.logout_rounded,
-              color: AppColors.secondaryText,
-              size: 20,
+          if (!isOnline) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.darkText.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 12,
+                    color: AppColors.darkText.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Offline',
+                    style: AppTypography.metadataText(
+                      color: AppColors.darkText.withValues(alpha: 0.5),
+                    ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
+          const Spacer(),
+          const _PendingSyncBadge(),
         ],
       ),
     );
   }
+}
 
-  void _confirmSignOut(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.navBg,
-        title: Text(
-          'Sign out?',
-          style: TextStyle(color: AppColors.darkText),
-        ),
-        content: Text(
-          'Your tasks will be here when you return.',
-          style: TextStyle(color: AppColors.secondaryText),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.secondaryText),
-            ),
+class _PendingSyncBadge extends ConsumerStatefulWidget {
+  const _PendingSyncBadge();
+
+  @override
+  ConsumerState<_PendingSyncBadge> createState() => _PendingSyncBadgeState();
+}
+
+class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
+  int _pendingCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final localDb = ref.read(localDataServiceProvider);
+    final count = await localDb.pendingMutationCount();
+    if (mounted && count != _pendingCount) {
+      setState(() => _pendingCount = count);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Re-check count when online status or task store changes (sync completed)
+    ref.listen(isOnlineProvider, (_, _) => _refresh());
+    ref.listen(taskStoreProvider, (_, _) => _refresh());
+
+    if (_pendingCount == 0) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.priorityMedium.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.sync_rounded,
+            size: 12,
+            color: AppColors.priorityMedium,
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ref.read(authServiceProvider).signOut();
-            },
-            child: Text(
-              'Sign out',
-              style: TextStyle(color: AppColors.snackbarError.primary),
-            ),
+          const SizedBox(width: 4),
+          Text(
+            '$_pendingCount pending',
+            style: AppTypography.metadataText(
+              color: AppColors.priorityMedium,
+            ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
           ),
         ],
       ),

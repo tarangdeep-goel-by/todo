@@ -10,6 +10,7 @@ class TaskStatus(str, Enum):
     """Task status enum — only real persisted states."""
     ACTIVE = "active"
     COMPLETED = "completed"
+    ARCHIVED = "archived"
 
 
 class WriteTaskStatus(str, Enum):
@@ -89,6 +90,7 @@ class BrainDumpSubmitResponse(BaseModel):
 
 class CreateTaskRequest(BaseModel):
     """Request schema for creating a task."""
+    task_id: Optional[str] = Field(None, description="Client-generated UUID; server uses it as PK if provided")
     title: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = Field(None, max_length=5000)
     category: str = Field(..., max_length=50)
@@ -155,6 +157,7 @@ class TaskResponse(BaseModel):
     updated_at: datetime
     due_date: Optional[datetime]
     completed_at: Optional[datetime]
+    archived_at: Optional[datetime] = None
     transcription: str
     ai_placement: AIPlacement
     priority: Optional[str] = None
@@ -223,6 +226,9 @@ class TaskFilterParams(BaseModel):
     due_date_lte: Optional[datetime] = None
     completed_at_gte: Optional[datetime] = None
     completed_at_lte: Optional[datetime] = None
+
+    # Archive filter
+    include_archived: bool = False
 
     # Sorting
     sort: Optional[str] = "status:asc,due_date:asc,priority:desc,created_at:desc"
@@ -312,3 +318,22 @@ class CategoryResponse(BaseModel):
 class CreateCategoryRequest(BaseModel):
     """Request schema for creating a category."""
     name: str = Field(..., min_length=1, max_length=50)
+
+
+class BulkAction(str, Enum):
+    """Supported bulk actions."""
+    COMPLETE = "complete"
+    ARCHIVE = "archive"
+
+
+class BulkActionRequest(BaseModel):
+    """Request for bulk task operations."""
+    task_ids: List[str] = Field(..., min_length=1, max_length=50)
+    action: BulkAction
+
+
+class BulkActionResponse(BaseModel):
+    """Response for bulk task operations."""
+    success: bool
+    affected_count: int
+    errors: List[str] = []
