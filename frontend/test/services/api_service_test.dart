@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/models/api_response.dart';
+import 'package:frontend/models/api_error.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
@@ -133,7 +134,12 @@ void main() {
         ),
         requestOptions: RequestOptions(path: ''),
       ));
-      expect(() => apiService.getCategories(), throwsA(equals('Server error')));
+      expect(
+        () => apiService.getCategories(),
+        throwsA(isA<ApiError>()
+            .having((e) => e.message, 'message', 'Server error')
+            .having((e) => e.type, 'type', ApiErrorType.server)),
+      );
     });
   });
 
@@ -189,7 +195,7 @@ void main() {
   });
 
   group('Error handling', () {
-    test('detail string', () async {
+    test('detail string maps to ApiError with server type', () async {
       when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
           .thenThrow(DioException(
         response: Response(
@@ -201,11 +207,14 @@ void main() {
       ));
       expect(
         () => apiService.getTasks(),
-        throwsA(equals('Not found')),
+        throwsA(isA<ApiError>()
+            .having((e) => e.message, 'message', 'Not found')
+            .having((e) => e.type, 'type', ApiErrorType.server)
+            .having((e) => e.statusCode, 'statusCode', 404)),
       );
     });
 
-    test('connection timeout', () async {
+    test('connection timeout maps to timeout type', () async {
       when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
           .thenThrow(DioException(
         type: DioExceptionType.connectionTimeout,
@@ -213,7 +222,60 @@ void main() {
       ));
       expect(
         () => apiService.getTasks(),
-        throwsA(equals('Connection timeout')),
+        throwsA(isA<ApiError>()
+            .having((e) => e.message, 'message', 'Connection timeout')
+            .having((e) => e.type, 'type', ApiErrorType.timeout)
+            .having((e) => e.isRetryable, 'isRetryable', true)),
+      );
+    });
+
+    test('401 maps to auth type', () async {
+      when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
+          .thenThrow(DioException(
+        response: Response(
+          data: {'detail': 'Unauthorized'},
+          statusCode: 401,
+          requestOptions: RequestOptions(path: ''),
+        ),
+        requestOptions: RequestOptions(path: ''),
+      ));
+      expect(
+        () => apiService.getTasks(),
+        throwsA(isA<ApiError>()
+            .having((e) => e.type, 'type', ApiErrorType.auth)
+            .having((e) => e.isRetryable, 'isRetryable', false)),
+      );
+    });
+
+    test('422 maps to validation type', () async {
+      when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
+          .thenThrow(DioException(
+        response: Response(
+          data: {'detail': [{'msg': 'invalid field'}]},
+          statusCode: 422,
+          requestOptions: RequestOptions(path: ''),
+        ),
+        requestOptions: RequestOptions(path: ''),
+      ));
+      expect(
+        () => apiService.getTasks(),
+        throwsA(isA<ApiError>()
+            .having((e) => e.type, 'type', ApiErrorType.validation)
+            .having((e) => e.isRetryable, 'isRetryable', false)),
+      );
+    });
+
+    test('no response maps to network type', () async {
+      when(() => mockDio.get('/tasks', queryParameters: any(named: 'queryParameters')))
+          .thenThrow(DioException(
+        type: DioExceptionType.unknown,
+        requestOptions: RequestOptions(path: ''),
+      ));
+      expect(
+        () => apiService.getTasks(),
+        throwsA(isA<ApiError>()
+            .having((e) => e.type, 'type', ApiErrorType.network)
+            .having((e) => e.isRetryable, 'isRetryable', true)),
       );
     });
   });

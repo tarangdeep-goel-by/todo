@@ -249,7 +249,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
       return const LoadingState();
     }
 
-    if (storeState.error != null && domains.isEmpty) {
+    if (storeState.error != null && !storeState.hasLoadedOnce && domains.isEmpty) {
       return EmptyState(
         message: 'Something went wrong loading your tasks.',
         textColor: AppColors.darkText,
