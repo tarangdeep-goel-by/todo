@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/app_logger.dart';
 import '../services/analytics_service.dart';
+import '../services/notification_service.dart';
 
 /// Stream of Firebase auth state changes
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -52,6 +53,7 @@ class AuthService {
   Future<void> signOut() async {
     final uid = _auth.currentUser?.uid;
     _logger.info('auth.sign_out', logger: 'AuthService', data: {'uid': uid});
+    await NotificationService.instance.unregister();
     await Future.wait([
       _auth.signOut(),
       _googleSignIn.signOut(),
