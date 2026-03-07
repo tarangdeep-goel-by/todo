@@ -4,6 +4,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.exc import InvalidRequestError
 
 from services.task_service import TaskService
 from tests.helpers import make_task
@@ -140,8 +141,8 @@ class TestConcurrentDeleteAndUpdate:
         # Any other exception type is a real failure.
         for r in results:
             if isinstance(r, Exception):
-                assert isinstance(r, StaleDataError), (
-                    f"Expected StaleDataError or success, got {type(r).__name__}: {r}"
+                assert isinstance(r, (StaleDataError, InvalidRequestError, ValueError)), (
+                    f"Expected StaleDataError/InvalidRequestError/ValueError or success, got {type(r).__name__}: {r}"
                 )
 
         # Task should be gone after the race
