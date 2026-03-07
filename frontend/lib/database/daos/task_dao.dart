@@ -35,5 +35,12 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
       (update(localTasks)..where((t) => t.id.equals(id)))
           .write(LocalTasksCompanion(pendingSync: Value(pending)));
 
+  Future<int> getTaskCount() async {
+    final count = countAll();
+    final query = selectOnly(localTasks)..addColumns([count]);
+    final result = await query.getSingle();
+    return result.read(count) ?? 0;
+  }
+
   Future<int> deleteAllTasks() => delete(localTasks).go();
 }

@@ -377,8 +377,13 @@ class SyncService {
     final lastPullAt = await _localDb.getMeta('last_pull_at');
     final lastFullSyncAt = await _localDb.getMeta('last_full_sync_at');
 
+    // Force full sync if local DB is empty (e.g. after sign-out/sign-in,
+    // app reinstall, or backend DB restore)
+    final localTaskCount = await _localDb.getTaskCount();
+
     final needsFullSync = lastPullAt == null ||
         lastFullSyncAt == null ||
+        localTaskCount == 0 ||
         DateTime.now().difference(DateTime.parse(lastFullSyncAt)).inHours > 24;
 
     if (needsFullSync) {
