@@ -1,6 +1,8 @@
 """Task service for CRUD operations and tree queries."""
+import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, case, and_, literal
+from sqlalchemy.exc import OperationalError
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
 from models.task import Task
@@ -9,12 +11,49 @@ from utils.fuzzy_matcher import FuzzyMatcher
 import uuid
 
 
+async def _with_deadlock_retry(coro_factory, max_retries=3, base_delay=0.1):
+    """Retry a coroutine on deadlock/serialization errors with exponential backoff.
+
+    Args:
+        coro_factory: Callable that returns a new coroutine each call
+        max_retries: Maximum retry attempts
+        base_delay: Base delay in seconds (multiplied by attempt number)
+    """
+    from structured_logging import get_logger
+    logger = get_logger(__name__)
+
+    for attempt in range(max_retries + 1):
+        try:
+            return await coro_factory()
+        except OperationalError as e:
+            is_deadlock = any(s in str(e).lower() for s in ("deadlock", "serialization", "could not serialize"))
+            if not is_deadlock or attempt == max_retries:
+                raise
+            delay = base_delay * (2 ** attempt)
+            logger.warning("db.deadlock_retry", attempt=attempt + 1, max_retries=max_retries, delay=delay)
+            await asyncio.sleep(delay)
+
+
 class TaskService:
     """Service for task CRUD operations."""
 
-    def __init__(self, db: AsyncSession):
-        """Initialize with database session."""
+    def __init__(self, db: AsyncSession, *, auto_commit: bool = True):
+        """Initialize with database session.
+
+        Args:
+            db: Async database session.
+            auto_commit: If True (default), commit after each mutation.
+                Set to False for batch operations that manage their own transaction.
+        """
         self.db = db
+        self._auto_commit = auto_commit
+
+    async def _maybe_commit(self):
+        """Commit or flush depending on auto_commit mode."""
+        if self._auto_commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
 
     async def create_task(
         self,
@@ -59,7 +98,7 @@ class TaskService:
         if parent_id:
             await self._activate_ancestor_chain(task.id)
 
-        await self.db.commit()
+        await self._maybe_commit()
         await self.db.refresh(task)
         return task
 
@@ -149,7 +188,7 @@ class TaskService:
         if updates.get('status') == 'active':
             await self._activate_ancestor_chain(task_id)
 
-        await self.db.commit()
+        await self._maybe_commit()
         await self.db.refresh(task)
         return task
 
@@ -167,14 +206,17 @@ class TaskService:
         task_ids = [task_id] + [d.id for d in descendants]
 
         now = datetime.now(timezone.utc)
-        await self.db.execute(
-            update(Task)
-            .where(Task.id.in_(task_ids))
-            .where(Task.status == "active")
-            .values(status="completed", completed_at=now)
-        )
-        await self.db.commit()
 
+        async def _do_complete():
+            await self.db.execute(
+                update(Task)
+                .where(Task.id.in_(task_ids))
+                .where(Task.status == "active")
+                .values(status="completed", completed_at=now)
+            )
+            await self._maybe_commit()
+
+        await _with_deadlock_retry(_do_complete)
         return len(task_ids)
 
     async def archive_task_with_children(self, task_id: str) -> int:
@@ -183,14 +225,17 @@ class TaskService:
         all_ids = [task_id] + [d.id for d in descendants]
 
         now = datetime.now(timezone.utc)
-        await self.db.execute(
-            update(Task)
-            .where(Task.id.in_(all_ids))
-            .where(Task.status != "archived")
-            .values(status="archived", archived_at=now)
-        )
-        await self.db.commit()
 
+        async def _do_archive():
+            await self.db.execute(
+                update(Task)
+                .where(Task.id.in_(all_ids))
+                .where(Task.status != "archived")
+                .values(status="archived", archived_at=now)
+            )
+            await self._maybe_commit()
+
+        await _with_deadlock_retry(_do_archive)
         return len(all_ids)
 
     async def restore_task_with_children(self, task_id: str) -> int:
@@ -210,7 +255,7 @@ class TaskService:
             .where(Task.id.in_(all_ids))
             .values(status="active", archived_at=None)
         )
-        await self.db.commit()
+        await self._maybe_commit()
 
         return len(all_ids)
 
@@ -233,7 +278,7 @@ class TaskService:
             .where(Task.archived_at.isnot(None))
             .where(Task.archived_at < cutoff)
         )
-        await self.db.commit()
+        await self._maybe_commit()
         return result.rowcount
 
     async def bulk_complete(self, task_ids: List[str], user_id: str) -> tuple[int, List[str]]:
@@ -285,18 +330,20 @@ class TaskService:
         descendants = await self._get_all_descendants(task_id)
         all_ids = [d.id for d in descendants] + [task_id]
 
-        # Null out parent_id references to avoid FK constraint issues
-        await self.db.execute(
-            update(Task)
-            .where(Task.parent_id.in_(all_ids))
-            .values(parent_id=None)
-        )
-        # Bulk delete all in one query
-        await self.db.execute(
-            sql_delete(Task).where(Task.id.in_(all_ids))
-        )
-        await self.db.commit()
+        async def _do_delete():
+            # Null out parent_id references to avoid FK constraint issues
+            await self.db.execute(
+                update(Task)
+                .where(Task.parent_id.in_(all_ids))
+                .values(parent_id=None)
+            )
+            # Bulk delete all in one query
+            await self.db.execute(
+                sql_delete(Task).where(Task.id.in_(all_ids))
+            )
+            await self._maybe_commit()
 
+        await _with_deadlock_retry(_do_delete)
         return len(all_ids)
 
     async def _get_all_descendants(self, task_id: str) -> List[Task]:
@@ -506,7 +553,7 @@ class TaskService:
             position=position,
         )
         self.db.add(category)
-        await self.db.commit()
+        await self._maybe_commit()
         await self.db.refresh(category)
         return category
 
@@ -517,7 +564,7 @@ class TaskService:
             sql_delete(Category)
             .where(Category.id == category_id, Category.user_id == user_id)
         )
-        await self.db.commit()
+        await self._maybe_commit()
         return result.rowcount > 0
 
     async def get_tasks_advanced(

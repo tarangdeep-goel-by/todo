@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +14,8 @@ import 'services/tracker/firebase_adapter.dart';
 import 'services/tracker/dev_log_adapter.dart';
 import 'services/tracker/test_adapter.dart';
 import 'widgets/reauth_dialog.dart';
+import 'widgets/task_detail_overlay.dart';
+import 'providers/local_data_provider.dart';
 
 /// Compile-time flag: `flutter test --dart-define=TEST_MODE=true`
 const bool kTestMode = bool.fromEnvironment('TEST_MODE', defaultValue: false);
@@ -26,6 +29,33 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // User-friendly error widget instead of red error screen
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text(
+                'Something went wrong',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Please restart the app',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  };
 
   if (!kTestMode) {
     await Firebase.initializeApp(
@@ -50,8 +80,14 @@ void main() async {
       }
     };
 
+    // Initialize local database encryption (key + old-DB cleanup)
+    await initDatabaseEncryption();
+
     // Initialize tracker with Firebase + DevLog
     Tracker.instance.init([FirebaseAdapter(), DevLogAdapter()]);
+
+    // Deep link handler for amble:// URI scheme
+    _initDeepLinks();
   } else {
     // Test mode: use TestAdapter for E2E assertions + DevLog for console visibility
     Tracker.instance.init([TestAdapter.instance, DevLogAdapter()]);
@@ -62,6 +98,31 @@ void main() async {
       child: AmbleApp(),
     ),
   );
+}
+
+void _initDeepLinks() {
+  final appLinks = AppLinks();
+
+  // Handle link when app is already running
+  appLinks.uriLinkStream.listen((Uri uri) {
+    _handleDeepLink(uri);
+  });
+
+  // Handle link that launched the app
+  appLinks.getInitialLink().then((Uri? uri) {
+    if (uri != null) _handleDeepLink(uri);
+  });
+}
+
+void _handleDeepLink(Uri uri) {
+  // Support amble://task/{taskId}
+  if (uri.scheme == 'amble' && uri.pathSegments.length == 2 && uri.pathSegments[0] == 'task') {
+    final taskId = uri.pathSegments[1];
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      showTaskDetailOverlay(context, taskId: taskId);
+    }
+  }
 }
 
 class AmbleApp extends ConsumerWidget {

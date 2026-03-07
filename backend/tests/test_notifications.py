@@ -417,3 +417,40 @@ class TestDueReminderConsolidation:
 
         await db_session.refresh(task)
         assert task.last_notified_at is None
+
+
+# ──────────────── Route-level tests ────────────────
+
+
+class TestNotificationRoutes:
+    """Route-level tests for notification token endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_register_token_route(self, test_client, db_session):
+        """POST /notifications/token creates token."""
+        resp = await test_client.post("/notifications/token", json={
+            "token": "route-test-token",
+            "platform": "ios",
+            "timezone": "America/Chicago",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_delete_token_route(self, test_client, db_session):
+        """DELETE /notifications/token removes token."""
+        await test_client.post("/notifications/token", json={
+            "token": "delete-route-token",
+            "platform": "android",
+            "timezone": "UTC",
+        })
+        resp = await test_client.request("DELETE", "/notifications/token", json={
+            "token": "delete-route-token",
+        })
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_register_missing_fields(self, test_client):
+        """Missing required fields returns 422."""
+        resp = await test_client.post("/notifications/token", json={"token": "x"})
+        assert resp.status_code == 422
