@@ -116,7 +116,9 @@ async def lifespan(app: FastAPI):
             await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=5.0)
         _logger.info("app.pool_warmup", status="ok")
     except Exception as e:
-        _logger.warning("app.pool_warmup", status="failed", error=str(e))
+        _logger.error("app.pool_warmup", status="failed", error=str(e))
+        if settings.app_env == "production":
+            raise RuntimeError(f"Database connection failed at startup: {e}") from e
 
     _logger.info("app.startup", purge_interval_hours=PURGE_INTERVAL_HOURS,
                  notification_interval_minutes=settings.notification_check_interval_minutes)

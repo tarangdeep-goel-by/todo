@@ -2,7 +2,7 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, delete, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from firebase_admin import messaging
@@ -59,16 +59,10 @@ class NotificationService:
                     logger.info("notification.token_unregistered", user_id=user_id, token_prefix=tokens[i].token[:20])
 
         if failed_tokens:
-            for token_val in failed_tokens:
-                await self.session.execute(
-                    select(FcmToken).where(FcmToken.token == token_val)
-                )
-                result = await self.session.execute(
-                    select(FcmToken).where(FcmToken.token == token_val)
-                )
-                token_obj = result.scalar_one_or_none()
-                if token_obj:
-                    await self.session.delete(token_obj)
+            await self.session.execute(
+                delete(FcmToken).where(FcmToken.token.in_(failed_tokens))
+            )
+            await self.session.commit()
 
         sent_count = response.success_count
         logger.info("notification.sent", user_id=user_id, sent=sent_count, failed=len(failed_tokens))
