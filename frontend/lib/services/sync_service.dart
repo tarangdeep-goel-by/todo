@@ -46,6 +46,10 @@ class SyncService {
       await pull();
       await _refreshStore();
       _logger.info('sync.done', logger: 'SyncService');
+    } catch (e) {
+      _logger.error('sync.error', logger: 'SyncService', data: {
+        'error': e.toString(),
+      });
     } finally {
       _syncing = false;
     }
@@ -72,6 +76,10 @@ class SyncService {
         await push();
         await _refreshStore();
       }
+    } catch (e) {
+      _logger.error('sync._pushOnly.error', logger: 'SyncService', data: {
+        'error': e.toString(),
+      });
     } finally {
       _syncing = false;
     }
@@ -331,9 +339,29 @@ class SyncService {
           break;
         } else if (e.statusCode == 404 &&
             (entry.action == 'update' || entry.action == 'complete' || entry.action == 'delete')) {
-          // Task gone on server — harmless, clean up
+          // Task not found on server — check if a pending create exists
+          final pendingForEntity = await _localDb.getMutationsForEntity(entry.entityId);
+          final hasPendingCreate = pendingForEntity.any(
+            (m) => m.action == 'create' && !m.failed && m.id != entry.id,
+          );
           await _localDb.ackMutation(entry.id);
-          await _localDb.deleteTask(entry.entityId);
+          if (hasPendingCreate) {
+            // Create hasn't been pushed yet — keep local task, skip delete
+            _logger.info('sync.push.404_kept', logger: 'SyncService', data: {
+              'entity': entry.entityId, 'reason': 'pending_create_exists',
+            });
+          } else if (await _localDb.isTaskPendingSync(entry.entityId)) {
+            // Task has local changes not yet on server — keep it
+            _logger.info('sync.push.404_kept', logger: 'SyncService', data: {
+              'entity': entry.entityId, 'reason': 'pending_sync',
+            });
+          } else {
+            // Genuinely gone from server and no local pending — safe to delete
+            _logger.info('sync.push.404_deleted', logger: 'SyncService', data: {
+              'entity': entry.entityId,
+            });
+            await _localDb.deleteTask(entry.entityId);
+          }
         } else {
           // Server error — increment retry, stop queue
           await _localDb.incrementRetry(entry.id, e.message);
