@@ -80,6 +80,17 @@ async def lifespan(app: FastAPI):
         "purge": purge_task,
         "notification": notification_task,
     }
+
+    # Warm up connection pool
+    from database import AsyncSessionLocal
+    from sqlalchemy import text
+    try:
+        async with AsyncSessionLocal() as session:
+            await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=5.0)
+        _logger.info("app.pool_warmup", status="ok")
+    except Exception as e:
+        _logger.warning("app.pool_warmup", status="failed", error=str(e))
+
     _logger.info("app.startup", purge_interval_hours=PURGE_INTERVAL_HOURS,
                  notification_interval_minutes=settings.notification_check_interval_minutes)
     yield

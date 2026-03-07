@@ -66,33 +66,37 @@ class AuthService {
     return await _auth.currentUser?.getIdToken();
   }
 
-  /// Map Firebase error codes to user-friendly messages.
   String _mapFirebaseError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'user-not-found':
-        return 'No account found with this email.';
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Incorrect email or password.';
-      case 'email-already-in-use':
-        return 'An account already exists with this email.';
-      case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'invalid-email':
-        return 'Please enter a valid email address.';
-      case 'user-disabled':
-        return 'This account has been disabled.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      case 'network-request-failed':
-        return 'Network error. Check your connection.';
-      case 'operation-not-allowed':
-        return 'This sign-in method is not enabled.';
-      case 'account-exists-with-different-credential':
-        return 'An account already exists with this email using a different sign-in method.';
-      default:
-        return e.message ?? 'Something went wrong. Please try again.';
-    }
+    return mapFirebaseErrorCode(e.code, e.message);
+  }
+}
+
+/// Map Firebase error codes to user-friendly messages.
+String mapFirebaseErrorCode(String code, String? message) {
+  switch (code) {
+    case 'user-not-found':
+      return 'No account found with this email.';
+    case 'wrong-password':
+    case 'invalid-credential':
+      return 'Incorrect email or password.';
+    case 'email-already-in-use':
+      return 'An account already exists with this email.';
+    case 'weak-password':
+      return 'Password must be at least 6 characters.';
+    case 'invalid-email':
+      return 'Please enter a valid email address.';
+    case 'user-disabled':
+      return 'This account has been disabled.';
+    case 'too-many-requests':
+      return 'Too many attempts. Please try again later.';
+    case 'network-request-failed':
+      return 'Network error. Check your connection.';
+    case 'operation-not-allowed':
+      return 'This sign-in method is not enabled.';
+    case 'account-exists-with-different-credential':
+      return 'An account already exists with this email using a different sign-in method.';
+    default:
+      return message ?? 'Something went wrong. Please try again.';
   }
 }
 

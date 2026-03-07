@@ -1,5 +1,7 @@
 """Tests for TaskService (DB integration) — 16 tests."""
 import pytest
+from unittest.mock import AsyncMock, patch, MagicMock
+from sqlalchemy.exc import OperationalError
 from tests.helpers import make_task, make_task_tree
 
 # A valid UUID that won't exist in the DB
@@ -117,3 +119,82 @@ class TestSearchTasks:
         results = await task_service.search_tasks("test-user", "Backend API")
         assert len(results) >= 1
         assert results[0].title == "backend api"
+
+
+class TestDeleteBatchDelete:
+    """Verify delete_task_with_children uses batch delete correctly."""
+
+    async def test_batch_deletes_parent_and_descendants(self, task_service):
+        """Parent + 3 descendants → all gone after batch delete."""
+        # Create a parent with 3 children
+        parent = await task_service.create_task(**make_task(title="Parent"))
+        child1 = await task_service.create_task(**make_task(title="Child 1", parent_id=parent.id))
+        child2 = await task_service.create_task(**make_task(title="Child 2", parent_id=parent.id))
+        grandchild = await task_service.create_task(**make_task(title="Grandchild", parent_id=child1.id))
+
+        count = await task_service.delete_task_with_children(parent.id)
+
+        assert count == 4
+        assert await task_service.get_task(parent.id) is None
+        assert await task_service.get_task(child1.id) is None
+        assert await task_service.get_task(child2.id) is None
+        assert await task_service.get_task(grandchild.id) is None
+
+    async def test_delete_leaf_node(self, task_service):
+        """Deleting a leaf node (no children) works correctly."""
+        leaf = await task_service.create_task(**make_task(title="Leaf"))
+        count = await task_service.delete_task_with_children(leaf.id)
+        assert count == 1
+        assert await task_service.get_task(leaf.id) is None
+
+
+class TestDeadlockRetry:
+    """Test the _with_deadlock_retry helper."""
+
+    async def test_succeeds_on_first_try(self):
+        from services.task_service import _with_deadlock_retry
+
+        call_count = 0
+
+        async def factory():
+            nonlocal call_count
+            call_count += 1
+            return "ok"
+
+        result = await _with_deadlock_retry(factory)
+        assert result == "ok"
+        assert call_count == 1
+
+    async def test_retries_on_deadlock(self):
+        from services.task_service import _with_deadlock_retry
+
+        call_count = 0
+
+        async def factory():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise OperationalError("statement", {}, Exception("deadlock detected"))
+            return "ok"
+
+        result = await _with_deadlock_retry(factory, base_delay=0.01)
+        assert result == "ok"
+        assert call_count == 2
+
+    async def test_raises_non_deadlock_error(self):
+        from services.task_service import _with_deadlock_retry
+
+        async def factory():
+            raise OperationalError("statement", {}, Exception("connection refused"))
+
+        with pytest.raises(OperationalError):
+            await _with_deadlock_retry(factory, base_delay=0.01)
+
+    async def test_raises_after_max_retries(self):
+        from services.task_service import _with_deadlock_retry
+
+        async def factory():
+            raise OperationalError("statement", {}, Exception("deadlock detected"))
+
+        with pytest.raises(OperationalError):
+            await _with_deadlock_retry(factory, max_retries=2, base_delay=0.01)
