@@ -9,6 +9,8 @@ class LocalDataService {
 
   LocalDataService(this._db);
 
+  Future<void> close() => _db.close();
+
   // --- Tasks ---
 
   Future<List<Task>> getAllTasks() async {

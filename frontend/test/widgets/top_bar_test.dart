@@ -22,11 +22,13 @@ class _StubConnectivityService extends ConnectivityService {
 
 void main() {
   group('TopBar', () {
-    late ({dynamic service, dynamic override}) localData;
+    late ({dynamic service, dynamic override, Future<void> Function() close}) localData;
 
     setUp(() {
       localData = createTestLocalData();
     });
+
+    tearDown(() => localData.close());
 
     List<Override> overrides() => [
       localData.override,
