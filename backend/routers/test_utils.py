@@ -37,20 +37,32 @@ async def reset_test_data(
     result_cats = await db.execute(
         delete(Category).where(Category.user_id == user_id)
     )
-    # Delete all FCM tokens for this user
-    result_tokens = await db.execute(
-        delete(FcmToken).where(FcmToken.user_id == user_id)
-    )
+    # Delete all FCM tokens for this user (table may not exist yet)
+    tokens_deleted = 0
+    try:
+        result_tokens = await db.execute(
+            delete(FcmToken).where(FcmToken.user_id == user_id)
+        )
+        tokens_deleted = result_tokens.rowcount
+    except Exception:
+        await db.rollback()
+        # Re-delete tasks and categories since rollback undid them
+        result_tasks = await db.execute(
+            delete(Task).where(Task.user_id == user_id)
+        )
+        result_cats = await db.execute(
+            delete(Category).where(Category.user_id == user_id)
+        )
     await db.commit()
 
     logger.info("test.reset", user_id=user_id,
                 tasks_deleted=result_tasks.rowcount,
                 categories_deleted=result_cats.rowcount,
-                tokens_deleted=result_tokens.rowcount)
+                tokens_deleted=tokens_deleted)
 
     return {
         "status": "reset",
         "tasks_deleted": result_tasks.rowcount,
         "categories_deleted": result_cats.rowcount,
-        "tokens_deleted": result_tokens.rowcount,
+        "tokens_deleted": tokens_deleted,
     }
