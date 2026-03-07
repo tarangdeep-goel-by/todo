@@ -15,6 +15,7 @@ class SyncService {
   final LocalDataService _localDb;
   final ConnectivityService _connectivity;
   final Future<void> Function() _refreshStore;
+  final void Function(String entityId, String action, String error)? _onMutationFailed;
   final _logger = AppLogger.instance;
 
   bool _syncing = false;
@@ -26,10 +27,12 @@ class SyncService {
     required LocalDataService localDb,
     required ConnectivityService connectivity,
     required Future<void> Function() refreshStore,
+    void Function(String entityId, String action, String error)? onMutationFailed,
   })  : _api = api,
         _localDb = localDb,
         _connectivity = connectivity,
-        _refreshStore = refreshStore;
+        _refreshStore = refreshStore,
+        _onMutationFailed = onMutationFailed;
 
   bool get isSyncing => _syncing;
 
@@ -319,12 +322,23 @@ class SyncService {
           // Offline / unreachable — stop queue, don't burn retries
           break;
         } else if (e.type == ApiErrorType.validation) {
-          // Permanent failure — mark failed
+          // Permanent failure — mark failed and clean up phantom data
           await _localDb.failMutation(entry.id, e.message);
           if (entry.action == 'create') {
+            // Remove phantom task from local DB
+            await _localDb.deleteTask(entry.entityId);
             // Fail all dependent mutations for this entity
             await _localDb.failAllForEntity(entry.entityId);
+          } else if (entry.action == 'update') {
+            // Revert to server version
+            try {
+              final serverTask = await _api.getTask(entry.entityId);
+              await _localDb.upsertTask(serverTask, pendingSync: false);
+            } catch (_) {
+              // If we can't fetch server version, leave as-is
+            }
           }
+          _onMutationFailed?.call(entry.entityId, entry.action, e.message);
         } else if (e.type == ApiErrorType.auth) {
           // Auth failure — abort push entirely
           _logger.error('sync.push.auth_abort', logger: 'SyncService');
@@ -339,6 +353,10 @@ class SyncService {
           await _localDb.incrementRetry(entry.id, e.message);
           if (entry.retryCount + 1 >= 5) {
             await _localDb.failMutation(entry.id, 'Max retries exceeded: ${e.message}');
+            if (entry.action == 'create') {
+              await _localDb.deleteTask(entry.entityId);
+            }
+            _onMutationFailed?.call(entry.entityId, entry.action, 'Max retries exceeded');
           } else {
             break; // Stop processing — preserve FIFO ordering
           }

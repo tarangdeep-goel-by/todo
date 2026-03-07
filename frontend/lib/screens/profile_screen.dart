@@ -6,9 +6,12 @@ import 'package:intl/intl.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
+import '../providers/api_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
+import '../providers/task_filter_provider.dart';
+import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
@@ -219,9 +222,15 @@ class ProfileScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(); // Close profile screen
+              // Full cleanup before sign out
               ref.read(syncServiceProvider).stopPeriodicSync();
+              ref.read(audioServiceProvider).dispose();
               await ref.read(localDataServiceProvider).clearAll();
               await ref.read(authServiceProvider).signOut();
+              // Invalidate providers to reset state
+              ref.invalidate(taskStoreProvider);
+              ref.invalidate(categoriesProvider);
+              ref.invalidate(taskFilterProvider);
             },
             child: Text(
               'Sign out',

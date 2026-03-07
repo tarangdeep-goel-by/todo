@@ -1,4 +1,5 @@
 """Categories API router."""
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -48,15 +49,16 @@ async def create_category(
 @limiter.limit("10/minute")
 async def delete_category(
     request: Request,
-    category_id: str,
+    category_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a category record."""
+    cid = str(category_id)
     task_service = TaskService(db)
-    deleted = await task_service.delete_category(category_id, user_id)
+    deleted = await task_service.delete_category(cid, user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Category not found")
-    audit_log("category.deleted", user_id, category_id)
-    logger.info("category.delete", category_id=category_id)
+    audit_log("category.deleted", user_id, cid)
+    logger.info("category.delete", category_id=cid)
     return {"success": True, "message": "Category deleted"}

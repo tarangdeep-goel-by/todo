@@ -172,6 +172,16 @@ class ApiService {
     });
   }
 
+  /// Get a single task by ID
+  Future<Task> getTask(String taskId) async {
+    try {
+      final response = await _dio.get('/tasks/$taskId');
+      return Task.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Create task manually
   Future<Task> createTask(CreateTaskRequest request) async {
     try {
