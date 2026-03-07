@@ -74,11 +74,14 @@ class TaskMutationService {
 /// Test-mode mutation service: optimistic update + direct API call (no local DB).
 class TestMutationService extends TaskMutationService {
   final ApiService _api;
+  final Future<void> Function()? _onCategoriesChanged;
 
   TestMutationService({
     required super.store,
     required ApiService api,
+    Future<void> Function()? onCategoriesChanged,
   })  : _api = api,
+        _onCategoriesChanged = onCategoriesChanged,
         super(localDb: _NoOpLocalDb());
 
   @override
@@ -95,6 +98,8 @@ class TestMutationService extends TaskMutationService {
       transcription: createPayload['transcription'] as String? ?? createPayload['title'] as String,
     ));
     _store.upsertTask(created);
+    // Backend auto-creates categories — refresh so node view picks them up
+    await _onCategoriesChanged?.call();
   }
 
   @override

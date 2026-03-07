@@ -93,20 +93,26 @@ async def ramble_websocket(websocket: WebSocket):
         await websocket.close(code=4001, reason="Invalid auth message")
         return
 
-    # Verify Firebase token
-    _init_firebase()
-    try:
-        from firebase_admin import auth as firebase_auth
-        loop = asyncio.get_running_loop()
-        decoded = await loop.run_in_executor(
-            None, firebase_auth.verify_id_token, msg["token"]
-        )
-        user_uid = decoded.get("uid", "unknown")
-    except Exception as e:
-        logger.warning("ws.auth_failed", reason=str(e))
-        await websocket.send_json({"type": "auth_error", "message": "Authentication failed"})
-        await websocket.close(code=4001, reason="Authentication failed")
-        return
+    # Verify token
+    settings = get_settings()
+    token = msg["token"]
+    if settings.app_env == "test" and token == "test-token-e2e":
+        user_uid = "test-user-e2e"
+        logger.warning("ws.test_token_used", uid=user_uid)
+    else:
+        _init_firebase()
+        try:
+            from firebase_admin import auth as firebase_auth
+            loop = asyncio.get_running_loop()
+            decoded = await loop.run_in_executor(
+                None, firebase_auth.verify_id_token, token
+            )
+            user_uid = decoded.get("uid", "unknown")
+        except Exception as e:
+            logger.warning("ws.auth_failed", reason=str(e))
+            await websocket.send_json({"type": "auth_error", "message": "Authentication failed"})
+            await websocket.close(code=4001, reason="Authentication failed")
+            return
 
     await websocket.send_json({"type": "auth_ok"})
 
