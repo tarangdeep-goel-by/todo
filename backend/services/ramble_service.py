@@ -95,8 +95,8 @@ class RambleSession:
         if self._context_manager and self._ws:
             try:
                 await self._context_manager.__aexit__(None, None, None)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("ramble.cleanup_error", error=str(e))
         self._ws = None
         self._context_manager = None
 

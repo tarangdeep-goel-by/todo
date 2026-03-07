@@ -17,6 +17,9 @@
 # App Links (deep linking)
 -keep class com.llfbandit.app_links.** { *; }
 
+# Play Core (referenced by Flutter deferred components)
+-dontwarn com.google.android.play.core.**
+
 # Keep Dart annotations
 -keepattributes *Annotation*
 

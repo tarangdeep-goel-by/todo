@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -74,13 +75,40 @@ class AudioService {
     return path;
   }
 
-  /// Cancel recording and delete file
+  /// Cancel recording and delete the temp file
   Future<void> cancelRecording() async {
     await _amplitudeSubscription?.cancel();
     _amplitudeSubscription = null;
     _waveformData.clear();
 
-    await _recorder.stop();
+    final path = await _recorder.stop();
+    if (path != null) {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+  }
+
+  /// Delete old recording files (older than 24 hours).
+  static Future<void> cleanupOldRecordings() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final audioDir = Directory('${directory.path}/${AppConstants.audioFolderName}');
+      if (!await audioDir.exists()) return;
+
+      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+      await for (final entity in audioDir.list()) {
+        if (entity is File) {
+          final stat = await entity.stat();
+          if (stat.modified.isBefore(cutoff)) {
+            await entity.delete();
+          }
+        }
+      }
+    } catch (_) {
+      // Non-critical — ignore cleanup errors
+    }
   }
 
   /// Start streaming raw PCM audio (16kHz, mono, 16-bit).

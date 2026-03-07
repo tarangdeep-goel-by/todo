@@ -15,7 +15,7 @@ class TrackerEvent {
 
   /// Convenience: event type as snake_case string for adapters.
   String get typeName => switch (type) {
-    TrackerEventType.screenView => 'screen_view',
+    TrackerEventType.screenView => 'app_screen_view',
     TrackerEventType.tap => 'tap',
     TrackerEventType.impression => 'impression',
     TrackerEventType.outcome => 'outcome',

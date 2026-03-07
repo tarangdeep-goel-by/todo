@@ -155,6 +155,11 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
     );
   }
 
+  /// Reset to empty state (used during sign-out).
+  void clear() {
+    state = const TaskStoreState();
+  }
+
   /// Clear pending state for a task (on success or failure).
   void clearPending(String taskId) {
     state = state.copyWith(

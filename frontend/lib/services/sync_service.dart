@@ -15,6 +15,7 @@ class SyncService {
   final LocalDataService _localDb;
   final ConnectivityService _connectivity;
   final Future<void> Function() _refreshStore;
+  final void Function(String entityId, String action, String error)? _onMutationFailed;
   final _logger = AppLogger.instance;
 
   bool _syncing = false;
@@ -26,10 +27,12 @@ class SyncService {
     required LocalDataService localDb,
     required ConnectivityService connectivity,
     required Future<void> Function() refreshStore,
+    void Function(String entityId, String action, String error)? onMutationFailed,
   })  : _api = api,
         _localDb = localDb,
         _connectivity = connectivity,
-        _refreshStore = refreshStore;
+        _refreshStore = refreshStore,
+        _onMutationFailed = onMutationFailed;
 
   bool get isSyncing => _syncing;
 
@@ -46,6 +49,10 @@ class SyncService {
       await pull();
       await _refreshStore();
       _logger.info('sync.done', logger: 'SyncService');
+    } catch (e) {
+      _logger.error('sync.error', logger: 'SyncService', data: {
+        'error': e.toString(),
+      });
     } finally {
       _syncing = false;
     }
@@ -72,6 +79,10 @@ class SyncService {
         await push();
         await _refreshStore();
       }
+    } catch (e) {
+      _logger.error('sync._pushOnly.error', logger: 'SyncService', data: {
+        'error': e.toString(),
+      });
     } finally {
       _syncing = false;
     }
@@ -319,26 +330,61 @@ class SyncService {
           // Offline / unreachable — stop queue, don't burn retries
           break;
         } else if (e.type == ApiErrorType.validation) {
-          // Permanent failure — mark failed
+          // Permanent failure — mark failed and clean up phantom data
           await _localDb.failMutation(entry.id, e.message);
           if (entry.action == 'create') {
+            // Remove phantom task from local DB
+            await _localDb.deleteTask(entry.entityId);
             // Fail all dependent mutations for this entity
             await _localDb.failAllForEntity(entry.entityId);
+          } else if (entry.action == 'update') {
+            // Revert to server version
+            try {
+              final serverTask = await _api.getTask(entry.entityId);
+              await _localDb.upsertTask(serverTask, pendingSync: false);
+            } catch (_) {
+              // If we can't fetch server version, leave as-is
+            }
           }
+          _onMutationFailed?.call(entry.entityId, entry.action, e.message);
         } else if (e.type == ApiErrorType.auth) {
           // Auth failure — abort push entirely
           _logger.error('sync.push.auth_abort', logger: 'SyncService');
           break;
         } else if (e.statusCode == 404 &&
             (entry.action == 'update' || entry.action == 'complete' || entry.action == 'delete')) {
-          // Task gone on server — harmless, clean up
+          // Task not found on server — check if a pending create exists
+          final pendingForEntity = await _localDb.getMutationsForEntity(entry.entityId);
+          final hasPendingCreate = pendingForEntity.any(
+            (m) => m.action == 'create' && !m.failed && m.id != entry.id,
+          );
           await _localDb.ackMutation(entry.id);
-          await _localDb.deleteTask(entry.entityId);
+          if (hasPendingCreate) {
+            // Create hasn't been pushed yet — keep local task, skip delete
+            _logger.info('sync.push.404_kept', logger: 'SyncService', data: {
+              'entity': entry.entityId, 'reason': 'pending_create_exists',
+            });
+          } else if (await _localDb.isTaskPendingSync(entry.entityId)) {
+            // Task has local changes not yet on server — keep it
+            _logger.info('sync.push.404_kept', logger: 'SyncService', data: {
+              'entity': entry.entityId, 'reason': 'pending_sync',
+            });
+          } else {
+            // Genuinely gone from server and no local pending — safe to delete
+            _logger.info('sync.push.404_deleted', logger: 'SyncService', data: {
+              'entity': entry.entityId,
+            });
+            await _localDb.deleteTask(entry.entityId);
+          }
         } else {
           // Server error — increment retry, stop queue
           await _localDb.incrementRetry(entry.id, e.message);
           if (entry.retryCount + 1 >= 5) {
             await _localDb.failMutation(entry.id, 'Max retries exceeded: ${e.message}');
+            if (entry.action == 'create') {
+              await _localDb.deleteTask(entry.entityId);
+            }
+            _onMutationFailed?.call(entry.entityId, entry.action, 'Max retries exceeded');
           } else {
             break; // Stop processing — preserve FIFO ordering
           }
@@ -359,8 +405,13 @@ class SyncService {
     final lastPullAt = await _localDb.getMeta('last_pull_at');
     final lastFullSyncAt = await _localDb.getMeta('last_full_sync_at');
 
+    // Force full sync if local DB is empty (e.g. after sign-out/sign-in,
+    // app reinstall, or backend DB restore)
+    final localTaskCount = await _localDb.getTaskCount();
+
     final needsFullSync = lastPullAt == null ||
         lastFullSyncAt == null ||
+        localTaskCount == 0 ||
         DateTime.now().difference(DateTime.parse(lastFullSyncAt)).inHours > 24;
 
     if (needsFullSync) {

@@ -155,8 +155,31 @@ void main() {
       expect(pending, isEmpty); // Failed entries are excluded from getPending
     });
 
-    test('404 on update removes task from local DB', () async {
+    test('404 on update keeps pending-sync task in local DB', () async {
       await localDb.upsertTask(makeTask(), pendingSync: true);
+      await localDb.enqueueMutation(
+        entityType: 'task', entityId: 'task-1',
+        action: 'update',
+        payload: {'title': 'Updated'},
+      );
+
+      when(() => mockApi.updateTask('task-1', any())).thenThrow(
+        const ApiError(message: 'Not found', type: ApiErrorType.server, statusCode: 404),
+      );
+
+      await syncService.push();
+
+      // Task kept because it has pendingSync=true
+      final localTask = await localDb.getTaskById('task-1');
+      expect(localTask, isNotNull);
+
+      // Mutation was acked (removed from queue)
+      final pending = await localDb.getPendingMutations();
+      expect(pending, isEmpty);
+    });
+
+    test('404 on update deletes non-pending task from local DB', () async {
+      await localDb.upsertTask(makeTask(), pendingSync: false);
       await localDb.enqueueMutation(
         entityType: 'task', entityId: 'task-1',
         action: 'update',

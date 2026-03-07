@@ -16,13 +16,24 @@ _firebase_app = None
 
 
 def _init_firebase():
-    """Initialize Firebase Admin SDK (once)."""
+    """Initialize Firebase Admin SDK (once).
+
+    Credential resolution order:
+    1. GOOGLE_APPLICATION_CREDENTIALS — path to service account JSON file (local/Docker)
+    2. FIREBASE_CREDENTIALS_JSON — base64-encoded service account JSON (Render/Heroku)
+    3. Project ID only — for environments with ADC or Firebase emulator
+    """
     global _firebase_app
     if _firebase_app is not None:
         return
     settings = get_settings()
     if settings.google_application_credentials:
         cred = credentials.Certificate(settings.google_application_credentials)
+        _firebase_app = firebase_admin.initialize_app(cred)
+    elif settings.firebase_credentials_json:
+        import base64, json
+        sa_dict = json.loads(base64.b64decode(settings.firebase_credentials_json))
+        cred = credentials.Certificate(sa_dict)
         _firebase_app = firebase_admin.initialize_app(cred)
     else:
         # Use project ID only (for environments where ADC or emulator is available)

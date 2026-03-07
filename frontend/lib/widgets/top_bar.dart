@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/spacing.dart';
@@ -73,6 +74,8 @@ class _PendingSyncBadge extends ConsumerStatefulWidget {
 
 class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
   int _pendingCount = 0;
+  int _displayCount = 0;
+  Timer? _showTimer;
 
   @override
   void initState() {
@@ -80,11 +83,30 @@ class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
     _refresh();
   }
 
+  @override
+  void dispose() {
+    _showTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     final localDb = ref.read(localDataServiceProvider);
     final count = await localDb.pendingMutationCount();
-    if (mounted && count != _pendingCount) {
-      setState(() => _pendingCount = count);
+    if (!mounted || count == _pendingCount) return;
+    _pendingCount = count;
+
+    if (count == 0) {
+      // Hide immediately when sync completes
+      _showTimer?.cancel();
+      if (_displayCount != 0) setState(() => _displayCount = 0);
+    } else {
+      // Debounce showing — only display if still pending after 600ms
+      _showTimer?.cancel();
+      _showTimer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted && _pendingCount > 0) {
+          setState(() => _displayCount = _pendingCount);
+        }
+      });
     }
   }
 
@@ -100,7 +122,7 @@ class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
     ref.listen(isOnlineProvider, (_, _) => _refresh());
     ref.listen(taskStoreProvider, (_, _) => _refresh());
 
-    if (_pendingCount == 0) return const SizedBox.shrink();
+    if (_displayCount == 0) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -118,7 +140,7 @@ class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
           ),
           const SizedBox(width: 4),
           Text(
-            '$_pendingCount pending',
+            '$_displayCount pending',
             style: AppTypography.metadataText(
               color: AppColors.priorityMedium,
             ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),

@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from routers import agent, tasks, categories, ramble, logs, notifications, test_utils
+from routers import account, agent, tasks, categories, ramble, logs, notifications, test_utils
 from config import get_settings
 from rate_limit import limiter
 from structured_logging import get_logger
@@ -55,18 +55,45 @@ async def _purge_archived_loop():
 
 
 async def _notification_loop():
-    """Background task: check for due tasks and send push notifications."""
+    """Background task: check for due tasks and send push notifications.
+    Uses Redis distributed lock when available to prevent duplicate sends across replicas."""
     from database import AsyncSessionLocal
     from services.notification_service import NotificationService
+
+    # Set up Redis lock if configured
+    redis_client = None
+    if settings.redis_url:
+        try:
+            import redis.asyncio as aioredis
+            redis_client = aioredis.from_url(settings.redis_url)
+        except Exception as e:
+            _logger.warning("notification.redis_unavailable", error=str(e))
 
     while True:
         await asyncio.sleep(NOTIFICATION_CHECK_INTERVAL)
         try:
-            async with AsyncSessionLocal() as session:
-                svc = NotificationService(session)
-                count = await svc.check_and_send_due_reminders()
-                if count:
-                    _logger.info("notification.cycle_complete", tasks_notified=count)
+            # If Redis available, acquire distributed lock to prevent duplicate sends
+            if redis_client:
+                lock = redis_client.lock("notification_worker", timeout=60)
+                acquired = await lock.acquire(blocking=False)
+                if not acquired:
+                    _logger.debug("notification.lock_skipped", reason="another instance holds lock")
+                    continue
+            else:
+                lock = None
+
+            try:
+                async with AsyncSessionLocal() as session:
+                    svc = NotificationService(session)
+                    count = await svc.check_and_send_due_reminders()
+                    if count:
+                        _logger.info("notification.cycle_complete", tasks_notified=count)
+            finally:
+                if lock:
+                    try:
+                        await lock.release()
+                    except Exception:
+                        pass
         except Exception as e:
             _logger.error("notification.cycle_error", error=str(e))
 
@@ -175,6 +202,7 @@ app.include_router(categories.router, prefix="/api")
 app.include_router(ramble.router)  # No /api prefix — WebSocket at /ws/ramble
 app.include_router(logs.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(account.router, prefix="/api")
 
 # Test utilities (guarded by APP_ENV != production)
 if settings.app_env != "production":

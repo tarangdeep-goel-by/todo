@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -45,6 +46,7 @@ void main() {
     when(() => mockApi.getCategories())
         .thenAnswer((_) async => <Category>[]);
     when(() => mockSpeech.initialize()).thenAnswer((_) async => true);
+    when(() => mockApi.dio).thenReturn(Dio());
   });
 
   tearDown(() async {

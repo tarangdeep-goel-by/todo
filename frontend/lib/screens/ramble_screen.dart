@@ -9,6 +9,7 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/api_response.dart';
+import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/recording_provider.dart';
@@ -620,7 +621,17 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                   AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm,
                 ),
                 child: Text(
-                  'Which task did you mean?',
+                  proposal.action == 'edit' &&
+                          proposal.changes != null &&
+                          proposal.changes!.containsKey('parent_id')
+                      ? 'Which task to move?'
+                      : proposal.action == 'edit'
+                          ? 'Which task to edit?'
+                          : proposal.action == 'complete'
+                              ? 'Which task to complete?'
+                              : proposal.action == 'delete'
+                                  ? 'Which task to delete?'
+                                  : 'Which task did you mean?',
                   style: AppTypography.metadataText(color: AppColors.darkText)
                       .copyWith(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
@@ -1082,6 +1093,438 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
     bool isSelected,
     DomainPalette domain,
   ) {
+    // Use before→after layout for edit actions with changes
+    final isEditAction = proposal.action == 'edit' &&
+        proposal.changes != null &&
+        proposal.changes!.isNotEmpty;
+
+    if (isEditAction) {
+      return _buildEditProposalCard(proposal, isSelected, domain);
+    }
+    return _buildSimpleProposalCard(proposal, isSelected, domain);
+  }
+
+  /// Before → After card for edit/move proposals
+  Widget _buildEditProposalCard(
+    BrainDumpTaskProposal proposal,
+    bool isSelected,
+    DomainPalette domain,
+  ) {
+    final tasks = ref.read(taskStoreProvider).tasks;
+    final matchedTask = proposal.matchedTaskId != null
+        ? tasks[proposal.matchedTaskId]
+        : null;
+    final changes = proposal.changes!;
+    final paletteMap = ref.read(domainPalettesProvider);
+
+    // Resolve "before" parent name
+    String? beforeParentName;
+    if (matchedTask?.parentId != null) {
+      beforeParentName = tasks[matchedTask!.parentId]?.title;
+    }
+
+    // Resolve "after" parent name for reparent
+    String? afterParentName;
+    if (changes.containsKey('parent_id')) {
+      final newParentId = changes['parent_id'] as String?;
+      if (newParentId == null) {
+        afterParentName = 'Top level';
+      } else {
+        afterParentName = tasks[newParentId]?.title ?? 'Unknown';
+      }
+    }
+
+    // Determine after category domain for coloring
+    final afterCategory = changes['category'] as String? ?? proposal.category;
+    final afterDomain = DomainColors.getDomain(afterCategory, true, paletteMap);
+
+    return GestureDetector(
+      onTap: () => _editProposal(proposal),
+      onLongPress: () => _toggleProposal(proposal.id),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: isSelected ? 1.0 : 0.4,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: domain.surface,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            border: Border.all(
+              color: domain.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row: action label + checkbox
+              Row(
+                children: [
+                  _buildChip(
+                    _actionLabel(proposal.action),
+                    _actionColor(proposal.action, domain),
+                  ),
+                  if (proposal.confidence != null) ...[
+                    const SizedBox(width: 6),
+                    _buildChip(
+                      '${(proposal.confidence! * 100).round()}%',
+                      _confidenceColor(proposal.confidence!),
+                    ),
+                  ],
+                  if (proposal.alternateMatches != null &&
+                      proposal.alternateMatches!.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    _buildChip(
+                      '\u26A0 ${proposal.alternateMatches!.length + 1} matches',
+                      AppColors.dueSoon,
+                    ),
+                  ],
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => _toggleProposal(proposal.id),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? domain.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: domain.primary.withValues(
+                              alpha: isSelected ? 1.0 : 0.4,
+                            ),
+                            width: 2,
+                          ),
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check_rounded,
+                                size: 14,
+                                color: domain.textOnPrimary,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Before → After layout (vertical)
+              _buildBeforeAfterMini(
+                label: 'BEFORE',
+                title: matchedTask?.title ?? proposal.content,
+                category: matchedTask?.category ?? proposal.category,
+                priority: matchedTask?.priority,
+                parentName: beforeParentName,
+                dueDate: matchedTask?.dueDate,
+                domain: domain,
+                dimmed: true,
+              ),
+              // Arrow
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Icon(
+                    Icons.arrow_downward_rounded,
+                    size: 18,
+                    color: domain.primary.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+              // AFTER mini-card (highlight changes)
+              _buildAfterMini(
+                beforeTask: matchedTask,
+                changes: changes,
+                proposal: proposal,
+                afterParentName: afterParentName,
+                domain: afterDomain,
+              ),
+              if (proposal.alternateMatches != null &&
+                  proposal.alternateMatches!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                _buildAlternateMatchesSection(proposal, domain),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Mini-card showing task state (used for "before" side)
+  Widget _buildBeforeAfterMini({
+    required String label,
+    required String title,
+    required String category,
+    String? priority,
+    String? parentName,
+    DateTime? dueDate,
+    required DomainPalette domain,
+    bool dimmed = false,
+  }) {
+    final alpha = dimmed ? 0.5 : 1.0;
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.cardInset,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: domain.primary.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label + context line
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: AppColors.darkText.withValues(alpha: 0.35),
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Parent context (prominent for moves)
+            if (parentName != null) ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.subdirectory_arrow_right_rounded,
+                    size: 12,
+                    color: AppColors.darkText.withValues(alpha: 0.3 * alpha),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'in $parentName',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.darkText.withValues(alpha: 0.4 * alpha),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
+            Text(
+              title,
+              style: AppTypography.metadataText(
+                color: domain.primary.withValues(alpha: alpha),
+              ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 4,
+              runSpacing: 3,
+              children: [
+                _buildMiniChip(
+                  category[0].toUpperCase() + category.substring(1),
+                  domain.primary.withValues(alpha: alpha),
+                ),
+                if (priority != null && priority != 'none')
+                  _buildMiniChip(
+                    priority[0].toUpperCase() + priority.substring(1),
+                    _priorityColor(priority).withValues(alpha: alpha),
+                  ),
+                if (dueDate != null)
+                  _buildMiniChip(
+                    DateFormat('MMM d').format(dueDate),
+                    domain.primary.withValues(alpha: 0.6 * alpha),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "After" mini-card — shows changed state with highlights
+  Widget _buildAfterMini({
+    required Task? beforeTask,
+    required Map<String, dynamic> changes,
+    required BrainDumpTaskProposal proposal,
+    String? afterParentName,
+    required DomainPalette domain,
+  }) {
+    // Compute the "after" state: overlay changes on before
+    final afterTitle = changes['title'] as String? ??
+        beforeTask?.title ?? proposal.content;
+    final afterCategory = changes['category'] as String? ??
+        beforeTask?.category ?? proposal.category;
+    final afterPriority = changes['priority'] as String? ??
+        beforeTask?.priority;
+    final afterDueDate = changes.containsKey('due_date')
+        ? (changes['due_date'] != null
+            ? DateTime.tryParse(changes['due_date'] as String)
+            : null)
+        : beforeTask?.dueDate;
+
+    // Track which fields changed for highlighting
+    final titleChanged = changes.containsKey('title');
+    final categoryChanged = changes.containsKey('category');
+    final priorityChanged = changes.containsKey('priority');
+    final dueDateChanged = changes.containsKey('due_date');
+    final parentChanged = changes.containsKey('parent_id');
+
+    // For non-move edits, resolve the unchanged parent for context
+    String? unchangedParentName;
+    if (!parentChanged && beforeTask?.parentId != null) {
+      final tasks = ref.read(taskStoreProvider).tasks;
+      unchangedParentName = tasks[beforeTask!.parentId]?.title;
+    }
+
+    // Show parent context: either the new parent (highlighted) or the unchanged parent
+    final showParentName = parentChanged ? afterParentName : unchangedParentName;
+
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.cardInset,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: domain.primary.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'AFTER',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: domain.primary.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Parent context (highlighted if changed)
+            if (showParentName != null) ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.subdirectory_arrow_right_rounded,
+                    size: 12,
+                    color: parentChanged
+                        ? domain.primary
+                        : AppColors.darkText.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'in $showParentName',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: parentChanged ? FontWeight.w700 : FontWeight.w500,
+                        color: parentChanged
+                            ? domain.primary
+                            : AppColors.darkText.withValues(alpha: 0.4),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
+            Text(
+              afterTitle,
+              style: AppTypography.metadataText(
+                color: titleChanged
+                    ? domain.primary
+                    : domain.primary.withValues(alpha: 0.5),
+              ).copyWith(
+                fontSize: 13,
+                fontWeight: titleChanged ? FontWeight.w700 : FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 4,
+              runSpacing: 3,
+              children: [
+                _buildMiniChip(
+                  afterCategory[0].toUpperCase() + afterCategory.substring(1),
+                  categoryChanged
+                      ? domain.primary
+                      : domain.primary.withValues(alpha: 0.5),
+                  highlight: categoryChanged,
+                ),
+                if (afterPriority != null && afterPriority != 'none')
+                  _buildMiniChip(
+                    afterPriority[0].toUpperCase() + afterPriority.substring(1),
+                    priorityChanged
+                        ? _priorityColor(afterPriority)
+                        : _priorityColor(afterPriority).withValues(alpha: 0.5),
+                    highlight: priorityChanged,
+                  ),
+                if (afterDueDate != null)
+                  _buildMiniChip(
+                    DateFormat('MMM d').format(afterDueDate),
+                    dueDateChanged
+                        ? domain.primary
+                        : domain.primary.withValues(alpha: 0.5),
+                    highlight: dueDateChanged,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Smaller chip for before/after mini-cards
+  Widget _buildMiniChip(String label, Color color, {bool highlight = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: highlight
+            ? color.withValues(alpha: 0.2)
+            : color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: highlight
+            ? Border.all(color: color.withValues(alpha: 0.4), width: 1)
+            : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+          color: color,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  /// Simple card for add/complete/delete proposals (unchanged layout)
+  Widget _buildSimpleProposalCard(
+    BrainDumpTaskProposal proposal,
+    bool isSelected,
+    DomainPalette domain,
+  ) {
     final l1Name = _resolveL1ParentName(proposal);
     return GestureDetector(
       onTap: () => _editProposal(proposal),
@@ -1156,20 +1599,6 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                             DateFormat('MMM d').format(proposal.dueDate!),
                             domain.primary.withValues(alpha: 0.7),
                           ),
-                        if (proposal.changes != null &&
-                            proposal.changes!.containsKey('parent_id'))
-                          _buildChip(
-                            proposal.changes!['parent_id'] == null
-                                ? '\u2192 Top level'
-                                : '\u2192 Reparent',
-                            AppColors.dueSoon,
-                          ),
-                        if (proposal.changes != null)
-                          for (final entry in proposal.changes!.entries)
-                            _buildChip(
-                              '${entry.key}: ${entry.value}',
-                              AppColors.darkText.withValues(alpha: 0.6),
-                            ),
                         if (proposal.confidence != null)
                           _buildChip(
                             '${(proposal.confidence! * 100).round()}%',
@@ -1183,17 +1612,6 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                           ),
                       ],
                     ),
-                    if (proposal.matchExplanation != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        proposal.matchExplanation!,
-                        style: AppTypography.metadataText(
-                          color: AppColors.darkText.withValues(alpha: 0.5),
-                        ).copyWith(fontSize: 11),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
                     if (proposal.alternateMatches != null &&
                         proposal.alternateMatches!.isNotEmpty) ...[
                       const SizedBox(height: 4),

@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
+    @field_validator("database_url")
+    @classmethod
+    def ensure_asyncpg_scheme(cls, v):
+        """Render/Heroku provide postgresql:// but asyncpg needs postgresql+asyncpg://."""
+        if v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     # Gemini API
     gemini_api_key: str
 
@@ -31,6 +39,7 @@ class Settings(BaseSettings):
     # Firebase Auth
     firebase_project_id: str = ""
     google_application_credentials: str = ""
+    firebase_credentials_json: str = ""  # base64-encoded service account JSON (for Render/Heroku)
 
     # Logging
     log_level: str = "INFO"
@@ -54,6 +63,11 @@ class Settings(BaseSettings):
 
     # Rate limiting — proxy awareness
     trusted_proxy_count: int = 0
+
+    # Database pool
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 30
 
     # WebSocket connection limits
     max_ws_connections_per_user: int = 3
