@@ -67,17 +67,23 @@ class Settings(BaseSettings):
     @field_validator("cors_origins")
     @classmethod
     def validate_cors_origin_format(cls, v):
-        """Validate each CORS origin is a well-formed URL."""
+        """Validate each CORS origin is scheme + host [+ port], nothing else."""
+        from urllib.parse import urlparse
         origins = [o.strip() for o in v.split(",")]
         for origin in origins:
             if not origin:
                 continue  # skip empty strings from trailing commas
-            if not (origin.startswith("http://") or origin.startswith("https://")):
-                raise ValueError(f"CORS origin must start with http:// or https://, got '{origin}'")
-            # Basic structure check: scheme + host minimum
-            parts = origin.split("://", 1)
-            if len(parts) != 2 or not parts[1] or parts[1].isspace():
-                raise ValueError(f"Malformed CORS origin: '{origin}'")
+            parsed = urlparse(origin)
+            if parsed.scheme not in ("http", "https"):
+                raise ValueError(f"CORS origin must use http or https scheme, got '{origin}'")
+            if not parsed.hostname:
+                raise ValueError(f"CORS origin missing hostname: '{origin}'")
+            if "*" in parsed.hostname:
+                raise ValueError(f"Wildcard hostnames not allowed in CORS origin: '{origin}'")
+            if parsed.path and parsed.path != "/":
+                raise ValueError(f"CORS origin must not contain a path: '{origin}'")
+            if parsed.query or parsed.fragment:
+                raise ValueError(f"CORS origin must not contain query or fragment: '{origin}'")
         return v
 
     @model_validator(mode='after')

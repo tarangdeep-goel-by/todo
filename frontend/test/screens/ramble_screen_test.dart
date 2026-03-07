@@ -164,10 +164,10 @@ void main() {
       await tester.pumpWidget(buildRambleScreen(proposals: []));
       await tester.pumpAndSettle();
 
-      // No submit button when empty (footer switches to different layout)
-      expect(find.byKey(TK.submitButton), findsOneWidget);
-      // But the text should reflect 0 actions
-      expect(find.text('Confirm 0 Actions'), findsOneWidget);
+      // _buildReviewingBody returns early for empty proposals — no submit button
+      expect(find.byKey(TK.submitButton), findsNothing);
+      expect(find.text('Confirm 0 Actions'), findsNothing);
+      expect(find.text('No tasks detected'), findsOneWidget);
     });
   });
 }
