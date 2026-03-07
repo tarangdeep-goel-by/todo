@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:todo/providers/auth_provider.dart';
+import 'package:frontend/providers/auth_provider.dart';
 
 /// Tests for mapFirebaseErrorCode — the production error mapper.
 void main() {
