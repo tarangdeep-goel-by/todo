@@ -38,11 +38,10 @@ class TestAuthFlow:
     """Auth flow tests exercising get_current_user paths."""
 
     async def test_valid_test_token_returns_uid(self, auth_client):
-        """With APP_ENV=test and ALLOW_TEST_AUTH=true, test-token-e2e works."""
+        """With APP_ENV=test, test-token-e2e works."""
         # Temporarily enable test auth by clearing settings cache
         old_env = os.environ.get("APP_ENV")
         os.environ["APP_ENV"] = "test"
-        os.environ["ALLOW_TEST_AUTH"] = "true"
         get_settings.cache_clear()
         try:
             resp = await auth_client.get(

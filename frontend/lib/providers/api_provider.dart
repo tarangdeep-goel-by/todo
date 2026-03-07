@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/environment.dart';
 import '../services/api_service.dart';
 import '../services/app_logger.dart';
 import '../services/audio_service.dart';
@@ -8,7 +9,7 @@ import '../services/ramble_websocket_service.dart';
 /// Provider for API service singleton
 final apiServiceProvider = Provider<ApiService>((ref) {
   final service = ApiService();
-  if (!const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+  if (!Environment.isTestMode) {
     AppLogger.instance.initShipping(service.dio);
   }
   return service;
@@ -30,7 +31,7 @@ final speechServiceProvider = Provider<SpeechService>((ref) {
 
 /// Provider for ramble WebSocket service
 final rambleWebSocketProvider = Provider<RambleWebSocketService>((ref) {
-  final service = const bool.fromEnvironment('TEST_MODE', defaultValue: false)
+  final service = Environment.isTestMode
       ? RambleWebSocketService(tokenProvider: () async => 'test-token-e2e')
       : RambleWebSocketService();
   ref.onDispose(() => service.dispose());

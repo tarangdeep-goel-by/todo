@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/environment.dart';
 import 'app_logger.dart';
 
 /// Dio interceptor that adds Firebase ID token, trace headers,
@@ -27,7 +28,7 @@ class AuthInterceptor extends Interceptor {
     options.extra['trace_id'] = traceId;
 
     // In test mode, use a static test token instead of Firebase Auth
-    if (const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+    if (Environment.isTestMode) {
       options.headers['Authorization'] = 'Bearer test-token-e2e';
       _logger.info('api.request', logger: 'AuthInterceptor', traceId: traceId,
           data: {'method': options.method, 'path': options.path, 'auth': 'test-token'});
@@ -98,7 +99,7 @@ class AuthInterceptor extends Interceptor {
         });
 
     if (err.response?.statusCode != 401 ||
-        const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+        Environment.isTestMode) {
       handler.next(err);
       return;
     }

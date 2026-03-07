@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
+import 'config/environment.dart';
 import 'config/theme.dart';
 import 'screens/auth_gate.dart';
 import 'services/auth_interceptor.dart';
@@ -18,7 +19,9 @@ import 'widgets/task_detail_overlay.dart';
 import 'providers/local_data_provider.dart';
 
 /// Compile-time flag: `flutter test --dart-define=TEST_MODE=true`
-const bool kTestMode = bool.fromEnvironment('TEST_MODE', defaultValue: false);
+/// Canonical source is [Environment.isTestMode]; this alias exists for
+/// files that already import `main.dart show kTestMode`.
+const bool kTestMode = Environment.isTestMode;
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
