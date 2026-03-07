@@ -21,10 +21,11 @@ class FirebaseAdapter implements TrackerAdapter {
     _analytics?.logEvent(
       name: event.typeName,
       parameters: event.properties.map((k, v) {
-        // Firebase accepts String, int, double, bool — pass native types
-        if (v is String || v is int || v is double || v is bool) {
+        // Firebase accepts String, int, double only — convert bools to int
+        if (v is String || v is int || v is double) {
           return MapEntry(k, v);
         }
+        if (v is bool) return MapEntry(k, v ? 1 : 0);
         return MapEntry(k, v.toString());
       }),
     );

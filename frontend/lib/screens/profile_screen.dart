@@ -225,6 +225,10 @@ class ProfileScreen extends ConsumerWidget {
               // Full cleanup before sign out
               ref.read(syncServiceProvider).stopPeriodicSync();
               ref.invalidate(audioServiceProvider);
+              // Clear in-memory state first to prevent flicker on re-login
+              ref.read(taskStoreProvider.notifier).state =
+                  const TaskStoreState();
+              ref.read(categoriesProvider.notifier).state = [];
               await ref.read(localDataServiceProvider).clearAll();
               await ref.read(authServiceProvider).signOut();
               // Invalidate providers to reset state

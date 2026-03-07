@@ -41,6 +41,8 @@ class LocalDataService {
   Future<void> markPendingSync(String id, bool pending) =>
       _db.taskDao.markPendingSync(id, pending);
 
+  Future<int> getTaskCount() => _db.taskDao.getTaskCount();
+
   Future<void> deleteNonPendingTasks() => _db.taskDao.deleteNonPendingTasks();
 
   Future<void> deleteAllTasks() => _db.taskDao.deleteAllTasks();
