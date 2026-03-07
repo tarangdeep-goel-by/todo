@@ -76,6 +76,10 @@ async def lifespan(app: FastAPI):
     """Application lifespan: start background tasks, clean up on shutdown."""
     purge_task = asyncio.create_task(_purge_archived_loop())
     notification_task = asyncio.create_task(_notification_loop())
+    app.state.background_tasks = {
+        "purge": purge_task,
+        "notification": notification_task,
+    }
 
     # Warm up connection pool
     from database import AsyncSessionLocal
@@ -184,14 +188,26 @@ Instrumentator(
 # Global exception handler — mask details in production
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler — always log, mask details in production."""
     from structured_logging import trace_id_var
     tid = trace_id_var.get("")
+
+    # Always log the full exception (even in production)
+    _logger.exception("unhandled_exception",
+                     path=request.url.path,
+                     method=request.method,
+                     trace_id=tid,
+                     error=str(exc))
+
+    # Send to Sentry if available
     try:
         import sentry_sdk
         if tid:
             sentry_sdk.set_tag("trace_id", tid)
-    except Exception:
-        pass
+        sentry_sdk.capture_exception(exc)
+    except Exception as sentry_err:
+        _logger.error("sentry.send_failed", error=str(sentry_err))
+
     if settings.debug:
         return JSONResponse(status_code=500, content={"detail": str(exc)})
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
@@ -199,16 +215,52 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health():
-    """Health check endpoint with DB connectivity test."""
+    """Health check endpoint with DB connectivity and background task status."""
     import asyncio
     from sqlalchemy import text
     from database import AsyncSessionLocal
+
+    # DB connectivity check
+    db_ok = True
+    db_error = None
     try:
         async with AsyncSessionLocal() as session:
             await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=2.0)
-        return {"status": "healthy", "db": "connected"}
     except Exception as e:
-        return JSONResponse(status_code=503, content={"status": "unhealthy", "db": str(e)})
+        db_ok = False
+        db_error = str(e)
+
+    # Background task status
+    bg_tasks = getattr(app.state, 'background_tasks', {})
+    bg_status = {}
+    failed_tasks = []
+    for name, task in bg_tasks.items():
+        if task.done():
+            failed_tasks.append(name)
+            bg_status[name] = "failed"
+        else:
+            bg_status[name] = "running"
+
+    healthy = db_ok and not failed_tasks
+    result = {
+        "status": "healthy" if healthy else "unhealthy",
+        "db": "connected" if db_ok else f"error: {db_error}",
+        "background_tasks": bg_status,
+    }
+
+    if healthy:
+        return result
+    return JSONResponse(status_code=503, content=result)
+
+
+@app.get("/api/version")
+async def version_info():
+    """Client version compatibility check. No auth required."""
+    return {
+        "api_version": "1.0.0",
+        "min_client_version": "1.0.0",
+        "latest_client_version": "1.0.0",
+    }
 
 
 @app.get("/")

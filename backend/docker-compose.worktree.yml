@@ -30,6 +30,7 @@ services:
       SEARCH_ENGINE: ${SEARCH_ENGINE:-pg_native}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+      ALLOW_TEST_AUTH: "true"
     ports:
       - "${WT_API_PORT:-8002}:8000"
     volumes:
@@ -37,6 +38,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
 volumes:

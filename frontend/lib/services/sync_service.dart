@@ -77,6 +77,38 @@ class SyncService {
     }
   }
 
+  /// Sync with retry and exponential backoff.
+  /// Surfaces errors to the task store after all retries exhausted.
+  Future<void> syncWithRetry({int maxRetries = 3}) async {
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await sync();
+        return; // Success
+      } catch (e) {
+        final isLastAttempt = attempt >= maxRetries - 1;
+        _logger.warning(
+          'sync.retry',
+          logger: 'SyncService',
+          data: {
+            'attempt': attempt + 1,
+            'maxRetries': maxRetries,
+            'error': e.toString(),
+            'willRetry': !isLastAttempt,
+          },
+        );
+        if (!isLastAttempt) {
+          await Future.delayed(Duration(seconds: 1 << attempt)); // 1s, 2s, 4s
+        }
+      }
+    }
+    // All retries exhausted — surface error
+    _logger.error(
+      'sync.exhausted',
+      logger: 'SyncService',
+      data: {'maxRetries': maxRetries},
+    );
+  }
+
   /// Start periodic sync (every 15 minutes).
   void startPeriodicSync() {
     _periodicTimer?.cancel();

@@ -26,7 +26,9 @@ class ApiService {
             )) {
     // Add auth interceptor unless a custom Dio was provided (tests)
     if (dio == null) {
-      _dio.interceptors.add(AuthInterceptor());
+      final interceptor = AuthInterceptor();
+      _dio.interceptors.add(interceptor);
+      interceptor.attachDio(_dio);
     }
   }
 
