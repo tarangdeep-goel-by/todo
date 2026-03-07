@@ -64,6 +64,22 @@ class Settings(BaseSettings):
             raise ValueError(f"SEARCH_ENGINE must be 'fuzzy' or 'pg_native', got '{v}'")
         return v
 
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origin_format(cls, v):
+        """Validate each CORS origin is a well-formed URL."""
+        origins = [o.strip() for o in v.split(",")]
+        for origin in origins:
+            if not origin:
+                continue  # skip empty strings from trailing commas
+            if not (origin.startswith("http://") or origin.startswith("https://")):
+                raise ValueError(f"CORS origin must start with http:// or https://, got '{origin}'")
+            # Basic structure check: scheme + host minimum
+            parts = origin.split("://", 1)
+            if len(parts) != 2 or not parts[1] or parts[1].isspace():
+                raise ValueError(f"Malformed CORS origin: '{origin}'")
+        return v
+
     @model_validator(mode='after')
     def validate_cors_origins(self):
         if self.app_env == "production":

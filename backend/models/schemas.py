@@ -86,6 +86,7 @@ class BrainDumpSubmitResponse(BaseModel):
     created_count: int
     created_task_ids: List[str] = []
     message: str
+    failed_reason: Optional[str] = None
 
 
 class CreateTaskRequest(BaseModel):

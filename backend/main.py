@@ -76,6 +76,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan: start background tasks, clean up on shutdown."""
     purge_task = asyncio.create_task(_purge_archived_loop())
     notification_task = asyncio.create_task(_notification_loop())
+
+    # Warm up connection pool
+    from database import AsyncSessionLocal
+    from sqlalchemy import text
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        _logger.info("app.pool_warmup", status="ok")
+    except Exception as e:
+        _logger.warning("app.pool_warmup", status="failed", error=str(e))
+
     _logger.info("app.startup", purge_interval_hours=PURGE_INTERVAL_HOURS,
                  notification_interval_minutes=settings.notification_check_interval_minutes)
     yield

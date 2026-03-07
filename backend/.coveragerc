@@ -1,0 +1,18 @@
+[run]
+source = .
+omit =
+    tests/*
+    evaluation/*
+    alembic/*
+    */performance/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__
+    pass
+show_missing = true
+skip_empty = true
+
+[html]
+directory = coverage_html

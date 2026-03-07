@@ -49,5 +49,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>amble</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.amble.app</string>
+		</dict>
+	</array>
 </dict>
 </plist>
