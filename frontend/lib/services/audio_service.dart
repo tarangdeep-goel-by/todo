@@ -92,6 +92,11 @@ class AudioService {
       if (!granted) throw Exception('Microphone permission denied');
     }
 
+    // Clean up any previous stream that wasn't properly stopped
+    if (await _recorder.isRecording()) {
+      await stopStream();
+    }
+
     // Monitor amplitude for waveform visualization
     _amplitudeSubscription = _recorder.onAmplitudeChanged(
       const Duration(milliseconds: 100),
