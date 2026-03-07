@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:frontend/models/api_error.dart';
 import 'package:frontend/models/api_response.dart';
 import 'package:frontend/services/api_service.dart';
 
@@ -262,7 +263,11 @@ void main() {
 
       expect(
         () => apiService.processBrainDump(transcription: 'test'),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ApiError>().having(
+          (e) => e.statusCode, 'statusCode', 500,
+        ).having(
+          (e) => e.message, 'message', 'Internal error',
+        )),
       );
     });
   });
@@ -352,7 +357,7 @@ void main() {
 
       expect(
         () => apiService.registerFcmToken('token', 'android', 'UTC'),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ApiError>()),
       );
     });
   });
@@ -394,7 +399,9 @@ void main() {
 
       expect(
         () => apiService.unregisterFcmToken('missing-token'),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ApiError>().having(
+          (e) => e.statusCode, 'statusCode', 404,
+        )),
       );
     });
   });
