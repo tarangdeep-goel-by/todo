@@ -98,12 +98,14 @@ Task createTestTask({
 /// Create an in-memory LocalDataService for tests.
 /// Returns a tuple of (service, override) so the provider container
 /// can be configured with the in-memory database.
-({LocalDataService service, Override override}) createTestLocalData() {
+({LocalDataService service, Override override, Future<void> Function() close})
+    createTestLocalData() {
   final db = AppDatabase(NativeDatabase.memory());
   final svc = LocalDataService(db);
   return (
     service: svc,
     override: localDataServiceProvider.overrideWithValue(svc),
+    close: () => svc.close(),
   );
 }
 
