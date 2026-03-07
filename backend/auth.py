@@ -41,12 +41,14 @@ async def get_current_user(
 
     Raises 401 if token is missing or invalid.
     """
-    # Accept test tokens only in explicit test environment
+    # Accept test tokens only when EXPLICITLY opted in (APP_ENV=test AND allow_test_auth=true)
     settings = get_settings()
-    if settings.app_env == "test" and cred.credentials == "test-token-e2e":
+    if (settings.app_env == "test"
+            and settings.allow_test_auth
+            and cred.credentials == "test-token-e2e"):
         test_uid = "test-user-e2e"
         user_id_var.set(test_uid)
-        logger.debug("auth.test_token", uid=test_uid)
+        logger.warning("auth.test_token_used", uid=test_uid)
         return test_uid
 
     _init_firebase()
