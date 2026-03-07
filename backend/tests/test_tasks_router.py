@@ -475,3 +475,42 @@ class TestDeleteTaskArchive:
     async def test_archive_not_found(self, test_client):
         resp = await test_client.delete("/tasks/00000000-0000-0000-0000-000000000999")
         assert resp.status_code == 404
+
+
+class TestUUIDValidation:
+    """Invalid UUIDs should return 422, not 500."""
+
+    @pytest.mark.asyncio
+    async def test_get_task_invalid_uuid(self, test_client):
+        resp = await test_client.get("/tasks/not-a-uuid")
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_update_task_invalid_uuid(self, test_client):
+        resp = await test_client.patch("/tasks/not-a-uuid", json={"title": "x"})
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_complete_task_invalid_uuid(self, test_client):
+        resp = await test_client.put("/tasks/not-a-uuid/complete")
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_delete_task_invalid_uuid(self, test_client):
+        resp = await test_client.delete("/tasks/not-a-uuid")
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_restore_task_invalid_uuid(self, test_client):
+        resp = await test_client.put("/tasks/not-a-uuid/restore")
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_permanent_delete_invalid_uuid(self, test_client):
+        resp = await test_client.delete("/tasks/not-a-uuid/permanent")
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_delete_category_invalid_uuid(self, test_client):
+        resp = await test_client.delete("/categories/not-a-uuid")
+        assert resp.status_code == 422

@@ -15,11 +15,11 @@ engine = create_async_engine(
     settings.database_url,
     echo=False,
     future=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
     pool_recycle=3600,
     pool_pre_ping=True,
-    pool_timeout=30,
+    pool_timeout=settings.db_pool_timeout,
 )
 
 # Slow query detection via SQLAlchemy event listeners

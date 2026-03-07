@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../models/task.dart';
 import '../models/api_response.dart';
 import '../models/api_error.dart';
@@ -7,6 +8,7 @@ import '../config/environment.dart';
 import 'auth_interceptor.dart';
 import 'api_retry.dart';
 import 'app_logger.dart';
+import 'tracker/tracker.dart';
 
 /// Service for backend API communication
 class ApiService {
@@ -172,6 +174,16 @@ class ApiService {
     });
   }
 
+  /// Get a single task by ID
+  Future<Task> getTask(String taskId) async {
+    try {
+      final response = await _dio.get('/tasks/$taskId');
+      return Task.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Create task manually
   Future<Task> createTask(CreateTaskRequest request) async {
     try {
@@ -320,7 +332,10 @@ class ApiService {
   }
 
   /// Handle Dio errors — returns structured [ApiError].
+  /// Also records non-fatal error to Crashlytics + Tracker for monitoring.
   ApiError _handleError(DioException e) {
+    final ApiError error;
+
     if (e.response != null) {
       final statusCode = e.response!.statusCode ?? 500;
       String message;
@@ -338,22 +353,59 @@ class ApiService {
       }
 
       if (statusCode == 401) {
-        return ApiError(message: message, type: ApiErrorType.auth, statusCode: statusCode);
+        error = ApiError(message: message, type: ApiErrorType.auth, statusCode: statusCode);
       } else if (statusCode == 400 || statusCode == 422) {
-        return ApiError(message: message, type: ApiErrorType.validation, statusCode: statusCode);
+        error = ApiError(message: message, type: ApiErrorType.validation, statusCode: statusCode);
       } else {
-        return ApiError(message: message, type: ApiErrorType.server, statusCode: statusCode);
+        error = ApiError(message: message, type: ApiErrorType.server, statusCode: statusCode);
+      }
+    } else {
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+          error = const ApiError(message: 'Connection timeout', type: ApiErrorType.timeout);
+        case DioExceptionType.receiveTimeout:
+          error = const ApiError(message: 'Receive timeout', type: ApiErrorType.timeout);
+        default:
+          error = const ApiError(message: 'Network error occurred', type: ApiErrorType.network);
       }
     }
 
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-        return const ApiError(message: 'Connection timeout', type: ApiErrorType.timeout);
-      case DioExceptionType.receiveTimeout:
-        return const ApiError(message: 'Receive timeout', type: ApiErrorType.timeout);
-      default:
-        return const ApiError(message: 'Network error occurred', type: ApiErrorType.network);
+    // Record to Tracker (analytics) — skip auth errors (handled by interceptor)
+    if (error.type != ApiErrorType.auth) {
+      final method = e.requestOptions.method;
+      final path = e.requestOptions.path;
+      Tracker.instance.outcome(
+        type: 'api_error',
+        success: false,
+        method: '$method $path',
+        category: error.type.name,
+        detail: error.statusCode != null
+            ? '${error.statusCode}: ${error.message}'
+            : error.message,
+      );
+    }
+
+    // Record to Crashlytics (non-fatal) — skip network/timeout (expected offline)
+    if (error.type == ApiErrorType.server ||
+        error.type == ApiErrorType.validation) {
+      _recordNonFatal(e, error);
+    }
+
+    return error;
+  }
+
+  /// Send non-fatal error to Crashlytics with API context.
+  void _recordNonFatal(DioException e, ApiError error) {
+    try {
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        e.stackTrace,
+        reason: '${e.requestOptions.method} ${e.requestOptions.path} → ${error.statusCode}',
+        fatal: false,
+      );
+    } catch (_) {
+      // Crashlytics not available (tests)
     }
   }
 }

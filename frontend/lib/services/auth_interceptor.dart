@@ -117,7 +117,7 @@ class AuthInterceptor extends Interceptor {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final newToken = await user.getIdToken(true);
+        final newToken = await user.getIdToken(true).timeout(const Duration(seconds: 10));
         if (newToken != null) {
           _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
 
@@ -144,10 +144,13 @@ class AuthInterceptor extends Interceptor {
     _rejectPendingRequests();
     _isRefreshing = false;
 
-    if (onReauthRequired != null) {
-      onReauthRequired!();
-    } else {
-      await FirebaseAuth.instance.signOut();
+    // Only prompt reauth if user is still signed in (skip during logout)
+    if (FirebaseAuth.instance.currentUser != null) {
+      if (onReauthRequired != null) {
+        onReauthRequired!();
+      } else {
+        await FirebaseAuth.instance.signOut();
+      }
     }
 
     handler.next(err);
