@@ -1,6 +1,6 @@
 """Tests for intent pre-filter (gibberish detection)."""
 import pytest
-from services.intent_prefilter import prefilter, _is_gibberish
+from services.intent_prefilter import prefilter, _is_gibberish, _is_common_cluster
 
 
 class TestGibberishDetection:
@@ -59,3 +59,63 @@ class TestPassthrough:
     def test_list_passes_to_llm(self):
         result = prefilter("what tasks are completed")
         assert result is None
+
+
+class TestPrefilterEdgeCases:
+    """Edge cases for gibberish detection."""
+
+    def test_all_consonants_is_gibberish(self):
+        """Pure consonant string has vowel ratio 0 -> gibberish."""
+        result = prefilter("bcdfgh jklmnp")
+        assert result is not None
+        assert result[0]["intent"] == "UNKNOWN"
+
+    def test_two_gibberish_words(self):
+        """Two words with 5+ alpha and <0.15 vowel ratio -> gibberish."""
+        result = prefilter("bcdfghj klmnpqr hello")
+        assert result is not None
+        assert result[0]["intent"] == "UNKNOWN"
+
+    def test_one_gibberish_word_not_enough(self):
+        """Single gibberish word with no suspicious clusters -> not gibberish."""
+        result = prefilter("bcdfghj hello world")
+        assert result is None
+
+    def test_common_cluster_whitelist(self):
+        """_is_common_cluster recognises known English patterns and rejects unknown ones."""
+        assert _is_common_cluster("ngth") is True
+        assert _is_common_cluster("ghts") is True
+        assert _is_common_cluster("str") is True
+        assert _is_common_cluster("zzxx") is False
+
+    def test_thoughtful_not_gibberish(self):
+        """'thoughtful' has common cluster 'ght' and enough vowels -> not gibberish."""
+        assert not _is_gibberish("thoughtful")
+
+    def test_unicode_emoji_passes(self):
+        """Emoji prefix should not trigger gibberish."""
+        result = prefilter("\U0001f3af buy groceries")
+        assert result is None
+
+    def test_very_short_not_gibberish(self):
+        """Text with < 3 alpha chars is too short to judge."""
+        result = prefilter("ab")
+        assert result is None
+
+    def test_empty_string_returns_unknown(self):
+        """Empty string returns UNKNOWN list (not None)."""
+        result = prefilter("")
+        assert result is not None
+        assert isinstance(result, list)
+        assert result[0]["intent"] == "UNKNOWN"
+
+    def test_numbers_only(self):
+        """Digits-only text has < 3 alpha chars -> passes."""
+        result = prefilter("12345 67890")
+        assert result is None
+
+    def test_suspicious_clusters_threshold(self):
+        """Two words each with 4+ non-common consonant clusters -> gibberish."""
+        result = prefilter("xzpqwl bvnkfl hello")
+        assert result is not None
+        assert result[0]["intent"] == "UNKNOWN"
