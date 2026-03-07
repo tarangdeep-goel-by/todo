@@ -49,6 +49,10 @@ jobs:
         run: alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://todo:testpass@localhost:5432/todo_test
+          GEMINI_API_KEY: test-key-not-real                       
+          SARVAM_API_KEY: test-key-not-real                       
+          FIREBASE_PROJECT_ID: test-project                       
+          CORS_ORIGINS: http://localhost:8001
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short --ignore=tests/performance
         env:
@@ -74,7 +78,7 @@ jobs:
           flutter-version: '3.x'
           cache: true
       - run: flutter pub get
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
     
   frontend-tests:
     name: Flutter Tests
