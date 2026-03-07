@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+import 'package:sqlite3/open.dart';
 
 import 'tables.dart';
 import 'daos/task_dao.dart';
@@ -38,10 +43,6 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? _openConnection());
 
-  /// Creates an encrypted database connection.
-  ///
-  /// [encryptionKey] must be retrieved via [getOrCreateEncryptionKey] before
-  /// constructing the database. Pass the result to this factory.
   AppDatabase.encrypted(String encryptionKey)
       : super(_openEncryptedConnection(encryptionKey));
 
@@ -49,18 +50,31 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'amble_cache');
+    return LazyDatabase(() async {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'amble_cache.sqlite'));
+      return NativeDatabase.createInBackground(
+        file,
+        isolateSetup: () {
+          open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+        },
+      );
+    });
   }
 
   static QueryExecutor _openEncryptedConnection(String key) {
-    return driftDatabase(
-      name: 'amble_cache_enc',
-      native: DriftNativeOptions(
+    return LazyDatabase(() async {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dir.path, 'amble_cache_enc.sqlite'));
+      return NativeDatabase.createInBackground(
+        file,
+        isolateSetup: () {
+          open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+        },
         setup: (db) {
-          // PRAGMA key must be the first statement on the connection.
           db.execute("PRAGMA key = '$key'");
         },
-      ),
-    );
+      );
+    });
   }
 }
