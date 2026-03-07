@@ -24,4 +24,4 @@ USER appuser
 EXPOSE 8000
 
 # Run migrations and start server
-CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"]
+CMD ["sh", "-c", "timeout 120 alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2 --no-access-log"]
