@@ -12,7 +12,7 @@ import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
 import '../services/notification_service.dart';
 import '../services/tracker/tracker.dart';
-import '../main.dart' show kTestMode;
+import '../main.dart' show kTestMode, processPendingDeepLink;
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/ptt_input_overlay.dart';
@@ -70,6 +70,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await store.fetchAll();
       }
       _checkWelcome();
+      // Process any deep link that arrived before UI was ready
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        processPendingDeepLink();
+      });
     });
   }
 

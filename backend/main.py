@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
     from sqlalchemy import text
     try:
         async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
+            await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=5.0)
         _logger.info("app.pool_warmup", status="ok")
     except Exception as e:
         _logger.warning("app.pool_warmup", status="failed", error=str(e))

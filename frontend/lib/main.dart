@@ -100,6 +100,8 @@ void main() async {
   );
 }
 
+Uri? _pendingDeepLink;
+
 void _initDeepLinks() {
   final appLinks = AppLinks();
 
@@ -108,16 +110,33 @@ void _initDeepLinks() {
     _handleDeepLink(uri);
   });
 
-  // Handle link that launched the app
+  // Handle link that launched the app — defer if UI isn't ready yet
   appLinks.getInitialLink().then((Uri? uri) {
-    if (uri != null) _handleDeepLink(uri);
+    if (uri != null) {
+      if (navigatorKey.currentContext != null) {
+        _handleDeepLink(uri);
+      } else {
+        _pendingDeepLink = uri;
+      }
+    }
   });
+}
+
+void processPendingDeepLink() {
+  final uri = _pendingDeepLink;
+  if (uri != null) {
+    _pendingDeepLink = null;
+    _handleDeepLink(uri);
+  }
 }
 
 void _handleDeepLink(Uri uri) {
   // Support amble://task/{taskId}
-  if (uri.scheme == 'amble' && uri.pathSegments.length == 2 && uri.pathSegments[0] == 'task') {
-    final taskId = uri.pathSegments[1];
+  // Dart Uri.parse treats "amble://task/123" as host="task", path="/123"
+  // so we check host == 'task' and extract taskId from pathSegments.
+  if (uri.scheme != 'amble') return;
+  if (uri.host == 'task' && uri.pathSegments.length == 1) {
+    final taskId = uri.pathSegments[0];
     final context = navigatorKey.currentContext;
     if (context != null) {
       showTaskDetailOverlay(context, taskId: taskId);

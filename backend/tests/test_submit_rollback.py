@@ -16,14 +16,14 @@ class TestSubmitRollback:
 
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="Task one", category="home",
+                id="00000000-0000-0000-0000-000000000b01", content="Task one", category="home",
             ),
             BrainDumpTaskProposal(
-                id="temp-2", content="Task two", category="home",
+                id="00000000-0000-0000-0000-000000000b02", content="Task two", category="home",
                 parent_id="00000000-0000-0000-0000-000000000099",  # non-existent
             ),
             BrainDumpTaskProposal(
-                id="temp-3", content="Task three", category="home",
+                id="00000000-0000-0000-0000-000000000b03", content="Task three", category="home",
             ),
         ]
 
@@ -52,14 +52,14 @@ class TestSubmitRollback:
 
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="Valid task A", category="home",
+                id="00000000-0000-0000-0000-000000000c01", content="Valid task A", category="home",
             ),
             BrainDumpTaskProposal(
-                id="temp-2", content="Valid task B", category="career",
+                id="00000000-0000-0000-0000-000000000c02", content="Valid task B", category="career",
                 priority="high",
             ),
             BrainDumpTaskProposal(
-                id="temp-3", content="Valid task C", category="home",
+                id="00000000-0000-0000-0000-000000000c03", content="Valid task C", category="home",
             ),
         ]
 
@@ -85,10 +85,10 @@ class TestSubmitRollback:
 
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", content="New task before edit", category="home",
+                id="00000000-0000-0000-0000-000000000d01", content="New task before edit", category="home",
             ),
             BrainDumpTaskProposal(
-                id="temp-2", action="edit", content="Groceries",
+                id="00000000-0000-0000-0000-000000000d02", action="edit", content="Groceries",
                 category="home", matched_task_id=tree["groceries"].id,
                 changes={"parent_id": "00000000-0000-0000-0000-000000000099"},
             ),
@@ -115,7 +115,7 @@ class TestSubmitRollback:
 
         proposals = [
             BrainDumpTaskProposal(
-                id="temp-1", action="edit", content="Groceries",
+                id="00000000-0000-0000-0000-000000000e01", action="edit", content="Groceries",
                 category="home", matched_task_id="00000000-0000-0000-0000-000000000001",
                 changes={"parent_id": "00000000-0000-0000-0000-000000000099"},
             ),

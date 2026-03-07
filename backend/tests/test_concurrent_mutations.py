@@ -104,10 +104,9 @@ class TestConcurrentUpdates:
             svc = TaskService(session)
             task = await svc.get_task(task_id)
             assert task is not None
-            # At minimum, one of the updates stuck for each field.
-            # With row-level locking, both should apply since they touch
-            # different columns, but last-write-wins is acceptable.
-            assert task.title == "updated title" or task.priority == "high"
+            # Both updates should apply since they touch different columns.
+            assert task.title == "updated title", f"Expected 'updated title', got '{task.title}'"
+            assert task.priority == "high", f"Expected 'high', got '{task.priority}'"
 
 
 class TestConcurrentDeleteAndUpdate:
@@ -193,5 +192,5 @@ class TestConcurrentBulkComplete:
 
         # No errors in either result
         for r in results:
-            affected, errors = r
+            _affected, errors = r
             assert len(errors) == 0, f"Unexpected errors: {errors}"

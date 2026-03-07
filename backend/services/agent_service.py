@@ -380,8 +380,8 @@ class AgentService:
                 success=False,
                 created_count=0,
                 created_task_ids=[],
-                message=f"All actions rolled back due to error: {error_msg}",
-                failed_reason=error_msg,
+                message="All actions rolled back due to an internal error",
+                failed_reason="internal_error",
             )
 
         total = sum(counts.values())
