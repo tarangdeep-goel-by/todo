@@ -68,3 +68,20 @@ assets/audio/
 
 # Claude Flow pipeline artifacts
 .claude-flow/
+.claude-flow.yml
+
+# Backend build/test artifacts
+backend/.cache/
+backend/.coverage
+backend/.local/
+backend/evaluation/results/
+
+# Backend local plans
+backend/plans/
+
+# Local plans and specs
+plans/
+specs/
+
+# Research/scratchpad
+todoist_re/
