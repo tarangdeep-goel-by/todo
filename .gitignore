@@ -65,6 +65,7 @@ assets/audio/
 
 # Firebase service account key
 **/firebase-service-account.json
+**/GoogleService-Info.plist
 
 # Claude Flow pipeline artifacts
 .claude-flow/
