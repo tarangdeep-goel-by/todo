@@ -322,3 +322,156 @@ class TestAuthChecks:
             user_id="other-user", title="Other's", category="career", transcription="other")
         resp = await test_client.delete(f"/tasks/{task.id}")
         assert resp.status_code == 403
+
+
+class TestCreateTask:
+    """POST /tasks — creation tests."""
+
+    @pytest.mark.asyncio
+    async def test_create_returns_201(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("New task"))
+        assert resp.status_code == 201
+        assert resp.json()["title"] == "new task"
+        assert resp.json()["status"] == "active"
+
+    @pytest.mark.asyncio
+    async def test_create_with_all_fields(self, test_client):
+        resp = await test_client.post("/tasks", json=_t(
+            "Full task", priority="high", due_date="2026-06-01T10:00:00Z",
+            description="A detailed description", tags=["urgent"],
+        ))
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["priority"] == "high"
+        assert data["description"] == "A detailed description"
+
+    @pytest.mark.asyncio
+    async def test_create_with_parent(self, test_client):
+        parent = await test_client.post("/tasks", json=_t("Parent"))
+        parent_id = parent.json()["id"]
+        child = await test_client.post("/tasks", json=_t("Child", parent_id=parent_id))
+        assert child.status_code == 201
+        assert child.json()["parent_id"] == parent_id
+
+    @pytest.mark.asyncio
+    async def test_create_missing_title_422(self, test_client):
+        resp = await test_client.post("/tasks", json={"category": "career", "transcription": "x"})
+        assert resp.status_code == 422
+
+
+class TestGetSingleTask:
+    """GET /tasks/{id}."""
+
+    @pytest.mark.asyncio
+    async def test_get_task_success(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("Fetch me"))
+        task_id = resp.json()["id"]
+        resp = await test_client.get(f"/tasks/{task_id}")
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "fetch me"
+
+    @pytest.mark.asyncio
+    async def test_get_task_not_found(self, test_client):
+        resp = await test_client.get("/tasks/00000000-0000-0000-0000-000000000999")
+        assert resp.status_code == 404
+
+
+class TestUpdateTask:
+    """PATCH /tasks/{id} — update tests."""
+
+    @pytest.mark.asyncio
+    async def test_update_title(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("Original"))
+        task_id = resp.json()["id"]
+        resp = await test_client.patch(f"/tasks/{task_id}", json={"title": "Updated"})
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "updated"
+
+    @pytest.mark.asyncio
+    async def test_update_multiple_fields(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("Multi"))
+        task_id = resp.json()["id"]
+        resp = await test_client.patch(f"/tasks/{task_id}", json={
+            "priority": "high",
+            "description": "Updated desc",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["priority"] == "high"
+        assert resp.json()["description"] == "Updated desc"
+
+    @pytest.mark.asyncio
+    async def test_update_not_found(self, test_client):
+        resp = await test_client.patch("/tasks/00000000-0000-0000-0000-000000000999", json={"title": "X"})
+        assert resp.status_code == 404
+
+
+class TestCompleteTask:
+    """PUT /tasks/{id}/complete."""
+
+    @pytest.mark.asyncio
+    async def test_complete_single(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("Complete me"))
+        task_id = resp.json()["id"]
+        resp = await test_client.put(f"/tasks/{task_id}/complete")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_complete_with_children(self, test_client):
+        parent = await test_client.post("/tasks", json=_t("Parent"))
+        pid = parent.json()["id"]
+        child = await test_client.post("/tasks", json=_t("Child", parent_id=pid))
+        cid = child.json()["id"]
+
+        resp = await test_client.put(f"/tasks/{pid}/complete")
+        assert resp.status_code == 200
+
+        child_resp = await test_client.get(f"/tasks/{cid}")
+        assert child_resp.json()["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_complete_not_found(self, test_client):
+        resp = await test_client.put("/tasks/00000000-0000-0000-0000-000000000999/complete")
+        assert resp.status_code == 404
+
+
+class TestTaskStats:
+    """GET /tasks/stats."""
+
+    @pytest.mark.asyncio
+    async def test_stats_response_shape(self, test_client):
+        await test_client.post("/tasks", json=_t("Stats task"))
+        resp = await test_client.get("/tasks/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total_tasks" in data
+        assert "by_status" in data
+        assert "by_priority" in data
+
+    @pytest.mark.asyncio
+    async def test_stats_counts(self, test_client):
+        await test_client.post("/tasks", json=_t("Active 1"))
+        resp2 = await test_client.post("/tasks", json=_t("Complete me"))
+        await test_client.put(f"/tasks/{resp2.json()['id']}/complete")
+        resp = await test_client.get("/tasks/stats")
+        data = resp.json()
+        assert data["by_status"]["active"] >= 1
+        assert data["by_status"]["completed"] >= 1
+
+
+class TestDeleteTaskArchive:
+    """DELETE /tasks/{id} — archive (soft delete)."""
+
+    @pytest.mark.asyncio
+    async def test_archive_task(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("Archive me"))
+        task_id = resp.json()["id"]
+        resp = await test_client.delete(f"/tasks/{task_id}")
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+        assert resp.json()["archived_count"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_archive_not_found(self, test_client):
+        resp = await test_client.delete("/tasks/00000000-0000-0000-0000-000000000999")
+        assert resp.status_code == 404
