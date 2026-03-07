@@ -2,7 +2,7 @@
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, case, and_, literal
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
 from models.task import Task
@@ -119,10 +119,18 @@ class TaskService:
         if row:
             return row
 
-        # Auto-create if it's one of the 5 valid domains
+        # Auto-create if it's one of the 8 valid domains
         if name in self.VALID_DOMAINS:
-            cat = await self.create_category(user_id, name)
-            return cat.id
+            try:
+                cat = await self.create_category(user_id, name)
+                return cat.id
+            except (IntegrityError, ValueError):
+                await self.db.rollback()
+                result = await self.db.execute(
+                    select(Category.id)
+                    .where(Category.user_id == user_id, Category.name == name)
+                )
+                return result.scalar_one_or_none()
 
         return None
 

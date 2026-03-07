@@ -9,6 +9,8 @@ from models.schemas import TaskFilterParams
 class QueryBuilder:
     """Build dynamic SQLAlchemy queries from filter parameters."""
 
+    ALLOWED_SORT_FIELDS = {'title', 'created_at', 'updated_at', 'due_date', 'priority', 'status', 'completed_at'}
+
     PRIORITY_MAP = {
         'high': 3,
         'medium': 2,
@@ -116,6 +118,8 @@ class QueryBuilder:
         sort_fields = params.parse_sort()
 
         for field_name, direction in sort_fields:
+            if field_name not in QueryBuilder.ALLOWED_SORT_FIELDS:
+                continue  # Skip invalid sort fields
             order_clause = QueryBuilder._build_order_clause(field_name, direction)
             query = query.order_by(order_clause)
 

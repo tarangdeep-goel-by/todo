@@ -117,7 +117,7 @@ class AuthInterceptor extends Interceptor {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final newToken = await user.getIdToken(true);
+        final newToken = await user.getIdToken(true).timeout(const Duration(seconds: 10));
         if (newToken != null) {
           _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
 

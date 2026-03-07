@@ -1,4 +1,5 @@
 """Tasks API router."""
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -208,13 +209,13 @@ async def bulk_action(
 
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
-    task_id: str,
+    task_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Get a specific task by ID."""
     task_service = TaskService(db)
-    task = await task_service.get_task(task_id)
+    task = await task_service.get_task(str(task_id))
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -222,7 +223,7 @@ async def get_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    logger.info("task.get", task_id=task_id)
+    logger.info("task.get", task_id=str(task_id))
     return task_to_response(task)
 
 
@@ -268,16 +269,17 @@ async def create_task(
 @limiter.limit("60/minute")
 async def update_task(
     request: Request,
-    task_id: str,
+    task_id: UUID,
     body: UpdateTaskRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Update an existing task."""
+    tid = str(task_id)
     task_service = TaskService(db)
 
     # Verify ownership
-    task = await task_service.get_task(task_id)
+    task = await task_service.get_task(tid)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     if task.user_id != user_id:
@@ -310,17 +312,17 @@ async def update_task(
     if body.estimated_hours is not None:
         updates['estimated_hours'] = body.estimated_hours
 
-    old_status = (await task_service.get_task(task_id)).status
-    task = await task_service.update_task(task_id, **updates)
+    old_status = (await task_service.get_task(tid)).status
+    task = await task_service.update_task(tid, **updates)
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     if "status" in updates and updates["status"] != old_status:
-        audit_log("task.status_changed", user_id, task_id,
+        audit_log("task.status_changed", user_id, tid,
                   old_status=old_status, new_status=updates["status"])
 
-    logger.info("task.update", task_id=task_id, fields=list(updates.keys()))
+    logger.info("task.update", task_id=tid, fields=list(updates.keys()))
     return task_to_response(task)
 
 
@@ -328,14 +330,15 @@ async def update_task(
 @limiter.limit("60/minute")
 async def complete_task(
     request: Request,
-    task_id: str,
+    task_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Complete task. If it has active children, completes them too."""
+    tid = str(task_id)
     task_service = TaskService(db)
 
-    task = await task_service.get_task(task_id)
+    task = await task_service.get_task(tid)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -343,17 +346,17 @@ async def complete_task(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Check for active children
-    children = await task_service.get_tasks(task.user_id, parent_id=task_id)
+    children = await task_service.get_tasks(task.user_id, parent_id=tid)
     active_children = [c for c in children if c.status == "active"]
 
     if active_children:
-        await task_service.complete_task_with_children(task_id)
+        await task_service.complete_task_with_children(tid)
     else:
-        await task_service.complete_task(task_id)
+        await task_service.complete_task(tid)
 
     # Re-fetch to get updated state
-    task = await task_service.get_task(task_id)
-    logger.info("task.complete", task_id=task_id)
+    task = await task_service.get_task(tid)
+    logger.info("task.complete", task_id=tid)
     return task_to_response(task)
 
 
@@ -361,24 +364,25 @@ async def complete_task(
 @limiter.limit("30/minute")
 async def delete_task(
     request: Request,
-    task_id: str,
+    task_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Archive task and all descendants (soft delete)."""
+    tid = str(task_id)
     task_service = TaskService(db)
 
-    task = await task_service.get_task(task_id)
+    task = await task_service.get_task(tid)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    count = await task_service.archive_task_with_children(task_id)
-    audit_log("task.archived", user_id, task_id, archived_count=count)
+    count = await task_service.archive_task_with_children(tid)
+    audit_log("task.archived", user_id, tid, archived_count=count)
 
-    logger.info("task.archive", task_id=task_id, archived_count=count)
+    logger.info("task.archive", task_id=tid, archived_count=count)
     return {
         "success": True,
         "message": f"Archived task and {count - 1} sub-tasks",
@@ -390,14 +394,15 @@ async def delete_task(
 @limiter.limit("30/minute")
 async def restore_task(
     request: Request,
-    task_id: str,
+    task_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> TaskResponse:
     """Restore an archived task and its children."""
+    tid = str(task_id)
     task_service = TaskService(db)
 
-    task = await task_service.get_task(task_id)
+    task = await task_service.get_task(tid)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     if task.user_id != user_id:
@@ -405,11 +410,11 @@ async def restore_task(
     if not task.archived_at:
         raise HTTPException(status_code=400, detail="Task is not archived")
 
-    count = await task_service.restore_task_with_children(task_id)
-    audit_log("task.restored", user_id, task_id, restored_count=count)
+    count = await task_service.restore_task_with_children(tid)
+    audit_log("task.restored", user_id, tid, restored_count=count)
 
-    task = await task_service.get_task(task_id)
-    logger.info("task.restore", task_id=task_id, restored_count=count)
+    task = await task_service.get_task(tid)
+    logger.info("task.restore", task_id=tid, restored_count=count)
     return task_to_response(task)
 
 
@@ -417,23 +422,24 @@ async def restore_task(
 @limiter.limit("10/minute")
 async def permanent_delete_task(
     request: Request,
-    task_id: str,
+    task_id: UUID,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Permanently hard-delete task and all descendants."""
+    tid = str(task_id)
     task_service = TaskService(db)
 
-    task = await task_service.get_task(task_id)
+    task = await task_service.get_task(tid)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    count = await task_service.delete_task_with_children(task_id)
-    audit_log("task.permanent_deleted", user_id, task_id, deleted_count=count)
+    count = await task_service.delete_task_with_children(tid)
+    audit_log("task.permanent_deleted", user_id, tid, deleted_count=count)
 
-    logger.info("task.permanent_delete", task_id=task_id, deleted_count=count)
+    logger.info("task.permanent_delete", task_id=tid, deleted_count=count)
     return {
         "success": True,
         "message": f"Permanently deleted task and {count - 1} sub-tasks",

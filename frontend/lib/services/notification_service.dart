@@ -18,6 +18,9 @@ class NotificationService {
   String? _currentToken;
   ApiService? _apiService;
 
+  /// Callback invoked when user taps a notification with a task_id.
+  void Function(String taskId)? onNotificationTap;
+
   /// Initialize notifications: request permission, register token, set up listeners.
   /// Fails silently if Firebase is not initialized (e.g. in tests).
   Future<void> initialize(ApiService apiService) async {
@@ -66,6 +69,15 @@ class NotificationService {
     // Foreground message handler — show local notification
     FirebaseMessaging.onMessage.listen(_showLocalNotification);
 
+    // Handle notification tap when app is in background
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+    // Handle notification that launched the app from terminated state
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationTap(initialMessage);
+    }
+
     _logger.info('notification.initialized', logger: 'NotificationService');
   }
 
@@ -95,6 +107,14 @@ class NotificationService {
     } catch (e) {
       _logger.warning('notification.register_failed',
           logger: 'NotificationService', data: {'error': e.toString()});
+    }
+  }
+
+  void _handleNotificationTap(RemoteMessage message) {
+    final taskId = message.data['task_id'] as String?;
+    if (taskId != null && onNotificationTap != null) {
+      _logger.info('notification.tap', logger: 'NotificationService', data: {'task_id': taskId});
+      onNotificationTap!(taskId);
     }
   }
 
