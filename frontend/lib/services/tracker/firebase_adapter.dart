@@ -20,7 +20,14 @@ class FirebaseAdapter implements TrackerAdapter {
   void trackEvent(TrackerEvent event) {
     _analytics?.logEvent(
       name: event.typeName,
-      parameters: event.properties.map((k, v) => MapEntry(k, v.toString())),
+      parameters: event.properties.map((k, v) {
+        // Firebase accepts String, int, double only — convert bools to int
+        if (v is String || v is int || v is double) {
+          return MapEntry(k, v);
+        }
+        if (v is bool) return MapEntry(k, v ? 1 : 0);
+        return MapEntry(k, v.toString());
+      }),
     );
   }
 

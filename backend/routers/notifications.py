@@ -58,7 +58,9 @@ async def register_token(
 
 
 @router.delete("/token", status_code=200)
+@limiter.limit("10/minute")
 async def delete_token(
+    request: Request,
     body: DeleteTokenRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

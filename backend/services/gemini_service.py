@@ -70,10 +70,42 @@ class GeminiService:
                     timeout=timeout_seconds,
                 )
                 return response
-            except (asyncio.TimeoutError, Exception) as e:
+            except asyncio.TimeoutError as e:
                 last_error = e
                 if attempt < settings.gemini_max_retries:
-                    wait = 0.5 * (2 ** attempt)  # 0.5s, 1.0s
+                    wait = 0.5 * (2 ** attempt)
+                    logger.warning("gemini.retry",
+                                   attempt=attempt + 1,
+                                   max_retries=settings.gemini_max_retries,
+                                   error=str(e),
+                                   wait_seconds=wait)
+                    await asyncio.sleep(wait)
+            except genai.errors.APIError as e:
+                last_error = e
+                status = getattr(e, 'code', getattr(e, 'status_code', 0))
+                if status == 429:
+                    # Rate limit — use Retry-After if available
+                    retry_after = getattr(e, 'headers', {})
+                    wait = float(retry_after.get('Retry-After', 0.5 * (2 ** attempt))) if isinstance(retry_after, dict) else 0.5 * (2 ** attempt)
+                    logger.warning("gemini.rate_limited", attempt=attempt + 1, wait_seconds=wait)
+                    await asyncio.sleep(wait)
+                elif status >= 500:
+                    # Server error — retry with backoff
+                    if attempt < settings.gemini_max_retries:
+                        wait = 0.5 * (2 ** attempt)
+                        logger.warning("gemini.retry", attempt=attempt + 1, error=str(e), wait_seconds=wait)
+                        await asyncio.sleep(wait)
+                else:
+                    # 4xx client error — don't retry
+                    logger.error("gemini.client_error", status=status, error=str(e))
+                    raise
+            except json.JSONDecodeError as e:
+                logger.error("gemini.parse_error", error=str(e))
+                return []
+            except Exception as e:
+                last_error = e
+                if attempt < settings.gemini_max_retries:
+                    wait = 0.5 * (2 ** attempt)
                     logger.warning("gemini.retry",
                                    attempt=attempt + 1,
                                    max_retries=settings.gemini_max_retries,

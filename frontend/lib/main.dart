@@ -10,6 +10,8 @@ import 'config/environment.dart';
 import 'config/theme.dart';
 import 'screens/auth_gate.dart';
 import 'services/auth_interceptor.dart';
+import 'services/audio_service.dart';
+import 'services/notification_service.dart';
 import 'services/tracker/tracker.dart';
 import 'services/tracker/firebase_adapter.dart';
 import 'services/tracker/dev_log_adapter.dart';
@@ -86,11 +88,22 @@ void main() async {
     // Initialize local database encryption (key + old-DB cleanup)
     await initDatabaseEncryption();
 
+    // Clean up old audio temp files
+    AudioService.cleanupOldRecordings();
+
     // Initialize tracker with Firebase + DevLog
     Tracker.instance.init([FirebaseAdapter(), DevLogAdapter()]);
 
     // M2: Deep link handler for amble:// URI scheme
     _initDeepLinks();
+
+    // Wire notification tap → task detail navigation
+    NotificationService.instance.onNotificationTap = (taskId) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        showTaskDetailOverlay(context, taskId: taskId);
+      }
+    };
   } else {
     // Test mode: use TestAdapter for E2E assertions + DevLog for console visibility
     Tracker.instance.init([TestAdapter.instance, DevLogAdapter()]);

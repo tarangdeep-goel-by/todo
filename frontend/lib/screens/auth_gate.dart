@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/environment.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/app_lifecycle_observer.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -21,7 +22,10 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       data: (user) {
         if (user != null) {
-          return const HomeScreen();
+          // Wrap HomeScreen with lifecycle observer only when authenticated
+          return const AppLifecycleObserver(
+            child: HomeScreen(),
+          );
         }
         return const LoginScreen();
       },
