@@ -53,7 +53,7 @@ class TestCorsOriginValidation:
         for k, v in _REQUIRED.items():
             monkeypatch.setenv(k, v)
         monkeypatch.setenv("CORS_ORIGINS", "localhost:8000")
-        with pytest.raises(ValidationError, match="must start with http:// or https://"):
+        with pytest.raises(ValidationError, match="must use http or https scheme"):
             Settings()
 
     def test_invalid_origin_ftp_scheme(self, monkeypatch):
@@ -61,7 +61,7 @@ class TestCorsOriginValidation:
         for k, v in _REQUIRED.items():
             monkeypatch.setenv(k, v)
         monkeypatch.setenv("CORS_ORIGINS", "ftp://files.example.com")
-        with pytest.raises(ValidationError, match="must start with http:// or https://"):
+        with pytest.raises(ValidationError, match="must use http or https scheme"):
             Settings()
 
     def test_invalid_origin_empty_host(self, monkeypatch):
@@ -69,7 +69,7 @@ class TestCorsOriginValidation:
         for k, v in _REQUIRED.items():
             monkeypatch.setenv(k, v)
         monkeypatch.setenv("CORS_ORIGINS", "http://")
-        with pytest.raises(ValidationError, match="Malformed CORS origin"):
+        with pytest.raises(ValidationError, match="missing hostname"):
             Settings()
 
     def test_invalid_origin_wildcard(self, monkeypatch):
@@ -77,7 +77,7 @@ class TestCorsOriginValidation:
         for k, v in _REQUIRED.items():
             monkeypatch.setenv(k, v)
         monkeypatch.setenv("CORS_ORIGINS", "*")
-        with pytest.raises(ValidationError, match="must start with http:// or https://"):
+        with pytest.raises(ValidationError, match="must use http or https scheme"):
             Settings()
 
     def test_invalid_mixed_origins(self, monkeypatch):
@@ -85,5 +85,5 @@ class TestCorsOriginValidation:
         for k, v in _REQUIRED.items():
             monkeypatch.setenv(k, v)
         monkeypatch.setenv("CORS_ORIGINS", "http://localhost:8000,badorigin")
-        with pytest.raises(ValidationError, match="must start with http:// or https://"):
+        with pytest.raises(ValidationError, match="must use http or https scheme"):
             Settings()

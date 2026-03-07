@@ -10,12 +10,14 @@ from sqlalchemy.engine import URL
 # Build URL via SQLAlchemy URL.create() — handles special chars (e.g. '/') that
 # break asyncpg when naively URL-encoded with quote_plus().
 _db_password = os.environ.get("POSTGRES_PASSWORD", "todo123")
+_db_host = os.environ.get("POSTGRES_HOST", "postgres")
+_db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
 _test_db_url = URL.create(
     drivername="postgresql+asyncpg",
     username="todo",
     password=_db_password,
-    host="postgres",
-    port=5432,
+    host=_db_host,
+    port=_db_port,
     database="todo_test",
 )
 os.environ["DATABASE_URL"] = str(_test_db_url)
@@ -59,8 +61,8 @@ ADMIN_DB_URL = URL.create(
     drivername="postgresql+asyncpg",
     username="todo",
     password=_db_password,
-    host="postgres",
-    port=5432,
+    host=_db_host,
+    port=_db_port,
     database="todo_db",
 )
 
