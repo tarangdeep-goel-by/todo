@@ -1,5 +1,5 @@
 """Account management router — GDPR account deletion."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
@@ -7,6 +7,7 @@ from auth import get_current_user
 from models.task import Task
 from models.category import Category
 from models.fcm_token import FcmToken
+from rate_limit import limiter
 from audit import audit_log
 from structured_logging import get_logger
 
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/account", tags=["account"])
 
 
 @router.delete("")
+@limiter.limit("3/minute")
 async def delete_account(
+    request: Request,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
