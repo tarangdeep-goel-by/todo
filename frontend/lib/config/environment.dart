@@ -31,22 +31,32 @@ class Environment {
             'API_BASE_URL',
             defaultValue: 'http://10.0.2.2:8001/api',
           );
-    assert(
-      _isLocalUrl(url) || url.startsWith('https://'),
-      'Production API URL must use HTTPS: $url',
-    );
+    if (!_isSecureOrLocalUrl(url)) {
+      throw StateError('Production API URL must use HTTPS: $url');
+    }
     return url;
   }
 
-  /// Returns true for localhost / emulator / LAN development URLs.
-  static bool _isLocalUrl(String url) {
+  static bool _isSecureOrLocalUrl(String url) {
     final uri = Uri.tryParse(url);
-    if (uri == null) return false;
-    final host = uri.host;
-    return host == 'localhost' ||
-        host == '127.0.0.1' ||
-        host == '10.0.2.2' ||
-        host.startsWith('192.168.') ||
-        host.startsWith('10.');
+    if (uri == null || uri.host.isEmpty) return false;
+    if (uri.scheme == 'https') return true;
+    return _isLocalHost(uri.host);
+  }
+
+  static bool _isLocalHost(String host) {
+    if (host == 'localhost' || host == '127.0.0.1' || host == '::1') {
+      return true;
+    }
+
+    final parts = host.split('.');
+    if (parts.length != 4) return false;
+
+    final octets = parts.map(int.tryParse).toList();
+    if (octets.any((o) => o == null)) return false;
+
+    return octets[0] == 10 ||
+        (octets[0] == 192 && octets[1] == 168) ||
+        (octets[0] == 172 && octets[1]! >= 16 && octets[1]! <= 31);
   }
 }

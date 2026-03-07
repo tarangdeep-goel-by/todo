@@ -470,25 +470,33 @@ class TaskService:
             tree_str += "\n"
         return tree_str
 
-    def _build_compressed_subtree(self, children_by_parent: Dict[str | None, List[Task]], parent_id: str, indent: int = 0) -> str:
+    def _build_compressed_subtree(self, children_by_parent: Dict[str | None, List[Task]], parent_id: str, indent: int = 0, seen: set | None = None) -> str:
         """Recursively build compressed tree string."""
+        seen = seen or set()
+        if parent_id in seen:
+            return ""
+        seen = seen | {parent_id}
         result = ""
         children = children_by_parent.get(parent_id, [])
         for child in children:
             status_tag = " [done]" if child.status == "completed" else ""
             result += "  " * indent + f"- {child.title}{status_tag}\n"
-            result += self._build_compressed_subtree(children_by_parent, child.id, indent + 1)
+            result += self._build_compressed_subtree(children_by_parent, child.id, indent + 1, seen)
         return result
 
-    def _build_subtree(self, children_by_parent: Dict[str | None, List[Task]], parent_id: str, indent: int = 0) -> str:
+    def _build_subtree(self, children_by_parent: Dict[str | None, List[Task]], parent_id: str, indent: int = 0, seen: set | None = None) -> str:
         """Recursively build tree string with indentation."""
+        seen = seen or set()
+        if parent_id in seen:
+            return ""
+        seen = seen | {parent_id}
         result = ""
         children = children_by_parent.get(parent_id, [])
 
         for child in children:
             status_tag = " [COMPLETED]" if child.status == "completed" else ""
             result += "  " * indent + f"├── {child.title} (id: {child.id}){status_tag}\n"
-            result += self._build_subtree(children_by_parent, child.id, indent + 1)
+            result += self._build_subtree(children_by_parent, child.id, indent + 1, seen)
 
         return result
 
