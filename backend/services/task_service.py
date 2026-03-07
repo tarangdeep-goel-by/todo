@@ -447,12 +447,17 @@ class TaskService:
         """Build full tree with UUIDs (original format)."""
         tree_str = f"User: {user_id}\n\n"
         for category, tasks in sorted(categories.items()):
+            # Pre-build children lookup for O(1) access
+            children_by_parent: Dict[str | None, List[Task]] = {}
+            for t in tasks:
+                children_by_parent.setdefault(t.parent_id, []).append(t)
+
             tree_str += f"{category.upper()} TASKS:\n"
-            top_level = [t for t in tasks if t.parent_id is None]
+            top_level = children_by_parent.get(None, [])
             for task in top_level:
                 status_tag = " [COMPLETED]" if task.status == "completed" else ""
                 tree_str += f"├── {task.title} (id: {task.id}){status_tag}\n"
-                tree_str += self._build_subtree(tasks, task.id, indent=1)
+                tree_str += self._build_subtree(children_by_parent, task.id, indent=1)
             tree_str += "\n"
         return tree_str
 
@@ -460,34 +465,46 @@ class TaskService:
         """Build compressed tree without UUIDs (~56% fewer tokens)."""
         tree_str = ""
         for category, tasks in sorted(categories.items()):
+            children_by_parent: Dict[str | None, List[Task]] = {}
+            for t in tasks:
+                children_by_parent.setdefault(t.parent_id, []).append(t)
+
             tree_str += f"{category.upper()}:\n"
-            top_level = [t for t in tasks if t.parent_id is None]
+            top_level = children_by_parent.get(None, [])
             for task in top_level:
                 status_tag = " [done]" if task.status == "completed" else ""
                 tree_str += f"- {task.title}{status_tag}\n"
-                tree_str += self._build_compressed_subtree(tasks, task.id, indent=1)
+                tree_str += self._build_compressed_subtree(children_by_parent, task.id, indent=1)
             tree_str += "\n"
         return tree_str
 
-    def _build_compressed_subtree(self, tasks: List[Task], parent_id: str, indent: int = 0) -> str:
+    def _build_compressed_subtree(self, children_by_parent: Dict[str | None, List[Task]], parent_id: str, indent: int = 0, seen: set | None = None) -> str:
         """Recursively build compressed tree string."""
+        seen = seen or set()
+        if parent_id in seen:
+            return ""
+        seen = seen | {parent_id}
         result = ""
-        children = [t for t in tasks if t.parent_id == parent_id]
+        children = children_by_parent.get(parent_id, [])
         for child in children:
             status_tag = " [done]" if child.status == "completed" else ""
             result += "  " * indent + f"- {child.title}{status_tag}\n"
-            result += self._build_compressed_subtree(tasks, child.id, indent + 1)
+            result += self._build_compressed_subtree(children_by_parent, child.id, indent + 1, seen)
         return result
 
-    def _build_subtree(self, tasks: List[Task], parent_id: str, indent: int = 0) -> str:
+    def _build_subtree(self, children_by_parent: Dict[str | None, List[Task]], parent_id: str, indent: int = 0, seen: set | None = None) -> str:
         """Recursively build tree string with indentation."""
+        seen = seen or set()
+        if parent_id in seen:
+            return ""
+        seen = seen | {parent_id}
         result = ""
-        children = [t for t in tasks if t.parent_id == parent_id]
+        children = children_by_parent.get(parent_id, [])
 
         for child in children:
             status_tag = " [COMPLETED]" if child.status == "completed" else ""
             result += "  " * indent + f"├── {child.title} (id: {child.id}){status_tag}\n"
-            result += self._build_subtree(tasks, child.id, indent + 1)
+            result += self._build_subtree(children_by_parent, child.id, indent + 1, seen)
 
         return result
 

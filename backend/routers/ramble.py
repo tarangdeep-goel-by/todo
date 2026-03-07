@@ -96,7 +96,11 @@ async def ramble_websocket(websocket: WebSocket):
     # Verify token
     settings = get_settings()
     token = msg["token"]
-    if settings.app_env == "test" and token == "test-token-e2e":
+    if token == "test-token-e2e":
+        if settings.app_env != "test":
+            logger.error("ws.test_token_rejected", app_env=settings.app_env)
+            await websocket.close(code=4001, reason="Invalid token")
+            return
         user_uid = "test-user-e2e"
         logger.warning("ws.test_token_used", uid=user_uid)
     else:

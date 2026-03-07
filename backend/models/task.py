@@ -62,4 +62,5 @@ class Task(Base):
         Index("idx_tasks_user_status", "user_id", "status"),
         Index("idx_tasks_parent", "parent_id"),
         Index("idx_tasks_created", "created_at"),
+        Index("idx_tasks_user_due_date", "user_id", "due_date"),
     )

@@ -116,7 +116,7 @@ async def get_tasks(
 
 
 @router.get("/stats", response_model=TaskStatsResponse)
-@limiter.limit("30/minute")
+@limiter.limit("60/minute")
 async def get_task_stats(
     request: Request,
     user_id: str = Depends(get_current_user),
@@ -165,7 +165,7 @@ async def search_tasks(
 
 
 @router.get("/archived", response_model=TaskListResponse)
-@limiter.limit("30/minute")
+@limiter.limit("60/minute")
 async def get_archived_tasks(
     request: Request,
     user_id: str = Depends(get_current_user),
@@ -214,7 +214,7 @@ async def bulk_action(
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-@limiter.limit("120/minute")
+@limiter.limit("60/minute")
 async def get_task(
     request: Request,
     task_id: UUID,

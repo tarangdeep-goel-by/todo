@@ -8,6 +8,7 @@ import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
@@ -284,102 +285,112 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
           availableHeight: constraints.maxHeight,
         );
 
-        return SizedBox(
-          width: double.infinity,
-          height: double.infinity,
-          // Listener doesn't participate in the gesture arena, so
-          // Dismissible's horizontal swipe is never blocked.
-          child: Listener(
-            onPointerDown: _onPointerDown,
-            onPointerMove: (e) =>
-                _onPointerMove(e, domains.length),
-            onPointerUp: (e) =>
-                _onPointerUp(e, domains.length),
-            child: ClipRect(
-              child: Stack(
-                children: [
-                  // Animated card column — pre-compute per-domain tasks
-                  // outside the builder to avoid filtering at 60fps.
-                  Builder(builder: (context) {
-                    final domainTaskMap = <int, List<Task>>{};
-                    for (int i = 0; i < domains.length; i++) {
-                      final domain = domains[i];
-                      domainTaskMap[i] = tasks
-                          .where((task) =>
-                              task.category.toLowerCase() ==
-                              domain.name.toLowerCase())
-                          .toList();
-                    }
-                    return AnimatedBuilder(
-                      animation: _focusAnimation,
-                      builder: (context, _) {
-                        final t = _focusAnimation.value;
+        return RefreshIndicator(
+          color: AppColors.darkText,
+          backgroundColor: AppColors.darkBg,
+          onRefresh: () => ref.read(syncServiceProvider).sync(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: constraints.maxHeight,
+              // Listener doesn't participate in the gesture arena, so
+              // Dismissible's horizontal swipe is never blocked.
+              child: Listener(
+                onPointerDown: _onPointerDown,
+                onPointerMove: (e) =>
+                    _onPointerMove(e, domains.length),
+                onPointerUp: (e) =>
+                    _onPointerUp(e, domains.length),
+                child: ClipRect(
+                  child: Stack(
+                    children: [
+                      // Animated card column — pre-compute per-domain tasks
+                      // outside the builder to avoid filtering at 60fps.
+                      Builder(builder: (context) {
+                        final domainTaskMap = <int, List<Task>>{};
+                        for (int i = 0; i < domains.length; i++) {
+                          final domain = domains[i];
+                          domainTaskMap[i] = tasks
+                              .where((task) =>
+                                  task.category.toLowerCase() ==
+                                  domain.name.toLowerCase())
+                              .toList();
+                        }
+                        return AnimatedBuilder(
+                          animation: _focusAnimation,
+                          builder: (context, _) {
+                            final t = _focusAnimation.value;
 
-                        final cards = List.generate(domains.length, (index) {
-                          final domain = domains[index];
-                          final domainTasks = domainTaskMap[index]!;
+                            final cards = List.generate(domains.length, (index) {
+                              final domain = domains[index];
+                              final domainTasks = domainTaskMap[index]!;
 
-                        // Compute animated height: lerp between previous and target
-                        final prevHeight = index == _previousFocusedIndex
-                            ? liquidFocus.focusedHeight
-                            : liquidFocus.compressedHeight;
-                        final targetHeight = index == _focusedIndex
-                            ? liquidFocus.focusedHeight
-                            : liquidFocus.compressedHeight;
-                        final height = prevHeight + (targetHeight - prevHeight) * t;
+                            // Compute animated height: lerp between previous and target
+                            final prevHeight = index == _previousFocusedIndex
+                                ? liquidFocus.focusedHeight
+                                : liquidFocus.compressedHeight;
+                            final targetHeight = index == _focusedIndex
+                                ? liquidFocus.focusedHeight
+                                : liquidFocus.compressedHeight;
+                            final height = prevHeight + (targetHeight - prevHeight) * t;
 
-                        // Focus progress for visual effects
-                        final prevFocus = index == _previousFocusedIndex ? 1.0 : 0.0;
-                        final targetFocus = index == _focusedIndex ? 1.0 : 0.0;
-                        final focusProgress = prevFocus + (targetFocus - prevFocus) * t;
+                            // Focus progress for visual effects
+                            final prevFocus = index == _previousFocusedIndex ? 1.0 : 0.0;
+                            final targetFocus = index == _focusedIndex ? 1.0 : 0.0;
+                            final focusProgress = prevFocus + (targetFocus - prevFocus) * t;
 
-                        return SizedBox(
-                          height: height,
-                          child: GestureDetector(
-                            onTap: () {
-                              if (index != _focusedIndex) {
-                                HapticService.selection();
-                                _setFocusedIndex(index);
-                              }
-                            },
-                            child: Dismissible(
-                              key: Key('domain-${domain.name}'),
-                              direction: DismissDirection.endToStart,
-                              confirmDismiss: (_) async {
-                                await _deleteDomain(domain, domainTasks);
-                                return false;
-                              },
-                              background: Container(
-                                color: AppColors.deleteAction,
-                                alignment: Alignment.centerRight,
-                                padding:
-                                    const EdgeInsets.only(right: AppSpacing.lg),
-                                child: const Icon(
-                                  Icons.delete_forever,
-                                  color: AppColors.darkBg,
-                                  size: 32,
+                            return SizedBox(
+                              height: height,
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (index != _focusedIndex) {
+                                    HapticService.selection();
+                                    _setFocusedIndex(index);
+                                  }
+                                },
+                                child: Dismissible(
+                                  key: Key('domain-${domain.name}'),
+                                  direction: DismissDirection.endToStart,
+                                  confirmDismiss: (_) async {
+                                    await _deleteDomain(domain, domainTasks);
+                                    return false;
+                                  },
+                                  background: Container(
+                                    color: AppColors.deleteAction,
+                                    alignment: Alignment.centerRight,
+                                    padding:
+                                        const EdgeInsets.only(right: AppSpacing.lg),
+                                    child: const Icon(
+                                      Icons.delete_forever,
+                                      color: AppColors.darkBg,
+                                      size: 32,
+                                    ),
+                                  ),
+                                  child: DomainCard(
+                                    domain: domain,
+                                    tasks: domainTasks,
+                                    isDark: true,
+                                    focusProgress: focusProgress,
+                                    height: height,
+                                  ),
                                 ),
                               ),
-                              child: DomainCard(
-                                domain: domain,
-                                tasks: domainTasks,
-                                isDark: true,
-                                focusProgress: focusProgress,
-                                height: height,
-                              ),
-                            ),
-                          ),
-                        );
-                      });
+                            );
+                          });
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: cards,
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: cards,
+                            );
+                          },
                         );
-                      },
-                    );
-                  }),
-                ],
+                      }),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

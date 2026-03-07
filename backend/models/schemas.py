@@ -77,7 +77,7 @@ class BrainDumpResponse(BaseModel):
 
 class BrainDumpSubmitRequest(BaseModel):
     """Request schema for committing reviewed brain dump tasks."""
-    tasks: List[BrainDumpTaskProposal]
+    tasks: List[BrainDumpTaskProposal] = Field(..., max_length=50)
 
 
 class BrainDumpSubmitResponse(BaseModel):

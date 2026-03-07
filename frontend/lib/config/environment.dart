@@ -25,12 +25,38 @@ class Environment {
   }
 
   static String get apiBaseUrl {
-    if (_runtimeOverride != null && _runtimeOverride!.isNotEmpty) {
-      return _runtimeOverride!;
+    final url = _runtimeOverride != null && _runtimeOverride!.isNotEmpty
+        ? _runtimeOverride!
+        : const String.fromEnvironment(
+            'API_BASE_URL',
+            defaultValue: 'http://10.0.2.2:8001/api',
+          );
+    if (!_isSecureOrLocalUrl(url)) {
+      throw StateError('Production API URL must use HTTPS: $url');
     }
-    return const String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8001/api',
-    );
+    return url;
+  }
+
+  static bool _isSecureOrLocalUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return false;
+    if (uri.scheme == 'https') return true;
+    return _isLocalHost(uri.host);
+  }
+
+  static bool _isLocalHost(String host) {
+    if (host == 'localhost' || host == '127.0.0.1' || host == '::1') {
+      return true;
+    }
+
+    final parts = host.split('.');
+    if (parts.length != 4) return false;
+
+    final octets = parts.map(int.tryParse).toList();
+    if (octets.any((o) => o == null)) return false;
+
+    return octets[0] == 10 ||
+        (octets[0] == 192 && octets[1] == 168) ||
+        (octets[0] == 172 && octets[1]! >= 16 && octets[1]! <= 31);
   }
 }
