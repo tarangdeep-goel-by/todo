@@ -63,7 +63,7 @@ ADMIN_DB_URL = URL.create(
     password=_db_password,
     host=_db_host,
     port=_db_port,
-    database="todo_db",
+    database="postgres",
 )
 
 _db_created = False
