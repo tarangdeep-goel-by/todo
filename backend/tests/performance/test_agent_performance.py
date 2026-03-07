@@ -2,7 +2,7 @@
 import asyncio
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -110,7 +110,7 @@ async def run_performance_suite():
     tree_sizes = [50, 100, 200, 500]
 
     all_results = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "search_performance": [],
         "tree_context_performance": [],
         "agent_performance": []
@@ -154,7 +154,7 @@ async def run_performance_suite():
             print(f"   Average agent time: {int(avg_agent_time)}ms")
 
     # Save JSON results
-    output_file = Path(f"performance_results/run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json")
+    output_file = Path(f"performance_results/run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json")
     output_file.parent.mkdir(exist_ok=True)
     output_file.write_text(json.dumps(all_results, indent=2))
     print(f"\n{'='*60}")

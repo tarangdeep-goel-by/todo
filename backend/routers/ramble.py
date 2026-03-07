@@ -31,6 +31,26 @@ _active_connections: dict[str, int] = {}
 _connections_lock = asyncio.Lock()
 
 
+class _BandwidthTracker:
+    """Per-connection bandwidth limiter (sliding window)."""
+
+    def __init__(self, max_bytes_per_second: int = 512_000):
+        self.max_bps = max_bytes_per_second
+        self.bytes_this_window = 0
+        self.window_start = time.monotonic()
+
+    def check(self, msg_size: int) -> bool:
+        """Return True if message is within rate limit, False if exceeded."""
+        now = time.monotonic()
+        if now - self.window_start >= 1.0:
+            self.bytes_this_window = 0
+            self.window_start = now
+        if self.bytes_this_window + msg_size > self.max_bps:
+            return False
+        self.bytes_this_window += msg_size
+        return True
+
+
 @router.websocket("/ws/ramble")
 async def ramble_websocket(websocket: WebSocket):
     """
@@ -103,6 +123,8 @@ async def ramble_websocket(websocket: WebSocket):
             return
         _active_connections[user_uid] = current + 1
 
+    bandwidth = _BandwidthTracker()
+
     trace_id_var.set(str(uuid.uuid4()))
     user_id_var.set(user_uid)
     logger.info("ws.connect")
@@ -144,6 +166,13 @@ async def ramble_websocket(websocket: WebSocket):
                 break
 
             raw = await websocket.receive_text()
+
+            # Bandwidth throttling
+            if not bandwidth.check(len(raw)):
+                logger.warning("ws.bandwidth_exceeded", user_id=user_uid)
+                await send_to_client({"type": "error", "message": "Rate limit exceeded"})
+                await websocket.close(code=4029, reason="Bandwidth limit exceeded")
+                break
 
             # Validate message size
             if len(raw) > MAX_MESSAGE_SIZE:
