@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import '../config/constants.dart';
+import '../config/environment.dart';
 import 'app_logger.dart';
 import 'tracker/tracker.dart';
 
@@ -15,6 +15,7 @@ class RambleWebSocketService {
   final WebSocketChannel Function(Uri) _channelFactory;
   final Future<String?> Function() _tokenProvider;
   WebSocketChannel? _channel;
+  Stream<dynamic>? _broadcastStream;
 
   RambleWebSocketService({
     WebSocketChannel Function(Uri)? channelFactory,
@@ -55,7 +56,7 @@ class RambleWebSocketService {
   }
 
   String get _wsUrl {
-    final wsBase = AppConstants.apiBaseUrl
+    final wsBase = Environment.apiBaseUrl
         .replaceFirst('http://', 'ws://')
         .replaceFirst('https://', 'wss://')
         .replaceFirst('/api', '');
@@ -78,6 +79,7 @@ class RambleWebSocketService {
 
     _logger.info('ws.connect', logger: 'RambleWS', data: {'url': _wsUrl});
     _channel = _channelFactory(Uri.parse(_wsUrl));
+    _broadcastStream = _channel!.stream.asBroadcastStream();
 
     try {
       await _channel!.ready;
@@ -95,7 +97,7 @@ class RambleWebSocketService {
 
     // Wait for auth_ok before proceeding
     try {
-      final authRaw = await _channel!.stream.first.timeout(
+      final authRaw = await _broadcastStream!.first.timeout(
         const Duration(seconds: 5),
       );
       final authMsg = jsonDecode(authRaw as String) as Map<String, dynamic>;
@@ -142,7 +144,7 @@ class RambleWebSocketService {
   }
 
   void _listenToChannel() {
-    _channel!.stream.listen(
+    _broadcastStream!.listen(
       _handleMessage,
       onError: (error) {
         _logger.error('ws.error', logger: 'RambleWS', data: {'reason': 'stream', 'error': error.toString()});
@@ -196,6 +198,7 @@ class RambleWebSocketService {
     }
 
     _channel = _channelFactory(Uri.parse(_wsUrl));
+    _broadcastStream = _channel!.stream.asBroadcastStream();
     try {
       await _channel!.ready;
 
@@ -204,7 +207,7 @@ class RambleWebSocketService {
       _logger.debug('ws.message', logger: 'RambleWS', data: {'direction': 'out', 'type': 'auth'});
 
       // Wait for auth_ok before proceeding
-      final authRaw = await _channel!.stream.first.timeout(
+      final authRaw = await _broadcastStream!.first.timeout(
         const Duration(seconds: 5),
       );
       final authMsg = jsonDecode(authRaw as String) as Map<String, dynamic>;
@@ -273,6 +276,7 @@ class RambleWebSocketService {
     _finalTranscriptCompleter = null;
     await _channel?.sink.close();
     _channel = null;
+    _broadcastStream = null;
     _setConnectionState(RambleConnectionState.disconnected);
     return result;
   }
@@ -281,6 +285,7 @@ class RambleWebSocketService {
     _intentionalClose = true;
     _channel?.sink.close();
     _channel = null;
+    _broadcastStream = null;
     _setConnectionState(RambleConnectionState.disconnected);
     _transcriptionController.close();
     _finalTranscriptController.close();
