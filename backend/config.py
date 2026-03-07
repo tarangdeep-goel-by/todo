@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     # API timeouts (seconds)
     gemini_timeout_seconds: int = 15
     gemini_subtask_timeout_seconds: int = 10
+    gemini_max_retries: int = 2
 
     # Category limits
     max_categories: int = 8
@@ -56,6 +57,9 @@ class Settings(BaseSettings):
 
     # WebSocket connection limits
     max_ws_connections_per_user: int = 3
+
+    # Test auth — must be explicitly enabled (never in production)
+    allow_test_auth: bool = False
 
     @field_validator("search_engine")
     @classmethod
