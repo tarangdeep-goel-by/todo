@@ -195,3 +195,225 @@ class TestDueTaskReminders:
         svc = NotificationService(db_session)
         tasks = await svc.get_due_tasks()
         assert len(tasks) == 0
+
+
+# ──────────────── send_to_user (mocked FCM) ────────────────
+
+
+class TestSendToUser:
+    """Tests for NotificationService.send_to_user() with mocked FCM."""
+
+    async def _add_token(self, db_session, token_str="test-token-1", user_id=TEST_USER_ID):
+        token = FcmToken(user_id=user_id, token=token_str, platform="android", timezone="UTC")
+        db_session.add(token)
+        await db_session.commit()
+        return token
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_send_success(self, mock_messaging, db_session):
+        """Successful send returns success_count."""
+        await self._add_token(db_session, "token-a")
+        await self._add_token(db_session, "token-b")
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=None), MagicMock(exception=None)]
+        mock_resp.success_count = 2
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        count = await svc.send_to_user(TEST_USER_ID, "Title", "Body")
+        assert count == 2
+
+    @pytest.mark.asyncio
+    async def test_send_no_tokens(self, db_session):
+        """No tokens for user returns 0 without calling FCM."""
+        svc = NotificationService(db_session)
+        count = await svc.send_to_user(TEST_USER_ID, "Title", "Body")
+        assert count == 0
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_unregistered_token_cleaned_up(self, mock_messaging, db_session):
+        """UnregisteredError on a token deletes it from DB."""
+        await self._add_token(db_session, "good-token")
+        await self._add_token(db_session, "dead-token")
+
+        # Create a real exception class for isinstance() to work
+        class _UnregisteredError(Exception):
+            pass
+        mock_messaging.UnregisteredError = _UnregisteredError
+
+        mock_resp = MagicMock()
+        good_send = MagicMock(exception=None)
+        dead_send = MagicMock()
+        dead_send.exception = _UnregisteredError("token expired")
+        mock_resp.responses = [good_send, dead_send]
+        mock_resp.success_count = 1
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        count = await svc.send_to_user(TEST_USER_ID, "Title", "Body")
+        assert count == 1
+
+        # Dead token deleted
+        result = await db_session.execute(select(FcmToken).where(FcmToken.token == "dead-token"))
+        assert result.scalar_one_or_none() is None
+        # Good token still exists
+        result = await db_session.execute(select(FcmToken).where(FcmToken.token == "good-token"))
+        assert result.scalar_one_or_none() is not None
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_send_with_data_payload(self, mock_messaging, db_session):
+        """Data dict passed through to messaging.Message."""
+        await self._add_token(db_session)
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=None)]
+        mock_resp.success_count = 1
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        await svc.send_to_user(TEST_USER_ID, "Title", "Body", data={"task_id": "abc"})
+
+        mock_messaging.send_each.assert_called_once()
+        messages = mock_messaging.send_each.call_args[0][0]
+        assert len(messages) == 1
+
+
+# ──────────────── check_and_send_due_reminders ────────────────
+
+
+class TestDueReminderConsolidation:
+    """Tests for consolidated notification sending."""
+
+    async def _create_due_task(self, db_session, title="Due task", user_id=TEST_USER_ID, minutes_from_now=30):
+        import uuid
+        now = datetime.now(timezone.utc)
+        task = Task(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            title=title,
+            category="health",
+            status="active",
+            due_date=now + timedelta(minutes=minutes_from_now),
+            transcription="test",
+            ai_placement_json={"action": "add"},
+        )
+        db_session.add(task)
+        await db_session.commit()
+        return task
+
+    async def _add_token(self, db_session, token_str="reminder-token", user_id=TEST_USER_ID):
+        token = FcmToken(user_id=user_id, token=token_str, platform="android", timezone="UTC")
+        db_session.add(token)
+        await db_session.commit()
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_single_task_title(self, mock_messaging, db_session):
+        """Single due task: title='Task due soon', body=task title."""
+        await self._create_due_task(db_session, title="Call dentist")
+        await self._add_token(db_session)
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=None)]
+        mock_resp.success_count = 1
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        total = await svc.check_and_send_due_reminders()
+        assert total == 1
+
+        call_args = mock_messaging.Notification.call_args
+        title = call_args.kwargs.get("title") or call_args[1].get("title")
+        assert title == "Task due soon"
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_multi_task_title(self, mock_messaging, db_session):
+        """3 due tasks: title='3 tasks due soon'."""
+        for t in ["Task A", "Task B", "Task C"]:
+            await self._create_due_task(db_session, title=t)
+        await self._add_token(db_session)
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=None)]
+        mock_resp.success_count = 1
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        total = await svc.check_and_send_due_reminders()
+        assert total == 3
+
+        call_args = mock_messaging.Notification.call_args
+        title = call_args.kwargs.get("title") or call_args[1].get("title")
+        assert title == "3 tasks due soon"
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_more_than_3_ellipsis(self, mock_messaging, db_session):
+        """5 due tasks: body contains 'and 2 more'."""
+        for i in range(5):
+            await self._create_due_task(db_session, title=f"Task {i}")
+        await self._add_token(db_session)
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=None)]
+        mock_resp.success_count = 1
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        await svc.check_and_send_due_reminders()
+
+        call_args = mock_messaging.Notification.call_args
+        body = call_args.kwargs.get("body") or call_args[1].get("body")
+        assert "and 2 more" in body
+
+    @pytest.mark.asyncio
+    async def test_no_due_tasks_returns_zero(self, db_session):
+        """No tasks in window returns 0."""
+        svc = NotificationService(db_session)
+        assert await svc.check_and_send_due_reminders() == 0
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_last_notified_at_set(self, mock_messaging, db_session):
+        """After successful send, task.last_notified_at is set."""
+        task = await self._create_due_task(db_session)
+        await self._add_token(db_session)
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=None)]
+        mock_resp.success_count = 1
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        await svc.check_and_send_due_reminders()
+
+        await db_session.refresh(task)
+        assert task.last_notified_at is not None
+
+    @pytest.mark.asyncio
+    @patch("services.notification_service.messaging")
+    async def test_last_notified_at_not_set_on_failure(self, mock_messaging, db_session):
+        """If send returns 0 success, last_notified_at stays None."""
+        task = await self._create_due_task(db_session)
+        await self._add_token(db_session)
+
+        # Set UnregisteredError to a real class so isinstance() works in send_to_user
+        class _UnregisteredError(Exception):
+            pass
+        mock_messaging.UnregisteredError = _UnregisteredError
+
+        mock_resp = MagicMock()
+        mock_resp.responses = [MagicMock(exception=Exception("fail"))]
+        mock_resp.success_count = 0
+        mock_messaging.send_each.return_value = mock_resp
+
+        svc = NotificationService(db_session)
+        await svc.check_and_send_due_reminders()
+
+        await db_session.refresh(task)
+        assert task.last_notified_at is None
