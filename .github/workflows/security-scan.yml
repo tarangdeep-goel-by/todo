@@ -57,13 +57,17 @@ jobs:
         run: python -m pytest tests/ -v --tb=short --ignore=tests/performance
         env:
           DATABASE_URL: postgresql+asyncpg://todo:testpass@localhost:5432/todo_test
+          POSTGRES_HOST: localhost                                
+          POSTGRES_PASSWORD: testpass
           GEMINI_API_KEY: test-key-not-real
           SARVAM_API_KEY: test-key-not-real
           FIREBASE_PROJECT_ID: test-project
           APP_ENV: test
+          
           ALLOW_TEST_AUTH: "true"
           SEARCH_ENGINE: pg_native
           REDIS_URL: redis://localhost:6379/0
+          CORS_ORIGINS: http://localhost:8001
 
   frontend-analyze:
     name: Flutter Analyze
