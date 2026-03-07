@@ -19,7 +19,7 @@ import '../helpers/test_helpers.dart';
 void main() {
   late MockApiService mockApi;
   late MockSpeechService mockSpeech;
-  Future<void> Function()? _closeLocalData;
+  Future<void> Function()? closeLocalData;
 
   setUp(() {
     mockApi = MockApiService();
@@ -48,13 +48,13 @@ void main() {
   });
 
   tearDown(() async {
-    await _closeLocalData?.call();
-    _closeLocalData = null;
+    await closeLocalData?.call();
+    closeLocalData = null;
   });
 
   Widget buildHomeScreen() {
     final testLocal = createTestLocalData();
-    _closeLocalData = testLocal.close;
+    closeLocalData = testLocal.close;
     return buildTestApp(
       const HomeScreen(),
       overrides: [
