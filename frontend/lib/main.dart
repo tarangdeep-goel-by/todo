@@ -141,9 +141,16 @@ void _handleDeepLink(Uri uri) {
   if (uri.host == 'task' && uri.pathSegments.length == 1) {
     final taskId = uri.pathSegments[0];
     final context = navigatorKey.currentContext;
-    if (context != null) {
-      showTaskDetailOverlay(context, taskId: taskId);
-    }
+    if (context == null) return;
+
+    // Validate UUID format before showing overlay
+    final uuidRegex = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+    if (!uuidRegex.hasMatch(taskId)) return;
+
+    showTaskDetailOverlay(context, taskId: taskId);
   }
 }
 

@@ -25,12 +25,28 @@ class Environment {
   }
 
   static String get apiBaseUrl {
-    if (_runtimeOverride != null && _runtimeOverride!.isNotEmpty) {
-      return _runtimeOverride!;
-    }
-    return const String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8001/api',
+    final url = _runtimeOverride != null && _runtimeOverride!.isNotEmpty
+        ? _runtimeOverride!
+        : const String.fromEnvironment(
+            'API_BASE_URL',
+            defaultValue: 'http://10.0.2.2:8001/api',
+          );
+    assert(
+      _isLocalUrl(url) || url.startsWith('https://'),
+      'Production API URL must use HTTPS: $url',
     );
+    return url;
+  }
+
+  /// Returns true for localhost / emulator / LAN development URLs.
+  static bool _isLocalUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    final host = uri.host;
+    return host == 'localhost' ||
+        host == '127.0.0.1' ||
+        host == '10.0.2.2' ||
+        host.startsWith('192.168.') ||
+        host.startsWith('10.');
   }
 }

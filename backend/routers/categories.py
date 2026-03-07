@@ -15,7 +15,9 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 
 
 @router.get("", response_model=List[CategoryResponse])
+@limiter.limit("60/minute")
 async def get_categories(
+    request: Request,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[CategoryResponse]:
