@@ -36,7 +36,7 @@ void main() {
       expect(spy.events, hasLength(1));
       final event = spy.events.first;
       expect(event.type, TrackerEventType.screenView);
-      expect(event.typeName, 'screen_view');
+      expect(event.typeName, 'app_screen_view');
       expect(event.properties['screen'], 'home');
       expect(event.properties['source'], 'app_launch');
     });
