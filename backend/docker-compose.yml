@@ -44,7 +44,6 @@ services:
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
       REDIS_URL: redis://redis:6379/0
-      ALLOW_TEST_AUTH: "true"
     ports:
       - "8001:8000"
     volumes:

@@ -30,7 +30,6 @@ services:
       SEARCH_ENGINE: ${SEARCH_ENGINE:-pg_native}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
-      ALLOW_TEST_AUTH: "true"
     ports:
       - "${WT_API_PORT:-8002}:8000"
     volumes:

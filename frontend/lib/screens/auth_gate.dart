@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/environment.dart';
 import '../config/theme.dart';
-import '../main.dart' show kTestMode;
 import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -12,7 +12,7 @@ class AuthGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // In test mode, skip Firebase Auth entirely
-    if (kTestMode) {
+    if (Environment.isTestMode) {
       return const HomeScreen();
     }
 

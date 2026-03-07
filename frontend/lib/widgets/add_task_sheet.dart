@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../config/spacing.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
-import '../main.dart' show kTestMode;
+import '../config/environment.dart';
 import '../models/task.dart';
 import '../providers/auth_provider.dart';
 import '../providers/mutation_provider.dart';
@@ -488,7 +488,7 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     try {
       // Offline-first: create with client-generated task, enqueue for sync
       final now = DateTime.now();
-      final userId = kTestMode ? 'test-user-e2e' : (ref.read(currentUserIdProvider) ?? '');
+      final userId = Environment.isTestMode ? 'test-user-e2e' : (ref.read(currentUserIdProvider) ?? '');
       final optimistic = Task(
         id: const Uuid().v4(),
         userId: userId,

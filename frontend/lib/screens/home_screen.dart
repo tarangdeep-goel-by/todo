@@ -12,7 +12,8 @@ import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
 import '../services/notification_service.dart';
 import '../services/tracker/tracker.dart';
-import '../main.dart' show kTestMode, processPendingDeepLink;
+import '../config/environment.dart';
+import '../main.dart' show processPendingDeepLink;
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/ptt_input_overlay.dart';
@@ -44,7 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       Tracker.instance.screenView(screen: 'home', source: 'app_launch');
       final store = ref.read(taskStoreProvider.notifier);
 
-      if (!kTestMode) {
+      if (!Environment.isTestMode) {
         final localDb = ref.read(localDataServiceProvider);
         final currentUid = ref.read(currentUserIdProvider) ?? '';
 
