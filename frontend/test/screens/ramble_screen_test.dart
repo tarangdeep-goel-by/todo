@@ -160,13 +160,13 @@ void main() {
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     });
 
-    testWidgets('confirm button not shown when no proposals', (tester) async {
+    testWidgets('confirm button disabled when no proposals', (tester) async {
       await tester.pumpWidget(buildRambleScreen(proposals: []));
       await tester.pumpAndSettle();
 
-      // _buildReviewingBody returns early for empty proposals — no submit button
-      expect(find.byKey(TK.submitButton), findsNothing);
-      expect(find.text('Confirm 0 Actions'), findsNothing);
+      // Footer still renders but submit button is disabled (opacity 0.4)
+      expect(find.byKey(TK.submitButton), findsOneWidget);
+      expect(find.text('Confirm 0 Actions'), findsOneWidget);
       expect(find.text('No tasks detected'), findsOneWidget);
     });
   });

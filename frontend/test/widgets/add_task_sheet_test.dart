@@ -14,40 +14,6 @@ void main() {
     mockApi = MockApiService();
   });
 
-  Widget buildSheet({List<Override> extra = const []}) {
-    return ProviderScope(
-      overrides: [
-        apiServiceProvider.overrideWithValue(mockApi),
-        domainPalettesProvider.overrideWithValue(createTestPaletteMap()),
-        ...extra,
-      ],
-      child: MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (_) => ProviderScope(
-                    overrides: [
-                      apiServiceProvider.overrideWithValue(mockApi),
-                      domainPalettesProvider
-                          .overrideWithValue(createTestPaletteMap()),
-                      ...extra,
-                    ],
-                    child: const AddTaskSheet(),
-                  ),
-                );
-              },
-              child: const Text('Open'),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Simpler approach: render AddTaskSheet directly inside a Scaffold
   Widget buildDirect({List<Override> extra = const []}) {
     return ProviderScope(
       overrides: [
