@@ -1,5 +1,4 @@
 import 'package:flutter/animation.dart';
-
 /// Animation curves and durations
 class AppAnimations {
   // Custom easing curves (from design brief)
@@ -27,12 +26,9 @@ class AppAnimations {
 
 /// App-wide constants
 class AppConstants {
-  // API base URL — override at build time: flutter run --dart-define=API_BASE_URL=https://...
-  // For Android emulator, use 10.0.2.2 instead of localhost
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8001/api',
-  );
+  // API base URL — hardcoded default for Android emulator.
+  // For physical device testing, change this to your machine's network IP.
+  static const String apiBaseUrl = 'http://10.0.2.2:8001/api';
 
   // Audio recording settings
   static const String audioFolderName = 'audio_recordings';

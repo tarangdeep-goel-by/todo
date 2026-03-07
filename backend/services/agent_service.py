@@ -331,6 +331,9 @@ class AgentService:
         """
         Commit reviewed brain dump tasks to the database.
 
+        All actions are executed atomically — if ANY action fails, ALL changes
+        are rolled back and no tasks are created/modified/deleted.
+
         Args:
             user_id: User ID
             tasks: List of reviewed/edited task proposals
@@ -341,28 +344,47 @@ class AgentService:
         """
         logger.info("braindump.submit.start", task_count=len(tasks))
 
-        task_service = TaskService(db)
-        created_ids: List[str] = []
-        counts: Dict[str, int] = {}
-
-        for proposal in tasks:
-            try:
-                result = await self._execute_action(proposal, user_id, task_service)
-                rtype = result["type"]
-                counts[rtype] = counts.get(rtype, 0) + result["count"]
-                if result.get("task_id"):
-                    created_ids.append(result["task_id"])
-            except Exception as e:
-                logger.error("braindump.action.error", content=proposal.content, action=proposal.action, error=str(e))
-
-        total = sum(counts.values())
-        if total == 0:
+        if not tasks:
             return BrainDumpSubmitResponse(
                 success=False,
                 created_count=0,
                 created_task_ids=[],
                 message="Failed to process any tasks",
             )
+
+        # Use auto_commit=False so individual task_service methods flush
+        # instead of committing, allowing atomic batch rollback.
+        task_service = TaskService(db, auto_commit=False)
+        created_ids: List[str] = []
+        counts: Dict[str, int] = {}
+
+        try:
+            for proposal in tasks:
+                result = await self._execute_action(proposal, user_id, task_service)
+                rtype = result["type"]
+                counts[rtype] = counts.get(rtype, 0) + result["count"]
+                if result.get("task_id"):
+                    created_ids.append(result["task_id"])
+
+            # All actions succeeded — commit the entire batch
+            await db.commit()
+        except Exception as e:
+            await db.rollback()
+            error_msg = str(e)
+            logger.error(
+                "braindump.submit.rollback",
+                error=error_msg,
+                task_count=len(tasks),
+            )
+            return BrainDumpSubmitResponse(
+                success=False,
+                created_count=0,
+                created_task_ids=[],
+                message="All actions rolled back due to an internal error",
+                failed_reason="internal_error",
+            )
+
+        total = sum(counts.values())
 
         # Build summary message with actual counts (including cascaded children)
         label_map = {"created": "Created", "completed": "completed", "edited": "edited", "deleted": "deleted"}
