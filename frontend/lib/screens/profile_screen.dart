@@ -224,10 +224,11 @@ class ProfileScreen extends ConsumerWidget {
               Navigator.of(context).pop(); // Close profile screen
               // Full cleanup before sign out
               ref.read(syncServiceProvider).stopPeriodicSync();
-              ref.read(audioServiceProvider).dispose();
+              ref.invalidate(audioServiceProvider);
               await ref.read(localDataServiceProvider).clearAll();
               await ref.read(authServiceProvider).signOut();
               // Invalidate providers to reset state
+              ref.invalidate(syncServiceProvider);
               ref.invalidate(taskStoreProvider);
               ref.invalidate(categoriesProvider);
               ref.invalidate(taskFilterProvider);
