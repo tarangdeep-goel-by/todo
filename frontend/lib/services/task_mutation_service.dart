@@ -18,7 +18,6 @@ class TaskMutationService {
         _onPush = onPush;
 
   Future<void> createTask(Task optimistic, Map<String, dynamic> createPayload) async {
-    _store.upsertTask(optimistic);
     await _localDb.upsertTask(optimistic, pendingSync: true);
     await _localDb.enqueueMutation(
       entityType: 'task',
@@ -26,11 +25,11 @@ class TaskMutationService {
       action: 'create',
       payload: createPayload,
     );
+    _store.upsertTask(optimistic);
     _onPush?.call();
   }
 
   Future<void> updateTask(Task optimistic, Map<String, dynamic> updatePayload) async {
-    _store.upsertTask(optimistic);
     await _localDb.upsertTask(optimistic, pendingSync: true);
     await _localDb.enqueueMutation(
       entityType: 'task',
@@ -38,12 +37,11 @@ class TaskMutationService {
       action: 'update',
       payload: updatePayload,
     );
+    _store.upsertTask(optimistic);
     _onPush?.call();
   }
 
   Future<void> completeTask(Task task) async {
-    _store.completeWithDescendants(task.id);
-    // Persist the completed state for the task itself
     final completed = task.copyWith(
       status: 'completed',
       completedAt: DateTime.now(),
@@ -55,11 +53,11 @@ class TaskMutationService {
       action: 'complete',
       payload: {},
     );
+    _store.completeWithDescendants(task.id);
     _onPush?.call();
   }
 
   Future<void> deleteTask(Task task) async {
-    _store.removeTask(task.id);
     await _localDb.deleteTask(task.id);
     await _localDb.enqueueMutation(
       entityType: 'task',
@@ -67,6 +65,7 @@ class TaskMutationService {
       action: 'delete',
       payload: {},
     );
+    _store.removeTask(task.id);
     _onPush?.call();
   }
 }
