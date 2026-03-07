@@ -31,8 +31,8 @@ class IsOnlineNotifier extends StateNotifier<bool> {
     _sub = connectivity.onStatusChange.listen((online) {
       state = online;
       if (online) {
-        // Reconnected — trigger sync
-        _ref.read(syncServiceProvider).sync();
+        // Reconnected — trigger sync with retry (network may be flaky)
+        _ref.read(syncServiceProvider).syncWithRetry();
       }
     });
   }

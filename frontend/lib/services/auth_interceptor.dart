@@ -6,6 +6,17 @@ import 'app_logger.dart';
 /// and structured request/response logging.
 class AuthInterceptor extends Interceptor {
   final _logger = AppLogger.instance;
+  Dio? _dio;
+
+  // Token refresh synchronization
+  bool _isRefreshing = false;
+  final List<_PendingRequest> _pendingRequests = [];
+
+  /// Attach the Dio instance for authenticated retries.
+  void attachDio(Dio dio) => _dio = dio;
+
+  /// Callback invoked when token refresh fails and re-auth is needed.
+  static void Function()? onReauthRequired;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
@@ -13,7 +24,6 @@ class AuthInterceptor extends Interceptor {
     final traceId = _logger.generateTraceId();
     options.headers['X-Request-ID'] = traceId;
     options.headers['X-Session-ID'] = _logger.sessionId;
-    // Stash trace ID for response/error logging
     options.extra['trace_id'] = traceId;
 
     // In test mode, use a static test token instead of Firebase Auth
@@ -76,10 +86,6 @@ class AuthInterceptor extends Interceptor {
     handler.next(response);
   }
 
-  /// Callback invoked when token refresh fails and re-auth is needed.
-  /// Set by the app layer to show a dialog instead of silently signing out.
-  static void Function()? onReauthRequired;
-
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final traceId = err.requestOptions.extra['trace_id'] as String?;
@@ -91,38 +97,90 @@ class AuthInterceptor extends Interceptor {
           'type': err.type.name,
         });
 
-    if (err.response?.statusCode == 401) {
-      _logger.warning('auth.token_expired', logger: 'AuthInterceptor', traceId: traceId);
+    if (err.response?.statusCode != 401 ||
+        const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
+      handler.next(err);
+      return;
+    }
 
-      // Skip Firebase token refresh in test mode (Firebase not initialized)
-      if (!const bool.fromEnvironment('TEST_MODE', defaultValue: false)) {
-        // Attempt silent token refresh before giving up
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          try {
-            final newToken = await user.getIdToken(true);
-            if (newToken != null) {
-              _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
-              // Retry the original request with fresh token
-              final opts = err.requestOptions;
-              opts.headers['Authorization'] = 'Bearer $newToken';
-              final response = await Dio().fetch(opts);
-              return handler.resolve(response);
-            }
-          } catch (refreshError) {
-            _logger.error('auth.refresh_failed', logger: 'AuthInterceptor', traceId: traceId,
-                data: {'error': refreshError.toString()});
-          }
-        }
+    _logger.warning('auth.token_expired', logger: 'AuthInterceptor', traceId: traceId);
 
-        // Refresh failed — notify app layer instead of silent signout
-        if (onReauthRequired != null) {
-          onReauthRequired!();
-        } else {
-          await FirebaseAuth.instance.signOut();
+    // If already refreshing, queue this request
+    if (_isRefreshing) {
+      _pendingRequests.add(_PendingRequest(err.requestOptions, handler));
+      return;
+    }
+
+    _isRefreshing = true;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final newToken = await user.getIdToken(true);
+        if (newToken != null) {
+          _logger.info('auth.token_refreshed', logger: 'AuthInterceptor', traceId: traceId);
+
+          // Retry the original request with the SAME Dio instance
+          final opts = err.requestOptions;
+          opts.headers['Authorization'] = 'Bearer $newToken';
+          final retryDio = _dio ?? Dio();
+          final response = await retryDio.fetch(opts);
+
+          // Retry all queued requests with the new token
+          _retryPendingRequests(newToken, retryDio);
+          _isRefreshing = false;
+
+          handler.resolve(response);
+          return;
         }
+      } catch (refreshError) {
+        _logger.error('auth.refresh_failed', logger: 'AuthInterceptor', traceId: traceId,
+            data: {'error': refreshError.toString()});
       }
     }
+
+    // Refresh failed — reject all pending requests
+    _rejectPendingRequests();
+    _isRefreshing = false;
+
+    if (onReauthRequired != null) {
+      onReauthRequired!();
+    } else {
+      await FirebaseAuth.instance.signOut();
+    }
+
     handler.next(err);
   }
+
+  void _retryPendingRequests(String token, Dio dio) {
+    final pending = List<_PendingRequest>.from(_pendingRequests);
+    _pendingRequests.clear();
+    for (final req in pending) {
+      req.options.headers['Authorization'] = 'Bearer $token';
+      dio.fetch(req.options).then(
+        (response) => req.handler.resolve(response),
+        onError: (e) => req.handler.next(
+          e is DioException ? e : DioException(requestOptions: req.options),
+        ),
+      );
+    }
+  }
+
+  void _rejectPendingRequests() {
+    final pending = List<_PendingRequest>.from(_pendingRequests);
+    _pendingRequests.clear();
+    for (final req in pending) {
+      req.handler.next(DioException(
+        requestOptions: req.options,
+        type: DioExceptionType.unknown,
+        message: 'Token refresh failed',
+      ));
+    }
+  }
+}
+
+class _PendingRequest {
+  final RequestOptions options;
+  final ErrorInterceptorHandler handler;
+  _PendingRequest(this.options, this.handler);
 }

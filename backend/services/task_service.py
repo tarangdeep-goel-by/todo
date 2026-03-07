@@ -84,9 +84,17 @@ class TaskService:
         return None
 
     async def get_task(self, task_id: str) -> Optional[Task]:
-        """Get task by ID."""
+        """Get task by ID (no user check). For internal tree traversal only.
+        For user-facing operations, use get_task_for_user() instead."""
         result = await self.db.execute(
             select(Task).where(Task.id == task_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_task_for_user(self, task_id: str, user_id: str) -> Optional[Task]:
+        """Get task by ID, verified to belong to user. Use for all user-facing operations."""
+        result = await self.db.execute(
+            select(Task).where(Task.id == task_id, Task.user_id == user_id)
         )
         return result.scalar_one_or_none()
 
@@ -147,21 +155,18 @@ class TaskService:
 
     async def complete_task(self, task_id: str) -> Optional[Task]:
         """Mark task as completed."""
-        from datetime import datetime
         return await self.update_task(
             task_id,
             status="completed",
-            completed_at=datetime.utcnow()
+            completed_at=datetime.now(timezone.utc)
         )
 
     async def complete_task_with_children(self, task_id: str) -> int:
         """Complete task and all active descendants."""
-        from datetime import datetime
-
         descendants = await self._get_all_descendants(task_id)
         task_ids = [task_id] + [d.id for d in descendants]
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         await self.db.execute(
             update(Task)
             .where(Task.id.in_(task_ids))
@@ -236,17 +241,17 @@ class TaskService:
         if len(task_ids) > 50:
             raise ValueError("Cannot process more than 50 tasks at once")
 
-        affected = 0
-        errors = []
+        # Single query: fetch all requested tasks owned by this user
+        result = await self.db.execute(
+            select(Task).where(Task.id.in_(task_ids), Task.user_id == user_id)
+        )
+        valid_tasks = {str(t.id): t for t in result.scalars().all()}
 
-        for tid in task_ids:
-            task = await self.get_task(tid)
-            if not task:
-                errors.append(f"Task {tid} not found")
-                continue
-            if task.user_id != user_id:
-                errors.append(f"Task {tid} not authorized")
-                continue
+        errors = [f"Task {tid} not found or not authorized"
+                  for tid in task_ids if tid not in valid_tasks]
+
+        affected = 0
+        for tid in valid_tasks:
             count = await self.complete_task_with_children(tid)
             affected += count
 
@@ -257,17 +262,17 @@ class TaskService:
         if len(task_ids) > 50:
             raise ValueError("Cannot process more than 50 tasks at once")
 
-        affected = 0
-        errors = []
+        # Single query: fetch all requested tasks owned by this user
+        result = await self.db.execute(
+            select(Task).where(Task.id.in_(task_ids), Task.user_id == user_id)
+        )
+        valid_tasks = {str(t.id): t for t in result.scalars().all()}
 
-        for tid in task_ids:
-            task = await self.get_task(tid)
-            if not task:
-                errors.append(f"Task {tid} not found")
-                continue
-            if task.user_id != user_id:
-                errors.append(f"Task {tid} not authorized")
-                continue
+        errors = [f"Task {tid} not found or not authorized"
+                  for tid in task_ids if tid not in valid_tasks]
+
+        affected = 0
+        for tid in valid_tasks:
             count = await self.archive_task_with_children(tid)
             affected += count
 
@@ -278,14 +283,18 @@ class TaskService:
         from sqlalchemy import delete as sql_delete
 
         descendants = await self._get_all_descendants(task_id)
-        # Delete descendants first (children before parents to respect FK)
-        descendant_ids = [d.id for d in reversed(descendants)]
-        all_ids = descendant_ids + [task_id]
+        all_ids = [d.id for d in descendants] + [task_id]
 
-        for tid in all_ids:
-            await self.db.execute(
-                sql_delete(Task).where(Task.id == tid)
-            )
+        # Null out parent_id references to avoid FK constraint issues
+        await self.db.execute(
+            update(Task)
+            .where(Task.parent_id.in_(all_ids))
+            .values(parent_id=None)
+        )
+        # Bulk delete all in one query
+        await self.db.execute(
+            sql_delete(Task).where(Task.id.in_(all_ids))
+        )
         await self.db.commit()
 
         return len(all_ids)

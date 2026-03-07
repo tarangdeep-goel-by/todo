@@ -55,6 +55,36 @@ class GeminiService:
         """Strip XML-like tags from user input to prevent prompt injection."""
         return re.sub(r'</?[a-zA-Z][^>]*>', '', text)
 
+    async def _call_with_retry(self, prompt, config, timeout_seconds):
+        """Call Gemini API with retry and exponential backoff."""
+        settings = get_settings()
+        last_error = None
+        for attempt in range(settings.gemini_max_retries + 1):
+            try:
+                response = await asyncio.wait_for(
+                    self.client.aio.models.generate_content(
+                        model=self.MODEL,
+                        contents=prompt,
+                        config=config,
+                    ),
+                    timeout=timeout_seconds,
+                )
+                return response
+            except (asyncio.TimeoutError, Exception) as e:
+                last_error = e
+                if attempt < settings.gemini_max_retries:
+                    wait = 0.5 * (2 ** attempt)  # 0.5s, 1.0s
+                    logger.warning("gemini.retry",
+                                   attempt=attempt + 1,
+                                   max_retries=settings.gemini_max_retries,
+                                   error=str(e),
+                                   wait_seconds=wait)
+                    await asyncio.sleep(wait)
+        logger.error("gemini.exhausted",
+                     attempts=settings.gemini_max_retries + 1,
+                     error=str(last_error))
+        raise last_error
+
     async def detect_brain_dump(
         self,
         transcription: str,
@@ -191,16 +221,13 @@ Common mistakes to avoid:
         try:
             settings = get_settings()
             t0 = time.monotonic()
-            response = await asyncio.wait_for(
-                self.client.aio.models.generate_content(
-                    model=self.MODEL,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type='application/json',
-                        response_schema=list[BrainDumpAction],
-                    ),
+            response = await self._call_with_retry(
+                prompt=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type='application/json',
+                    response_schema=list[BrainDumpAction],
                 ),
-                timeout=settings.gemini_timeout_seconds,
+                timeout_seconds=settings.gemini_timeout_seconds,
             )
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
 
@@ -280,16 +307,13 @@ Respond ONLY with a valid JSON array of strings. Example:
         settings = get_settings()
         t0 = time.monotonic()
         try:
-            response = await asyncio.wait_for(
-                self.client.aio.models.generate_content(
-                    model=self.MODEL,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type='application/json',
-                        response_schema=list[str],
-                    ),
+            response = await self._call_with_retry(
+                prompt=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type='application/json',
+                    response_schema=list[str],
                 ),
-                timeout=settings.gemini_subtask_timeout_seconds,
+                timeout_seconds=settings.gemini_subtask_timeout_seconds,
             )
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
 
