@@ -3,7 +3,7 @@ import '../models/task.dart';
 import '../models/api_response.dart';
 import '../models/api_error.dart';
 import '../models/category.dart';
-import '../config/constants.dart';
+import '../config/environment.dart';
 import 'auth_interceptor.dart';
 import 'api_retry.dart';
 import 'app_logger.dart';
@@ -19,7 +19,7 @@ class ApiService {
   ApiService({String? baseUrl, Dio? dio})
       : _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: baseUrl ?? AppConstants.apiBaseUrl,
+              baseUrl: baseUrl ?? Environment.apiBaseUrl,
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(seconds: 30),
               sendTimeout: const Duration(seconds: 15),
