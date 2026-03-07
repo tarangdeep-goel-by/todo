@@ -56,10 +56,11 @@ dependencies:
   # WebSocket
   web_socket_channel: ^3.0.0
 
-  # Local Database
+  # Local Database (sqlcipher for encryption — do NOT add drift_flutter or
+  # sqlite3_flutter_libs, they conflict with sqlcipher at the Android plugin level)
   drift: ^2.22.1
-  drift_flutter: ^0.2.4
   sqlcipher_flutter_libs: ^0.6.0
+  sqlite3: ^2.4.0
 
   # Security
   flutter_secure_storage: ^9.0.0
@@ -72,6 +73,7 @@ dependencies:
 
   # Utilities
   shared_preferences: ^2.3.0
+  path: ^1.9.0
   path_provider: ^2.1.2
   uuid: ^4.3.3
   intl: ^0.19.0
