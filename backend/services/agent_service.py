@@ -144,7 +144,7 @@ class AgentService:
                     top_task, top_score = matched[0]
                     matched_task_id = str(top_task.id)
                     task_category = top_task.category or task_category
-                    match_explanation = f"Matched '{top_task.title}' (similarity: {int(top_score)}%)"
+                    match_explanation = f"Matched '{top_task.title}' (similarity: {int(top_score * 100)}%)"
                     content = top_task.title  # show real task title in proposal UI
                     logger.debug("braindump.process.resolved", task_id=matched_task_id, score=int(top_score))
                     if len(matched) > 1:

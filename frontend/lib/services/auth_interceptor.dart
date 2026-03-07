@@ -144,10 +144,13 @@ class AuthInterceptor extends Interceptor {
     _rejectPendingRequests();
     _isRefreshing = false;
 
-    if (onReauthRequired != null) {
-      onReauthRequired!();
-    } else {
-      await FirebaseAuth.instance.signOut();
+    // Only prompt reauth if user is still signed in (skip during logout)
+    if (FirebaseAuth.instance.currentUser != null) {
+      if (onReauthRequired != null) {
+        onReauthRequired!();
+      } else {
+        await FirebaseAuth.instance.signOut();
+      }
     }
 
     handler.next(err);

@@ -11,6 +11,7 @@ import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
 import '../services/onboarding_service.dart';
 import '../services/notification_service.dart';
+import '../services/version_service.dart';
 import '../services/tracker/tracker.dart';
 import '../config/environment.dart';
 import '../main.dart' show processPendingDeepLink;
@@ -66,6 +67,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ref.read(speechServiceProvider).initialize();
         // Initialize push notifications (registers FCM token with backend)
         NotificationService.instance.initialize(ref.read(apiServiceProvider));
+        // Check client version compatibility (non-blocking)
+        _checkVersion();
       } else {
         // Test mode: fetch directly from API, skip offline infra
         await store.fetchAll();
@@ -75,6 +78,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         processPendingDeepLink();
       });
+    });
+  }
+
+  void _checkVersion() {
+    final dio = ref.read(apiServiceProvider).dio;
+    VersionService.checkCompatibility(dio).then((ok) {
+      if (!ok && mounted) {
+        // Show force-update dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('Update Required'),
+            content: const Text('Please update the app to continue.'),
+            actions: const [],
+          ),
+        );
+      }
     });
   }
 

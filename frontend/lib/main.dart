@@ -17,7 +17,6 @@ import 'services/tracker/firebase_adapter.dart';
 import 'services/tracker/dev_log_adapter.dart';
 import 'services/tracker/test_adapter.dart';
 import 'widgets/reauth_dialog.dart';
-import 'widgets/app_lifecycle_observer.dart';
 import 'widgets/task_detail_overlay.dart';
 import 'providers/local_data_provider.dart';
 
@@ -176,9 +175,7 @@ class AmbleApp extends ConsumerWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.dark,
-      home: const AppLifecycleObserver(
-        child: AuthGate(),
-      ),
+      home: const AuthGate(),
     );
   }
 }
