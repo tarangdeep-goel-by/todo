@@ -71,6 +71,19 @@ class AgentService:
         task_service = TaskService(db)
         tree_context = await task_service.build_full_tree_context(user_id)
 
+        # Build structured task list for Stage 2 parent placement
+        all_tasks = await task_service.get_tasks(user_id)
+        task_tree = [
+            {
+                "id": str(t.id),
+                "title": t.title,
+                "category": t.category,
+                "parent_id": str(t.parent_id) if t.parent_id else None,
+                "status": t.status,
+            }
+            for t in all_tasks
+        ]
+
         # If parent_id provided (subtask mode), look up parent for default category
         parent_category = None
         if parent_id:
@@ -79,8 +92,8 @@ class AgentService:
                 parent_category = parent_task.category
                 logger.debug("braindump.process.subtask_mode", parent_title=parent_task.title, category=parent_category)
 
-        # Get task proposals from Gemini
-        raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context)
+        # Get task proposals from Gemini (two-stage pipeline)
+        raw_tasks = await self.gemini.detect_brain_dump(transcription, tree_context, task_tree=task_tree)
 
         if not raw_tasks:
             return BrainDumpResponse(
