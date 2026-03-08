@@ -138,7 +138,12 @@ class AgentService:
                     changes["parent_id"] = None  # move to root
                 raw["changes"] = changes
 
-            confidence = raw.get("confidence", 0.5)
+            # Granular confidence scores (Stage 1 + Stage 2)
+            action_confidence = raw.get("actionConfidence", 0.5)
+            domain_confidence = raw.get("domainConfidence", 0.5)
+            parent_confidence = raw.get("parentConfidence", 0.0)
+            # Backward compat: combined confidence = min of action & domain
+            confidence = raw.get("confidence", min(action_confidence, domain_confidence))
             # Brain dump uses flat 0.6 threshold (lower than voice commands) because
             # users review all proposals before submission — false positives are caught in UI
             if confidence < 0.6:
@@ -243,6 +248,9 @@ class AgentService:
                 changes=raw.get("changes"),
                 matched_task_id=matched_task_id,
                 confidence=confidence,
+                actionConfidence=action_confidence,
+                domainConfidence=domain_confidence,
+                parentConfidence=parent_confidence,
                 tags=raw.get("tags"),
                 estimated_hours=raw.get("estimatedHours"),
                 alternate_matches=alternate_matches,
