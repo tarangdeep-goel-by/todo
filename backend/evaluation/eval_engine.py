@@ -218,12 +218,12 @@ def check_entry_result(
         params = actual_entry
 
     for check_key, expected_value in checks.items():
-        # Special case: confidence is always at top level
-        if check_key.startswith("confidence_"):
-            operator = check_key.split("_", 1)[1]
-            actual_value = actual_entry.get("confidence")
+        # Special case: confidence fields are always at top level
+        if check_key.startswith("confidence_") or check_key.startswith("actionConfidence_") or check_key.startswith("domainConfidence_") or check_key.startswith("parentConfidence_"):
+            field_name, operator = check_key.rsplit("_", 1)
+            actual_value = actual_entry.get(field_name)
             passed = _apply_check(actual_value, operator, expected_value)
-            results.append(CheckResult("confidence", operator, expected_value, actual_value, passed))
+            results.append(CheckResult(field_name, operator, expected_value, actual_value, passed))
             continue
 
         # Parse field_operator from key (last _ segment is operator)
@@ -371,10 +371,12 @@ def classify_failure_mode(
 
     # Categorize by field
     has_action_fail = any(c["field"] in ("action", "intent") for c in failed_checks)
-    has_confidence_fail = any(c["field"] == "confidence" for c in failed_checks)
+    confidence_fields = ("confidence", "actionConfidence", "domainConfidence", "parentConfidence")
+    has_confidence_fail = any(c["field"] in confidence_fields for c in failed_checks)
     has_content_fail = any(c["field"] == "content" for c in failed_checks)
+    non_meta_fields = ("action", "intent", "content") + confidence_fields
     has_field_fail = any(
-        c["field"] not in ("action", "intent", "confidence", "content")
+        c["field"] not in non_meta_fields
         for c in failed_checks
     )
 

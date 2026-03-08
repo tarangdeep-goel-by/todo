@@ -31,7 +31,8 @@ class BrainDumpAction(BaseModel):
     action: str = Field(description="One of: add, complete, edit, delete, breakdown")
     content: str = Field(description="For add: task title using user's words. For complete/edit/delete/breakdown: search query to find the existing task")
     category: str = Field(description="One of: career, finance, health, relationships, growth, recreation, home, community")
-    confidence: float = Field(description="0.0-1.0 confidence this is a real action, not filler/noise")
+    actionConfidence: float = Field(description="0.0-1.0 how confident about the action type")
+    domainConfidence: float = Field(description="0.0-1.0 how confident about the domain/category")
     description: Optional[str] = Field(default=None, description="Additional context, or null if speech was brief")
     dueDate: Optional[str] = Field(default=None, description="Date string if mentioned (add only)")
     priority: Optional[str] = Field(default=None, description="high/medium/low if mentioned (add only)")
@@ -44,6 +45,7 @@ class BrainDumpAction(BaseModel):
 class PlacementResult(BaseModel):
     """Result of parent placement for a single task."""
     parentQuery: Optional[str] = Field(default=None, description="Search query for parent task, or null for root placement")
+    parentConfidence: float = Field(default=0.0, description="0.0-1.0 how confident you are about the parent placement. 0.0 if null/root.")
 
 
 class Stage1Action(BaseModel):
@@ -51,7 +53,8 @@ class Stage1Action(BaseModel):
     action: str = Field(description="One of: add, complete, edit, delete, breakdown")
     content: str = Field(description="For add: task title using user's words. For complete/edit/delete/breakdown: search query to find the existing task")
     category: str = Field(description="One of: career, finance, health, relationships, growth, recreation, home, community")
-    confidence: float = Field(description="0.0-1.0 confidence this is a real action, not filler/noise")
+    actionConfidence: float = Field(description="0.0-1.0 how confident you are about the action type (add vs complete vs edit etc)")
+    domainConfidence: float = Field(description="0.0-1.0 how confident you are about the domain/category assignment")
     description: Optional[str] = Field(default=None, description="Additional context, or null if speech was brief")
     dueDate: Optional[str] = Field(default=None, description="Date string if mentioned (add only)")
     priority: Optional[str] = Field(default=None, description="high/medium/low if mentioned (add only)")
@@ -91,7 +94,11 @@ The task tree below shows the user's current tasks for reference. It helps ident
 <instructions>
 You are extracting task actions from a raw voice/text brain dump. The input may be messy, terse, or contain filler words.
 
-GOLDEN RULE: When uncertain whether input is actionable, ALWAYS return an ADD action with lower confidence (0.3-0.5). Let the user decide. Returning [] means the user's input is silently lost — only do this when you are CERTAIN the input has zero actionable content. Short noun phrases without verbs (e.g. "maths hw", "chem lab 8", "small clam juice", "cottage cheese") are task reminders or shopping items — treat as ADD.
+GOLDEN RULE: When uncertain whether input is actionable, ALWAYS return an ADD action with lower actionConfidence (0.3-0.5). Let the user decide. Returning [] means the user's input is silently lost — only do this when you are CERTAIN the input has zero actionable content. Short noun phrases without verbs (e.g. "maths hw", "chem lab 8", "small clam juice", "cottage cheese") are task reminders or shopping items — treat as ADD.
+
+CONFIDENCE SCORES — Return TWO separate confidence scores per action:
+- actionConfidence: How sure you are about the ACTION TYPE (add vs complete vs edit vs delete). High (0.9+) when intent is clear ("finished X" = complete). Low (0.3-0.5) when ambiguous ("check X" could be add or complete).
+- domainConfidence: How sure you are about the DOMAIN/CATEGORY. High (0.9+) when the task clearly fits one domain ("pay rent" = finance). Low (0.3-0.6) when it could fit multiple domains ("team lunch" could be career or relationships).
 
 ACTION TYPES:
 - add: new task to create
@@ -289,8 +296,14 @@ For edit actions, populate the changes object:
                     if changes:
                         task["changes"] = changes
 
-                # Initialize parentQuery (Stage 2 will populate for ADD actions)
+                # Initialize parentQuery and parentConfidence (Stage 2 will populate for ADD actions)
                 task.setdefault("parentQuery", None)
+                task.setdefault("parentConfidence", 0.0)
+
+                # Backward compat: synthesize combined confidence from granular scores
+                action_conf = task.get("actionConfidence", 0.5)
+                domain_conf = task.get("domainConfidence", 0.5)
+                task["confidence"] = min(action_conf, domain_conf)
 
             # ── Stage 2: Parent placement (parallel, ADD actions only) ──
             if task_tree and result:
@@ -310,9 +323,9 @@ For edit actions, populate the changes object:
                         domain = task["category"]
                         subtree = subtree_cache[domain]
                         if not subtree.strip():
-                            return idx, None  # Empty domain — no parent to find
-                        parent = await self.place_in_subtree(task["content"], domain, subtree)
-                        return idx, parent
+                            return idx, None, 0.0  # Empty domain — no parent to find
+                        placement = await self.place_in_subtree(task["content"], domain, subtree)
+                        return idx, placement.get("parentQuery"), placement.get("parentConfidence", 0.0)
 
                     t1 = time.monotonic()
                     placement_results = await asyncio.gather(
@@ -327,7 +340,8 @@ For edit actions, populate the changes object:
                         if isinstance(pr, Exception):
                             logger.warning("braindump.stage2.error", error=str(pr))
                             continue
-                        idx, parent_query = pr
+                        idx, parent_query, parent_conf = pr
+                        result[idx]["parentConfidence"] = parent_conf
                         if parent_query:
                             result[idx]["parentQuery"] = parent_query
                             placed_count += 1
@@ -447,7 +461,7 @@ Respond ONLY with a valid JSON array of strings. Example:
         _render(None, 0)
         return "\n".join(lines)
 
-    async def place_in_subtree(self, content: str, domain: str, subtree_str: str) -> Optional[str]:
+    async def place_in_subtree(self, content: str, domain: str, subtree_str: str) -> Dict[str, Any]:
         """Stage 2: Determine the correct parent task for a new task within a domain subtree.
 
         Args:
@@ -456,7 +470,7 @@ Respond ONLY with a valid JSON array of strings. Example:
             subtree_str: Pre-built subtree string from _build_domain_subtree
 
         Returns:
-            parentQuery string to search for the parent task, or None for root placement
+            Dict with parentQuery (str or None) and parentConfidence (float)
         """
         safe_content = self._sanitize_prompt_input(content)
 
@@ -493,7 +507,9 @@ Examples where you MUST return null:
 
 When choosing between two groups, pick the MORE SPECIFIC one:
 - "IRS payment" → "Tax preparation 2026" (not "Bills & Payments")
-- "buy gym shorts" → "Fitness" (not "Groceries & Shopping")"""
+- "buy gym shorts" → "Fitness" (not "Groceries & Shopping")
+
+Also return parentConfidence (0.0-1.0): how confident you are about the placement. Use 0.0 when returning null (root). Use 0.9+ only when the match is obvious. Use 0.5-0.8 when the nesting is reasonable but debatable."""
 
         t0 = time.monotonic()
         try:
@@ -509,15 +525,17 @@ When choosing between two groups, pick the MORE SPECIFIC one:
 
             result = json.loads(response.text)
             parent_query = result.get("parentQuery")
+            parent_confidence = result.get("parentConfidence", 0.0)
 
             logger.info("gemini.api.call", endpoint="place_in_subtree",
                         latency_ms=latency_ms, domain=domain,
-                        content=safe_content, parent_query=parent_query)
+                        content=safe_content, parent_query=parent_query,
+                        parent_confidence=parent_confidence)
 
-            return parent_query
+            return {"parentQuery": parent_query, "parentConfidence": parent_confidence}
 
         except Exception as e:
             latency_ms = round((time.monotonic() - t0) * 1000, 1)
             logger.error("gemini.api.error", endpoint="place_in_subtree",
                          error=str(e), latency_ms=latency_ms)
-            return None
+            return {"parentQuery": None, "parentConfidence": 0.0}

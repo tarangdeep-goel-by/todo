@@ -13,9 +13,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "career",
-            "content_fuzzy": "client work"
+            "content_fuzzy": "client work",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -32,9 +32,12 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
-            "category_exact": "home",
-            "content_fuzzy": "vacuum mop floors"
+            "content_fuzzy": "vacuum mop floors",
+            "category_in": [
+              "home",
+              "recreation"
+            ],
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -51,12 +54,12 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "content_fuzzy": "mince pies",
             "category_in": [
               "home",
               "relationships"
-            ]
+            ],
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -73,13 +76,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "growth",
               "recreation"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "watch photography video"
+            "content_fuzzy": "watch photography video",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -96,10 +99,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "health",
             "parentQuery_null": true,
-            "content_fuzzy": "check dentist appt"
+            "content_fuzzy": "check dentist appt",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -116,13 +119,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "growth",
               "career"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "add paragraphs images"
+            "content_fuzzy": "add paragraphs images",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -139,9 +142,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "health",
-            "content_fuzzy": "order hair products"
+            "content_fuzzy": "order hair products",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -158,10 +161,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "community",
             "parentQuery_contains": "Food bank volunteering",
-            "content_fuzzy": "print volunteer list"
+            "content_fuzzy": "print volunteer list",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -178,13 +181,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "community",
               "career"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "build community"
+            "content_fuzzy": "build community",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -201,9 +204,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "relationships",
-            "content_fuzzy": "call dad tuesday"
+            "content_fuzzy": "call dad tuesday",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -220,10 +223,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "growth",
             "parentQuery_null": true,
-            "content_fuzzy": "socratic seminar questions"
+            "content_fuzzy": "socratic seminar questions",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -240,13 +243,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "home",
               "career"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "rent truck"
+            "content_fuzzy": "rent truck",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -263,9 +266,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "finance",
-            "content_fuzzy": "pay boa bill"
+            "content_fuzzy": "pay boa bill",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -282,9 +285,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "finance",
-            "content_fuzzy": "pay wps"
+            "content_fuzzy": "pay wps",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -301,9 +304,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "career",
-            "content_fuzzy": "devops presentation"
+            "content_fuzzy": "devops presentation",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -320,10 +323,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "community",
             "parentQuery_null": true,
-            "content_fuzzy": "figure out community"
+            "content_fuzzy": "figure out community",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -340,13 +343,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "growth",
               "community"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "tutoring tuesday"
+            "content_fuzzy": "tutoring tuesday",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -367,8 +370,8 @@
               "community",
               "health"
             ],
-            "confidence_gte": 0.5,
-            "content_fuzzy": "coaching gym"
+            "content_fuzzy": "coaching gym",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -385,9 +388,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "relationships",
-            "content_fuzzy": "write wedding sermon"
+            "content_fuzzy": "write wedding sermon",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -404,13 +407,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "recreation",
               "relationships"
             ],
             "parentQuery_contains": "Weekend Plans",
-            "content_fuzzy": "plan hk trip"
+            "content_fuzzy": "plan hk trip",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -427,12 +430,12 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "content_fuzzy": "anniversary planning",
             "category_in": [
               "relationships",
               "home"
-            ]
+            ],
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -449,10 +452,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "career",
             "parentQuery_null": true,
-            "content_fuzzy": "finish updating cv"
+            "content_fuzzy": "finish updating cv",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -469,9 +472,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "growth",
-            "content_fuzzy": "work essay"
+            "content_fuzzy": "work essay",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -488,12 +491,12 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "content_fuzzy": "heels wedding",
             "category_in": [
               "relationships",
               "home"
-            ]
+            ],
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -510,13 +513,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "finance",
               "home"
             ],
             "parentQuery_contains": "Insurance",
-            "content_fuzzy": "transfer home warranty"
+            "content_fuzzy": "transfer home warranty",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -533,9 +536,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "recreation",
-            "content_fuzzy": "mega bus ticket"
+            "content_fuzzy": "mega bus ticket",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -552,10 +555,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "recreation",
             "parentQuery_null": true,
-            "content_fuzzy": "watch justice league"
+            "content_fuzzy": "watch justice league",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -572,9 +575,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "health",
-            "content_fuzzy": "call weight watchers"
+            "content_fuzzy": "call weight watchers",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -591,13 +594,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "finance",
               "home"
             ],
             "parentQuery_contains": "Bills & Payments",
-            "content_fuzzy": "pay car tags"
+            "content_fuzzy": "pay car tags",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -614,13 +617,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "community",
               "health"
             ],
             "parentQuery_contains": "Food bank volunteering",
-            "content_fuzzy": "volunteer clinic"
+            "content_fuzzy": "volunteer clinic",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -637,9 +640,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "home",
-            "content_fuzzy": "paint inside"
+            "content_fuzzy": "paint inside",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -656,10 +659,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "growth",
             "parentQuery_null": true,
-            "content_fuzzy": "chem lab 8"
+            "content_fuzzy": "chem lab 8",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -676,13 +679,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "health",
               "career"
             ],
             "parentQuery_contains": "Fitness",
-            "content_fuzzy": "take gym clothes"
+            "content_fuzzy": "take gym clothes",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -699,9 +702,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "content_fuzzy": "finish chair",
-            "category_exact": "home"
+            "category_exact": "home",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -718,13 +721,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "community",
               "career"
             ],
             "parentQuery_contains": "Coach youth soccer",
-            "content_fuzzy": "coaching flyer"
+            "content_fuzzy": "coaching flyer",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -741,10 +744,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "home",
             "parentQuery_contains": "Household Chores",
-            "content_fuzzy": "sweep back patio"
+            "content_fuzzy": "sweep back patio",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -761,10 +764,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "finance",
             "parentQuery_contains": "Insurance",
-            "content_fuzzy": "insurance"
+            "content_fuzzy": "insurance",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -781,12 +784,12 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "content_fuzzy": "housecleaning",
             "category_in": [
               "home",
               "relationships"
-            ]
+            ],
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -803,10 +806,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "recreation",
             "parentQuery_contains": "Weekend Plans",
-            "content_fuzzy": "coachella presale"
+            "content_fuzzy": "coachella presale",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -823,13 +826,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "finance",
               "recreation"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "car rental price"
+            "content_fuzzy": "car rental price",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -846,9 +849,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "relationships",
-            "content_fuzzy": "create wedding website"
+            "content_fuzzy": "create wedding website",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -865,9 +868,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "recreation",
-            "content_fuzzy": "groupon hotel"
+            "content_fuzzy": "groupon hotel",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -884,13 +887,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "growth",
               "career"
             ],
             "parentQuery_contains": "Startup exploration",
-            "content_fuzzy": "finalize company name"
+            "content_fuzzy": "finalize company name",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -907,10 +910,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "health",
             "parentQuery_null": true,
-            "content_fuzzy": "dentist 5 31"
+            "content_fuzzy": "dentist 5 31",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -927,9 +930,12 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
-            "category_exact": "relationships",
-            "content_fuzzy": "birthday wishlist"
+            "content_fuzzy": "birthday wishlist",
+            "category_in": [
+              "relationships",
+              "health"
+            ],
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -946,13 +952,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "career",
               "finance"
             ],
             "parentQuery_contains": "Client Projects",
-            "content_fuzzy": "airtel follow up"
+            "content_fuzzy": "airtel follow up",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -969,10 +975,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "community",
             "parentQuery_contains": "Donations",
-            "content_fuzzy": "take charity stuff"
+            "content_fuzzy": "take charity stuff",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -989,10 +995,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "career",
             "parentQuery_null": true,
-            "content_fuzzy": "check jira tickets"
+            "content_fuzzy": "check jira tickets",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1009,9 +1015,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "health",
-            "content_fuzzy": "find yoga class"
+            "content_fuzzy": "find yoga class",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1028,13 +1034,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "health",
               "home"
             ],
             "parentQuery_contains": "Fitness",
-            "content_fuzzy": "order exercise equipment"
+            "content_fuzzy": "order exercise equipment",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1051,9 +1057,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "home",
-            "content_fuzzy": "stove fuel"
+            "content_fuzzy": "stove fuel",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1070,10 +1076,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "career",
             "parentQuery_contains": "Q1 Product Launch",
-            "content_fuzzy": "product review deck"
+            "content_fuzzy": "product review deck",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1090,13 +1096,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "career",
               "finance"
             ],
             "parentQuery_contains": "Client Projects",
-            "content_fuzzy": "airtel follow up"
+            "content_fuzzy": "airtel follow up",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1113,10 +1119,10 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "home",
             "parentQuery_contains": "Household Chores",
-            "content_fuzzy": "bring headphones"
+            "content_fuzzy": "bring headphones",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1133,9 +1139,9 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_exact": "finance",
-            "content_fuzzy": "finish budget"
+            "content_fuzzy": "finish budget",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
@@ -1152,13 +1158,13 @@
         {
           "action": "add",
           "checks": {
-            "confidence_gte": 0.5,
             "category_in": [
               "recreation",
               "finance"
             ],
             "parentQuery_null": true,
-            "content_fuzzy": "mail travel voucher"
+            "content_fuzzy": "mail travel voucher",
+            "actionConfidence_gte": 0.5
           }
         }
       ]
