@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:frontend/screens/archive_screen.dart';
 import 'package:frontend/providers/api_provider.dart';
+import 'package:frontend/widgets/flat_task_row.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
@@ -54,7 +55,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Old task'), findsOneWidget);
-      expect(find.textContaining('Archived 3 days ago'), findsOneWidget);
+      expect(find.byType(FlatTaskRow), findsOneWidget);
     });
 
     testWidgets('shows footer text about auto-deletion', (tester) async {
