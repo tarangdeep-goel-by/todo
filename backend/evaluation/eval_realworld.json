@@ -1,0 +1,5713 @@
+{
+  "dataset_name": "Real-World Brain Dump Eval v1",
+  "source": "MS-LaTTE (Microsoft, 10101 tasks) + LLM-labeled + manual cross-domain cases",
+  "cases": [
+    {
+      "id": "rw_root_001",
+      "transcription": "article of the week",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "1859837",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_null": true,
+            "content_fuzzy": "article week"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_001",
+      "transcription": "pay corp amex",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "4555284",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay corp amex"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_002",
+      "transcription": "product review deck",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10501312",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_contains": "Q1 Product Launch",
+            "content_fuzzy": "product review deck"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_001",
+      "transcription": "update phone calendar",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "6362967",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "update phone calendar"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_002",
+      "transcription": "plan portland trip",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "9964729",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "career",
+              "relationships"
+            ],
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "plan portland trip"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_003",
+      "transcription": "labels for trays",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "9573652",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "labels trays"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_004",
+      "transcription": "add calendar events",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "9664835",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "add calendar events"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_003",
+      "transcription": "finalize company name",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10964272",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_contains": "Startup exploration",
+            "content_fuzzy": "finalize company name"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_004",
+      "transcription": "finish qbr deck",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11750653",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_contains": "Q1 Product Launch",
+            "content_fuzzy": "finish qbr deck"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_005",
+      "transcription": "make list of questions",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "6938958",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "growth"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "list questions"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_005",
+      "transcription": "finish updating cv",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5149758",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_null": true,
+            "content_fuzzy": "finish updating cv"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_006",
+      "transcription": "apply for permit",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "7641154",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "career"
+            ],
+            "parentQuery_contains": "Kitchen renovation",
+            "content_fuzzy": "apply permit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_007",
+      "transcription": "get the packing tape",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "2174632",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "career"
+            ],
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "packing tape"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_008",
+      "transcription": "respond to svb",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "10755253",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "respond svb"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_001",
+      "transcription": "complete new hire packet",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "13015177",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_contains": "Hiring pipeline",
+            "content_fuzzy": "complete new hire"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_009",
+      "transcription": "songs for wednesday",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "8446164",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "career"
+            ],
+            "parentQuery_contains": "Hobbies",
+            "content_fuzzy": "songs wednesday"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_006",
+      "transcription": "make expense report",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3480714",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_null": true,
+            "content_fuzzy": "expense report"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_010",
+      "transcription": "year at a glance",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "8268508",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "finance"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "year at glance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_002",
+      "transcription": "update bios on website",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "12184039",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_null": true,
+            "content_fuzzy": "update bios website"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_011",
+      "transcription": "figure out voicemail",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "5386961",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "figure out voicemail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_007",
+      "transcription": "passport to hr",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8192651",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_contains": "Hiring pipeline",
+            "content_fuzzy": "passport hr"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_012",
+      "transcription": "make food for tomorrow",
+      "difficulty": "easy",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "11181725",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "health"
+            ],
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "food tomorrow"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_013",
+      "transcription": "airtel follow up",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "8511212",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "finance"
+            ],
+            "parentQuery_contains": "Client Projects",
+            "content_fuzzy": "airtel follow up"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_008",
+      "transcription": "pay cr card",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9494965",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay cr card"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_003",
+      "transcription": "check the jira tickets",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "2709920",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_null": true,
+            "content_fuzzy": "check jira tickets"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_009",
+      "transcription": "call insurance dude",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6328635",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "call insurance dude"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_010",
+      "transcription": "do the insurance",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6887585",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_002",
+      "transcription": "signup for health insurance",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "3994296",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "signup health insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_011",
+      "transcription": "make cobra payment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3921078",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "cobra payment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_012",
+      "transcription": "cobra health insurance",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5888482",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "cobra health insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_013",
+      "transcription": "mail city tax",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10144395",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Tax preparation 2026",
+            "content_fuzzy": "mail city tax"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_014",
+      "transcription": "call about car tax",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "7518769",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_contains": "Tax preparation 2026",
+            "content_fuzzy": "call about car"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_003",
+      "transcription": "pay dart ford toll",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "10484071",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay dart ford"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_015",
+      "transcription": "car rental price",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "11328335",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "recreation"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "car rental price"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_016",
+      "transcription": "pay for wine tour",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "11750482",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "finance"
+            ],
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "pay wine tour"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_004",
+      "transcription": "pick up shoes at payless",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "5193633",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "pick up shoes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_005",
+      "transcription": "pay off credit card debt",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "8381837",
+      "source_list": "money",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay off credit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_017",
+      "transcription": "pay car tags",
+      "difficulty": "easy",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "7771338",
+      "source_list": "today",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay car tags"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_006",
+      "transcription": "call insurance re claim",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "6137950",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "call insurance re"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_014",
+      "transcription": "schedule car payments",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "12110136",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "schedule car payments"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_015",
+      "transcription": "notify credit card",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3501136",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "notify credit card"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_018",
+      "transcription": "transfer home warranty",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "10714132",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "transfer home warranty"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_016",
+      "transcription": "compare health insurance",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "1761243",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "compare health insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_017",
+      "transcription": "make irs payment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10621101",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Tax preparation 2026",
+            "content_fuzzy": "irs payment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_019",
+      "transcription": "pay for lawn",
+      "difficulty": "medium",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "9793020",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "finance"
+            ],
+            "parentQuery_contains": "Garden spring prep",
+            "content_fuzzy": "pay lawn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_018",
+      "transcription": "note for parents",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5909231",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "note parents"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_019",
+      "transcription": "credit card reconcilliation",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8884187",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "credit card reconcilliation"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_007",
+      "transcription": "check the on tax stuff",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "5069020",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Tax preparation 2026",
+            "content_fuzzy": "check tax stuff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_020",
+      "transcription": "rent a truck",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "3815444",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "rent truck"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_020",
+      "transcription": "sign insurance docs",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "994745",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "sign insurance docs"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_021",
+      "transcription": "call girls dentist",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "8357292",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "call girls dentist"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_022",
+      "transcription": "gym and sauna",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3266442",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "recreation"
+            ],
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "gym sauna"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_023",
+      "transcription": "book physio appointment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8792459",
+      "source_list": "health",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "book physio appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_024",
+      "transcription": "order exercise equipment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11451326",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "home"
+            ],
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "order exercise equipment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_004",
+      "transcription": "call pharmacy to refill prescription",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "12790423",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "call pharmacy refill"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_008",
+      "transcription": "buy the gym shorts",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "985304",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "buy gym shorts"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_025",
+      "transcription": "dentist 5 31",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9902759",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "dentist 5 31"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_009",
+      "transcription": "go to sleep train",
+      "difficulty": "hard",
+      "category": "RW_CLEAR",
+      "source_id": "12138828",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "go sleep train"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_026",
+      "transcription": "gymnastics sign up",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "1575909",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "gymnastics sign up"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_005",
+      "transcription": "check the dentist appt",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "3261470",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "check dentist appt"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_027",
+      "transcription": "make gp appointment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "1240937",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "gp appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_028",
+      "transcription": "order workout shorts",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8190405",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "order workout shorts"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_029",
+      "transcription": "doctors health fund",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "6620758",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "health"
+            ],
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "doctors health fund"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_010",
+      "transcription": "take gym clothes to work",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "7312878",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "career"
+            ],
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "take gym clothes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_030",
+      "transcription": "schedule hand therapy",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8822179",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "schedule hand therapy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_006",
+      "transcription": "call eye doctor for contacts",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "5861260",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "call eye doctor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_031",
+      "transcription": "set nail appointment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6258364",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "set nail appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_011",
+      "transcription": "buy the vitamin supplements",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "10778535",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_contains": "Nutrition",
+            "content_fuzzy": "buy vitamin supplements"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_007",
+      "transcription": "get the reimbursed for gym",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "9957562",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "health"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "reimbursed gym"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_012",
+      "transcription": "go to the gym",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "9962157",
+      "source_list": "my to do list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "go gym"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_008",
+      "transcription": "phone doctor for appointment",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "6746298",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "phone doctor appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_032",
+      "transcription": "hair dressers appointment",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7559530",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "hair dressers appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_033",
+      "transcription": "make pediatrician appointments",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "6904820",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "pediatrician appointments"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_009",
+      "transcription": "schedule appointment with optometrist",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "5640755",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "schedule appointment with"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_034",
+      "transcription": "figure out therapy",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10285862",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_contains": "Mental wellness",
+            "content_fuzzy": "figure out therapy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_035",
+      "transcription": "make chore chart",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "2341762",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "relationships"
+            ],
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "chore chart"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_013",
+      "transcription": "clean the and organize the garage",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "12440008",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "clean organize garage"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_036",
+      "transcription": "call garage guy",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "9334972",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Repairs",
+            "content_fuzzy": "call garage guy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_037",
+      "transcription": "parking permit renewal",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "12886651",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "finance"
+            ],
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "parking permit renewal"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_014",
+      "transcription": "chargers (phone, tablet, watch, reader, camera etc.)",
+      "difficulty": "medium",
+      "category": "RW_CLEAR",
+      "source_id": "10062049",
+      "source_list": "family packing",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "chargers (phone, tablet,"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_038",
+      "transcription": "girls dentist appointment",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "12269739",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "girls dentist appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_010",
+      "transcription": "do not call list",
+      "difficulty": "hard",
+      "category": "RW_ROOT",
+      "source_id": "7469419",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "not call list"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_039",
+      "transcription": "set up quickbooks",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "10796626",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "set up quickbooks"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_011",
+      "transcription": "review dog warm ups for quiz",
+      "difficulty": "hard",
+      "category": "RW_ROOT",
+      "source_id": "10459600",
+      "source_list": "social studies",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "review dog warm"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_015",
+      "transcription": "first day of preschool",
+      "difficulty": "medium",
+      "category": "RW_CLEAR",
+      "source_id": "11887903",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "first day preschool"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_040",
+      "transcription": "close on house",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "3914960",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "close house"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_041",
+      "transcription": "send bday invites",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7720541",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "send bday invites"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_012",
+      "transcription": "add paragraphs and images to your thinglink project",
+      "difficulty": "hard",
+      "category": "RW_ROOT",
+      "source_id": "10873832",
+      "source_list": "social studies",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "add paragraphs images"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_042",
+      "transcription": "finish teacher gifts",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7172571",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "finish teacher gifts"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_043",
+      "transcription": "send off taxes",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6320848",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Tax preparation 2026",
+            "content_fuzzy": "send off taxes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_044",
+      "transcription": "book storage unit",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9440779",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "book storage unit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_016",
+      "transcription": "fold and put away clothes",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "1841943",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "fold put away"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_045",
+      "transcription": "book tennis court",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9683032",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "health"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "book tennis court"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_017",
+      "transcription": "organize the filing cabinets",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "10056052",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "finance"
+            ],
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "organize filing cabinets"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_046",
+      "transcription": "call dog groomer",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3680520",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "call dog groomer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_047",
+      "transcription": "chicken pox vaccination",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "11587535",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "chicken pox vaccination"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_048",
+      "transcription": "renew car tax",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "4946897",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "renew car tax"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_018",
+      "transcription": "sort out christmas plans",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "13184281",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "relationships",
+              "recreation"
+            ],
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "sort out christmas"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_019",
+      "transcription": "car in for service",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "9464347",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "car service"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_049",
+      "transcription": "install new router",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7239787",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "install new router"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_013",
+      "transcription": "check the school schedule",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "12694884",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "check school schedule"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_050",
+      "transcription": "print spelling lists",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11829367",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "print spelling lists"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_051",
+      "transcription": "guided reading plan",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7373408",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "guided reading plan"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_052",
+      "transcription": "chapter 2 vocab",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8045826",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "chapter 2 vocab"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_053",
+      "transcription": "orgo practice problems",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6549132",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "orgo practice problems"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_054",
+      "transcription": "physics practice problems",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "1956685",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "physics practice problems"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_055",
+      "transcription": "psych quiz 7",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "12960631",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "psych quiz 7"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_056",
+      "transcription": "do assignment 2",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "12985997",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "assignment 2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_057",
+      "transcription": "maths h w",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5326309",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "maths h w"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_058",
+      "transcription": "write book report",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9450663",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "write book report"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_014",
+      "transcription": "take home math test",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "7340545",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "take home math"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_059",
+      "transcription": "chem hw 7",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11590536",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "chem hw 7"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_060",
+      "transcription": "work on newsletter",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "7873135",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "work newsletter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_015",
+      "transcription": "type up history notes",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "6318995",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "type up history"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_061",
+      "transcription": "practice spanish oral",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11831803",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_contains": "Languages",
+            "content_fuzzy": "practice spanish oral"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_016",
+      "transcription": "their eyes were watching god",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "10648643",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "recreation"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "their eyes were"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_062",
+      "transcription": "chem lab 8",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6818459",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "chem lab 8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_063",
+      "transcription": "socratic seminar questions",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "2685286",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "socratic seminar questions"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_064",
+      "transcription": "maths finish questions",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6527506",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "maths finish questions"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_065",
+      "transcription": "english final project",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "12204863",
+      "source_list": "homework",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "english final project"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_066",
+      "transcription": "finish journal entry",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "5964263",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "health"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "finish journal entry"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_017",
+      "transcription": "turn in nhs hours",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "6976963",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "community",
+              "growth"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "turn nhs hours"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_067",
+      "transcription": "finish bio hw",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5128424",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "finish bio hw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_068",
+      "transcription": "machine learning course",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7485807",
+      "source_list": "learning",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_contains": "AI & Machine Learning",
+            "content_fuzzy": "machine learning course"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_069",
+      "transcription": "intent to register",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "12329622",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "intent register"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_020",
+      "transcription": "parking permit in car",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "6830573",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "parking permit car"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_070",
+      "transcription": "figure out travel",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "8789697",
+      "source_list": "today",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "figure out travel"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_071",
+      "transcription": "plan hk trip",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "10709822",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "relationships"
+            ],
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "plan hk trip"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_072",
+      "transcription": "mail parking tickets",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "7592427",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "mail parking tickets"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_021",
+      "transcription": "follow up parking permit",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "7687825",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "follow up parking"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_073",
+      "transcription": "purchase parking permit",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5080159",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "finance"
+            ],
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "purchase parking permit"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_074",
+      "transcription": "watch justice league",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6149317",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "watch justice league"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_075",
+      "transcription": "plan camping trip",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "5829835",
+      "source_list": "things to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "relationships"
+            ],
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "plan camping trip"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_018",
+      "transcription": "download movies for trip",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "7282547",
+      "source_list": "today",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "download movies trip"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_019",
+      "transcription": "return pottery barn stuff",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "5798601",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "return pottery barn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_076",
+      "transcription": "watch poverty inc",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "10658023",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "growth"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "watch poverty inc"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_077",
+      "transcription": "watch photography video",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "8132884",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "recreation"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "watch photography video"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_020",
+      "transcription": "sell pack n play",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "4162246",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "sell pack n"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_021",
+      "transcription": "watch wolf of wall street",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "3556212",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "watch wolf wall"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_078",
+      "transcription": "passport, travel documents",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10236450",
+      "source_list": "ny packing",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "passport, travel documents"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_079",
+      "transcription": "install rain barrels",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11936899",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Garden spring prep",
+            "content_fuzzy": "install rain barrels"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_022",
+      "transcription": "watch the amazing race",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "9043307",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "watch amazing race"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_022",
+      "transcription": "drive in movie theater",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "8385861",
+      "source_list": "things to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "drive movie theater"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_080",
+      "transcription": "mail travel voucher",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "12572198",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "finance"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "mail travel voucher"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_081",
+      "transcription": "documents for travel",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10565511",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "documents travel"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_082",
+      "transcription": "water play day",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "10263067",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "relationships"
+            ],
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "water play day"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_083",
+      "transcription": "hofta drawer dividers",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6052768",
+      "source_list": "ikea",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "hofta drawer dividers"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_084",
+      "transcription": "call kwik trip",
+      "difficulty": "hard",
+      "category": "RW_TERSE",
+      "source_id": "11863012",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_null": true,
+            "content_fuzzy": "call kwik trip"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_085",
+      "transcription": "figure out trips",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "11130949",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "figure out trips"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_023",
+      "transcription": "buy the movie tix",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "5626188",
+      "source_list": "today",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "buy movie tix"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_086",
+      "transcription": "paint kitchen wall",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5828240",
+      "source_list": "house to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Kitchen renovation",
+            "content_fuzzy": "paint kitchen wall"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_023",
+      "transcription": "clean the out bedroom closet",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "11345939",
+      "source_list": "household",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "clean out bedroom"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_024",
+      "transcription": "house and contents insurance",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "4432287",
+      "source_list": "house",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "house contents insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_025",
+      "transcription": "get the rid of old paint",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "7472853",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "rid old paint"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_026",
+      "transcription": "mop living room floor",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "4669309",
+      "source_list": "chores",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "mop living room"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_087",
+      "transcription": "return zappos shoes",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3111536",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "return zappos shoes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_024",
+      "transcription": "take dogs to vet",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "4435919",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "health"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "take dogs vet"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_088",
+      "transcription": "schedule ac service",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5677943",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Repairs",
+            "content_fuzzy": "schedule ac service"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_089",
+      "transcription": "bring in headphones",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "7342883",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "bring headphones"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_090",
+      "transcription": "put up clock",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3852861",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "put up clock"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_091",
+      "transcription": "small clam juice",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11789456",
+      "source_list": "groceries",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "small clam juice"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_025",
+      "transcription": "change the barclays address",
+      "difficulty": "medium",
+      "category": "RW_ROOT",
+      "source_id": "7078820",
+      "source_list": "house",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "change barclays address"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_092",
+      "transcription": "install water heater",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "8171226",
+      "source_list": "house",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Repairs",
+            "content_fuzzy": "install water heater"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_093",
+      "transcription": "schedule pool opening",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "6086745",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Garden spring prep",
+            "content_fuzzy": "schedule pool opening"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_094",
+      "transcription": "put tires away",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9634422",
+      "source_list": "chores",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "put tires away"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_026",
+      "transcription": "call doctor s office",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "12497213",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "call doctor s"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_027",
+      "transcription": "full fat organic cottage cheese",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "9279743",
+      "source_list": "groceries",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "full fat organic"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_028",
+      "transcription": "pick up package from ups",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "6009363",
+      "source_list": "errands",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "pick up package"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_029",
+      "transcription": "wrap mother s day gifts",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "10467161",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "wrap mother s"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_095",
+      "transcription": "find key card",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "10663919",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "career"
+            ],
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "find key card"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_030",
+      "transcription": "fix the front light",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "6405613",
+      "source_list": "house projects",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Repairs",
+            "content_fuzzy": "fix front light"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_031",
+      "transcription": "clean the garbage disposal",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "4092958",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "clean garbage disposal"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_096",
+      "transcription": "sweep back patio",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "11129634",
+      "source_list": "cleaning",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "sweep back patio"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_032",
+      "transcription": "white wash the fireplace",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "10764983",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Kitchen renovation",
+            "content_fuzzy": "white wash fireplace"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_097",
+      "transcription": "send back glasses",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "11076340",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "home",
+              "health"
+            ],
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "send back glasses"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_098",
+      "transcription": "donate to charity",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "4748202",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Donations",
+            "content_fuzzy": "donate charity"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_099",
+      "transcription": "build community",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "8809452",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "community",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "build community"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_100",
+      "transcription": "deposit church check",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "8397907",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "deposit church check"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_root_027",
+      "transcription": "figure out community service",
+      "difficulty": "easy",
+      "category": "RW_ROOT",
+      "source_id": "9794898",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_null": true,
+            "content_fuzzy": "figure out community"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_101",
+      "transcription": "look at volunteering",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "3748756",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "look at volunteering"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_102",
+      "transcription": "find a mentor",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "9936924",
+      "source_list": "to do list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "find mentor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_103",
+      "transcription": "coachella presale",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "10179815",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "coachella presale"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_104",
+      "transcription": "video for church",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "12655305",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "community",
+              "recreation"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "video church"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_105",
+      "transcription": "chemistry tutor",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9012869",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "chemistry tutor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_106",
+      "transcription": "volunteer name tags",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "5926629",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "volunteer name tags"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_107",
+      "transcription": "tutoring 2",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "10721951",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "tutoring 2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_033",
+      "transcription": "clothes to clothes mentor",
+      "difficulty": "medium",
+      "category": "RW_CLEAR",
+      "source_id": "5111914",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Donations",
+            "content_fuzzy": "clothes clothes mentor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_108",
+      "transcription": "donate to aclu",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "12791603",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Donations",
+            "content_fuzzy": "donate aclu"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_109",
+      "transcription": "volunteer clinic",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "9630202",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "community",
+              "health"
+            ],
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "volunteer clinic"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_ambiguous_021",
+      "transcription": "schedule coaching call",
+      "difficulty": "hard",
+      "category": "RW_AMBIGUOUS",
+      "source_id": "6468175",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "career",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "schedule coaching call"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_110",
+      "transcription": "apply to volunteering",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "9291958",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "apply volunteering"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_111",
+      "transcription": "varsity tutors",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "6291823",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "varsity tutors"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_112",
+      "transcription": "print volunteer list",
+      "difficulty": "easy",
+      "category": "RW_TERSE",
+      "source_id": "2921734",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "print volunteer list"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_113",
+      "transcription": "coaching flyer",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "11721017",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "community",
+              "career"
+            ],
+            "parentQuery_contains": "Coach youth soccer",
+            "content_fuzzy": "coaching flyer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_114",
+      "transcription": "check the tutoring",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "5345387",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "check tutoring"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_034",
+      "transcription": "print off volunteer forms",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "11196808",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "print off volunteer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_115",
+      "transcription": "mentoring questions",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "9068658",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "mentoring questions"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_clear_035",
+      "transcription": "take charity stuff to shop",
+      "difficulty": "easy",
+      "category": "RW_CLEAR",
+      "source_id": "11721264",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Donations",
+            "content_fuzzy": "take charity stuff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_116",
+      "transcription": "tutoring tuesday",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "11560449",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "tutoring tuesday"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_terse_117",
+      "transcription": "real estate meeting",
+      "difficulty": "medium",
+      "category": "RW_TERSE",
+      "source_id": "8200678",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "career"
+            ],
+            "parentQuery_contains": "Review investment portfolio",
+            "content_fuzzy": "real estate meeting"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_001",
+      "transcription": "uh I need to schedule pool opening",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "6086745",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Garden spring prep",
+            "content_fuzzy": "schedule pool opening"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_002",
+      "transcription": "uh I need to make cobra payment",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "3921078",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "cobra payment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_003",
+      "transcription": "I was thinking I need to add calendar events",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "9664835",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "home"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "add calendar events"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_004",
+      "transcription": "uh I need to schedule coaching call",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "6468175",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "career",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "schedule coaching call"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_005",
+      "transcription": "um so like phone doctor for appointment",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "6746298",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "phone doctor appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_006",
+      "transcription": "um so like doctors health fund",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "6620758",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "finance",
+              "health"
+            ],
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "doctors health fund"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_007",
+      "transcription": "go to sleep train oh and also that's important",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "12138828",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "go sleep train"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_008",
+      "transcription": "hey can you add pick up shoes at payless",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "5193633",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "pick up shoes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_009",
+      "transcription": "um volunteer clinic",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "9630202",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "community",
+              "health"
+            ],
+            "parentQuery_contains": "Food bank volunteering",
+            "content_fuzzy": "volunteer clinic"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_010",
+      "transcription": "oh right I forgot to do the insurance",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "6887585",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Insurance",
+            "content_fuzzy": "insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_011",
+      "transcription": "add uh white wash the fireplace please",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10764983",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Kitchen renovation",
+            "content_fuzzy": "white wash fireplace"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_012",
+      "transcription": "uh I need to passport, travel documents",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10236450",
+      "source_list": "ny packing",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_null": true,
+            "content_fuzzy": "passport, travel documents"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_013",
+      "transcription": "I was thinking I need to airtel follow up",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "8511212",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "career",
+              "finance"
+            ],
+            "parentQuery_contains": "Client Projects",
+            "content_fuzzy": "airtel follow up"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_014",
+      "transcription": "uh I need to clean the out bedroom closet",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "11345939",
+      "source_list": "household",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "clean out bedroom"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_015",
+      "transcription": "add uh maths h w please",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "5326309",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "maths h w"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_016",
+      "transcription": "hey can you add finish qbr deck",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "11750653",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "career",
+            "parentQuery_contains": "Q1 Product Launch",
+            "content_fuzzy": "finish qbr deck"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_017",
+      "transcription": "finalize company name oh and also that's important",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10964272",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_contains": "Startup exploration",
+            "content_fuzzy": "finalize company name"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_018",
+      "transcription": "um so like pay cr card",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "9494965",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay cr card"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_019",
+      "transcription": "buy the gym shorts oh and also that's important",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "985304",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_contains": "Fitness",
+            "content_fuzzy": "buy gym shorts"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_020",
+      "transcription": "so I should probably check the dentist appt",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "3261470",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "check dentist appt"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_021",
+      "transcription": "uh I need to follow up parking permit",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "7687825",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Vehicle Maintenance",
+            "content_fuzzy": "follow up parking"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_022",
+      "transcription": "um mop living room floor",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "4669309",
+      "source_list": "chores",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Household Chores",
+            "content_fuzzy": "mop living room"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_023",
+      "transcription": "so I should probably take charity stuff to shop",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "11721264",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "community",
+            "parentQuery_contains": "Donations",
+            "content_fuzzy": "take charity stuff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_024",
+      "transcription": "hey can you add mail travel voucher",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "12572198",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "recreation",
+              "finance"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "mail travel voucher"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_025",
+      "transcription": "uh I need to call girls dentist",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "8357292",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "call girls dentist"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_026",
+      "transcription": "so I should probably full fat organic cottage cheese",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "9279743",
+      "source_list": "groceries",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Groceries & Shopping",
+            "content_fuzzy": "full fat organic"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_027",
+      "transcription": "uh I need to varsity tutors",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "6291823",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "varsity tutors"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_028",
+      "transcription": "I was thinking I need to do assignment 2",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "12985997",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_null": true,
+            "content_fuzzy": "assignment 2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_029",
+      "transcription": "hey can you add dentist 5 31",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "9902759",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "dentist 5 31"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_030",
+      "transcription": "oh right I forgot to practice spanish oral",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "11831803",
+      "source_list": "school",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "growth",
+            "parentQuery_contains": "Languages",
+            "content_fuzzy": "practice spanish oral"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_031",
+      "transcription": "um so like paint kitchen wall",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "5828240",
+      "source_list": "house to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "home",
+            "parentQuery_contains": "Kitchen renovation",
+            "content_fuzzy": "paint kitchen wall"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_032",
+      "transcription": "oh yeah hair dressers appointment",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "7559530",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "health",
+            "parentQuery_null": true,
+            "content_fuzzy": "hair dressers appointment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_033",
+      "transcription": "um so like pay corp amex",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "4555284",
+      "source_list": "work",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "pay corp amex"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_034",
+      "transcription": "um so like notify credit card",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "3501136",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "notify credit card"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_035",
+      "transcription": "so I should probably tutoring 2",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10721951",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "community"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "tutoring 2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_036",
+      "transcription": "hey can you add add paragraphs and images to your thinglink project",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10873832",
+      "source_list": "social studies",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_in": [
+              "growth",
+              "career"
+            ],
+            "parentQuery_null": true,
+            "content_fuzzy": "add paragraphs images"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_037",
+      "transcription": "uh I need to wrap mother s day gifts",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10467161",
+      "source_list": "home",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "wrap mother s"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_038",
+      "transcription": "schedule car payments oh and also that's important",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "12110136",
+      "source_list": "to do",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "finance",
+            "parentQuery_contains": "Bills & Payments",
+            "content_fuzzy": "schedule car payments"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_039",
+      "transcription": "oh yeah coachella presale",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "10179815",
+      "source_list": "default list",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "recreation",
+            "parentQuery_contains": "Weekend Plans",
+            "content_fuzzy": "coachella presale"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_voice_040",
+      "transcription": "add uh send bday invites please",
+      "difficulty": "medium",
+      "category": "RW_VOICE",
+      "source_id": "7720541",
+      "source_list": "family",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "confidence_gte": 0.5,
+            "category_exact": "relationships",
+            "parentQuery_contains": "Family",
+            "content_fuzzy": "send bday invites"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_001",
+      "transcription": "pick up mom's prescription",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "health",
+              "relationships"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "prescription"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_002",
+      "transcription": "team lunch on Friday",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "team lunch"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_003",
+      "transcription": "budget for vacation",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "finance",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "budget vacation"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_004",
+      "transcription": "read leadership book",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "growth"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "leadership book"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_005",
+      "transcription": "buy birthday gift for coworker",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "relationships"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "birthday gift"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_006",
+      "transcription": "sign up for yoga class",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "health",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "yoga class"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_007",
+      "transcription": "call insurance company about claim",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "finance",
+              "health"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "insurance claim"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_008",
+      "transcription": "plan company retreat activities",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "retreat activities"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_009",
+      "transcription": "research MBA programs",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "growth"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "MBA programs"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_010",
+      "transcription": "cook healthy meal prep for the week",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "health",
+              "home"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "meal prep"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_011",
+      "transcription": "organize charity run at work",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "community"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "charity run"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_012",
+      "transcription": "buy supplies for kid's school project",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "home",
+              "relationships"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "school project"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_013",
+      "transcription": "schedule financial advisor meeting",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "finance",
+              "career"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "financial advisor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_014",
+      "transcription": "find a therapist covered by insurance",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "health",
+              "finance"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "therapist insurance"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_015",
+      "transcription": "set up study group with classmates",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "growth",
+              "relationships"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "study group"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_016",
+      "transcription": "volunteer coaching at the gym",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "community",
+              "health"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "coaching gym"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_017",
+      "transcription": "book flights for family reunion",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "relationships",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "family reunion"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_018",
+      "transcription": "renew gym membership",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "health",
+              "finance"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "gym membership"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_019",
+      "transcription": "practice Spanish before trip",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "growth",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "practice Spanish"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_020",
+      "transcription": "buy ergonomic chair for home office",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "home",
+              "career"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "ergonomic chair"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_021",
+      "transcription": "write thank you notes for wedding gifts",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "relationships",
+              "home"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "thank you notes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_022",
+      "transcription": "register kids for summer camp",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "relationships",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "summer camp"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_023",
+      "transcription": "fix bike for weekend ride",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "home",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "fix bike"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_024",
+      "transcription": "mentor new intern at work",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "community"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "mentor intern"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_025",
+      "transcription": "review retirement account options",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "finance",
+              "growth"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "retirement account"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_026",
+      "transcription": "plan neighborhood block party",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "community",
+              "recreation"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "block party"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_027",
+      "transcription": "take dog to vet",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "home",
+              "health"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "dog vet"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_028",
+      "transcription": "submit expense reports",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "career",
+              "finance"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "expense reports"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_029",
+      "transcription": "declutter and donate old clothes",
+      "difficulty": "medium",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "home",
+              "community"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "donate clothes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rw_cross_domain_030",
+      "transcription": "learn first aid for coaching",
+      "difficulty": "hard",
+      "category": "RW_CROSS_DOMAIN",
+      "source_id": "manual",
+      "source_list": "manual",
+      "expected_action_count": 1,
+      "expected_actions": [
+        {
+          "action": "add",
+          "checks": {
+            "category_in": [
+              "growth",
+              "community",
+              "health"
+            ],
+            "confidence_gte": 0.5,
+            "content_fuzzy": "first aid"
+          }
+        }
+      ]
+    }
+  ]
+}
