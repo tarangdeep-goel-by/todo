@@ -28,54 +28,20 @@ void main() {
       await tester.pumpWidget(buildCalendarView());
       await tester.pump();
 
-      expect(find.text('Timeline is clear'), findsOneWidget);
+      expect(find.text('Calendar is clear'), findsOneWidget);
     });
 
-    testWidgets('groups overdue tasks in Overdue section', (tester) async {
+    testWidgets('shows month header with navigation', (tester) async {
       final container = ProviderContainer(overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
       ]);
-
-      container.read(taskStoreProvider.notifier).upsertTask(
-        createTestTask(
-          id: 'overdue-1',
-          title: 'Past Due Task',
-          status: 'active',
-          dueDate: DateTime.now().subtract(const Duration(days: 2)),
-        ),
-      );
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: Scaffold(body: CalendarTaskView())),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Overdue'), findsOneWidget);
-      expect(find.text('Past Due Task'), findsOneWidget);
-    });
-
-    testWidgets('groups tasks due today in Today section', (tester) async {
-      final container = ProviderContainer(overrides: [
-        apiServiceProvider.overrideWithValue(mockApi),
-      ]);
-
-      // Create a task due later today
-      final todayEnd = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day,
-        23, 59, 59,
-      );
 
       container.read(taskStoreProvider.notifier).upsertTask(
         createTestTask(
           id: 'today-1',
           title: 'Today Task',
           status: 'active',
-          dueDate: todayEnd,
+          dueDate: DateTime.now(),
         ),
       );
 
@@ -87,11 +53,64 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Today'), findsOneWidget);
+      // Month navigation arrows should be present
+      expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+    });
+
+    testWidgets('shows day-of-week headers', (tester) async {
+      final container = ProviderContainer(overrides: [
+        apiServiceProvider.overrideWithValue(mockApi),
+      ]);
+
+      container.read(taskStoreProvider.notifier).upsertTask(
+        createTestTask(
+          id: 'task-1',
+          title: 'Some Task',
+          status: 'active',
+          dueDate: DateTime.now(),
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: CalendarTaskView())),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('MON'), findsOneWidget);
+      expect(find.text('SUN'), findsOneWidget);
+    });
+
+    testWidgets('shows task for selected day', (tester) async {
+      final container = ProviderContainer(overrides: [
+        apiServiceProvider.overrideWithValue(mockApi),
+      ]);
+
+      // Today's task should appear since today is selected by default
+      container.read(taskStoreProvider.notifier).upsertTask(
+        createTestTask(
+          id: 'today-1',
+          title: 'Today Task',
+          status: 'active',
+          dueDate: DateTime.now(),
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: CalendarTaskView())),
+        ),
+      );
+      await tester.pump();
+
       expect(find.text('Today Task'), findsOneWidget);
     });
 
-    testWidgets('shows No Date section collapsed by default', (tester) async {
+    testWidgets('shows undated tasks section collapsed by default', (tester) async {
       final container = ProviderContainer(overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
       ]);
@@ -112,42 +131,28 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('No Date'), findsOneWidget);
+      expect(find.text('No due date'), findsOneWidget);
       // Task not visible until expanded
       expect(find.text('Undated Task'), findsNothing);
 
       // Tap to expand
-      await tester.tap(find.text('No Date'));
+      await tester.tap(find.text('No due date'));
       await tester.pump();
       expect(find.text('Undated Task'), findsOneWidget);
     });
 
-    testWidgets('overdue section appears before today section', (tester) async {
+    testWidgets('shows empty state for selected day with no tasks', (tester) async {
       final container = ProviderContainer(overrides: [
         apiServiceProvider.overrideWithValue(mockApi),
       ]);
 
-      final todayEnd = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day,
-        23, 59, 59,
-      );
-
+      // Add a task on a different day so calendar is not empty
       container.read(taskStoreProvider.notifier).upsertTask(
         createTestTask(
-          id: 'today-1',
-          title: 'Today Task',
+          id: 'future-1',
+          title: 'Future Task',
           status: 'active',
-          dueDate: todayEnd,
-        ),
-      );
-      container.read(taskStoreProvider.notifier).upsertTask(
-        createTestTask(
-          id: 'overdue-1',
-          title: 'Overdue Task',
-          status: 'active',
-          dueDate: DateTime.now().subtract(const Duration(days: 1)),
+          dueDate: DateTime.now().add(const Duration(days: 5)),
         ),
       );
 
@@ -159,9 +164,8 @@ void main() {
       );
       await tester.pump();
 
-      final overduePos = tester.getTopLeft(find.text('Overdue'));
-      final todayPos = tester.getTopLeft(find.text('Today'));
-      expect(overduePos.dy, lessThan(todayPos.dy));
+      // Today is selected by default but has no tasks
+      expect(find.text('No tasks on this day'), findsOneWidget);
     });
 
     testWidgets('completed tasks are excluded', (tester) async {

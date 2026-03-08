@@ -5,7 +5,7 @@ import 'package:frontend/screens/flat_task_view.dart';
 import 'package:frontend/providers/api_provider.dart';
 import 'package:frontend/providers/task_store_provider.dart';
 import 'package:frontend/widgets/empty_state.dart';
-import 'package:frontend/widgets/task_item.dart';
+import 'package:frontend/widgets/flat_task_row.dart';
 
 import '../helpers/test_helpers.dart';
 
@@ -74,7 +74,7 @@ void main() {
       container.read(taskStoreProvider.notifier).upsertTask(task2);
       await tester.pump();
 
-      expect(find.byType(TaskItem), findsWidgets);
+      expect(find.byType(FlatTaskRow), findsWidgets);
       // sentenceTitle capitalizes first char
       expect(find.text('Review PR'), findsOneWidget);
       expect(find.text('Morning run'), findsOneWidget);
