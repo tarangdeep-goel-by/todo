@@ -21,6 +21,12 @@ import '../utils/string_extensions.dart';
 /// Sentinel for "field not provided" in _updateField
 const _noChange = Object();
 
+class _BreadcrumbItem {
+  final String label;
+  final VoidCallback onTap;
+  const _BreadcrumbItem({required this.label, required this.onTap});
+}
+
 /// Shows estimate picker dialog. Returns:
 /// - a positive double (new estimate)
 /// - -1.0 (clear estimate)
@@ -116,7 +122,7 @@ void showTaskDetailOverlay(
     barrierDismissible: true,
     barrierLabel: 'Close task detail',
     barrierColor: Colors.black54,
-    transitionDuration: AppAnimations.cardExpand,
+    transitionDuration: const Duration(milliseconds: 280),
     pageBuilder: (context, animation, secondaryAnimation) {
       return TaskDetailOverlay(taskId: taskId, domainRoot: domainRoot);
     },
@@ -690,6 +696,72 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     return ancestors;
   }
 
+  Widget _buildBreadcrumbs(DomainPalette domain, Task task, List<Task> allTasks) {
+    final ancestors = _buildAncestorChain(task, allTasks);
+    final crumbs = <_BreadcrumbItem>[
+      _BreadcrumbItem(
+        label: task.category.capitalize,
+        onTap: () => _navigateToDomainRoot(task.category),
+      ),
+      for (final a in ancestors)
+        _BreadcrumbItem(
+          label: a.sentenceTitle,
+          onTap: () => _navigateTo(a.id),
+        ),
+    ];
+
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: domain.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (int i = 0; i < crumbs.length; i++) ...[
+                  if (i > 0) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 14,
+                        color: domain.primary.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ],
+                  GestureDetector(
+                    onTap: crumbs[i].onTap,
+                    child: Text(
+                      crumbs[i].label,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: i == crumbs.length - 1 ? FontWeight.w600 : FontWeight.w400,
+                        color: i == crumbs.length - 1
+                            ? domain.primary
+                            : domain.primary.withValues(alpha: 0.5),
+                        letterSpacing: 0.36,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // --- Build ---
 
   @override
@@ -783,32 +855,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                     children: [
                       const SizedBox(height: 8),
 
-                      // Domain section: accent bar + uppercase name
-                      GestureDetector(
-                        onTap: () => _navigateToDomainRoot(task.category),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: domain.primary,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              task.category.toUpperCase(),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: domain.primary,
-                                letterSpacing: 0.36,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // Breadcrumb: Domain > Parent > ...
+                      _buildBreadcrumbs(domain, task, allTasks),
 
                       const SizedBox(height: 16),
 
@@ -1463,54 +1511,87 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   Widget _buildSubtaskItem(DomainPalette domain, Task sub) {
     final isComplete = sub.isCompleted;
 
-    final checkboxWidget = Container(
-      width: 18,
-      height: 18,
-      decoration: BoxDecoration(
-        color: isComplete ? const Color(0x3050E890) : Colors.transparent,
-        border: isComplete
-            ? null
-            : Border.all(color: const Color(0x30F0EBE5), width: 1.5),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: isComplete
-          ? const Icon(Icons.check, size: 12, color: Color(0xFF50E890))
-          : null,
-    );
-
-    final textWidget = Text(
-      sub.sentenceTitle,
-      style: GoogleFonts.dmSans(
-        fontSize: 14,
-        color: isComplete ? const Color(0x80F0EBE5) : const Color(0x99F0EBE5),
-        decoration: isComplete ? TextDecoration.lineThrough : null,
-        decorationColor: const Color(0x40F0EBE5),
-      ),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-    );
-
-    Widget row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => _toggleStatus(sub, isComplete ? 'active' : 'completed'),
-            child: checkboxWidget,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _navigateTo(sub.id),
-              child: textWidget,
+    final checkboxWidget = GestureDetector(
+      onTap: () => _toggleStatus(sub, isComplete ? 'active' : 'completed'),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: isComplete ? domain.primary.withValues(alpha: 0.2) : Colors.transparent,
+            border: Border.all(
+              color: isComplete ? domain.primary : const Color(0x30F0EBE5),
+              width: 1.5,
             ),
+            borderRadius: BorderRadius.circular(4),
           ),
-        ],
+          child: isComplete
+              ? Icon(Icons.check, size: 12, color: domain.primary)
+              : null,
+        ),
+      ),
+    );
+
+    Widget row = GestureDetector(
+      onTap: () => _navigateTo(sub.id),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: domain.primary.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            // Accent bar
+            Container(
+              width: 3,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isComplete
+                    ? domain.primary.withValues(alpha: 0.3)
+                    : domain.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Title
+            Expanded(
+              child: Text(
+                sub.sentenceTitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isComplete
+                      ? AppColors.darkText.withValues(alpha: 0.4)
+                      : AppColors.darkText.withValues(alpha: 0.8),
+                  decoration: isComplete ? TextDecoration.lineThrough : null,
+                  decorationColor: AppColors.darkText.withValues(alpha: 0.3),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Checkbox (right side)
+            checkboxWidget,
+            const SizedBox(width: 4),
+            // Chevron hint
+            Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: domain.primary.withValues(alpha: 0.3),
+            ),
+          ],
+        ),
       ),
     );
 
     if (isComplete) {
-      row = Opacity(opacity: 0.5, child: row);
+      row = Opacity(opacity: 0.6, child: row);
     }
 
     return row;

@@ -451,7 +451,7 @@ class SyncService {
     }
     await _localDb.replaceCategories(categories);
 
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
     await _localDb.setMeta('last_pull_at', now);
     await _localDb.setMeta('last_full_sync_at', now);
 
@@ -497,7 +497,7 @@ class SyncService {
     }
 
     await _localDb.replaceCategories(categories);
-    await _localDb.setMeta('last_pull_at', DateTime.now().toIso8601String());
+    await _localDb.setMeta('last_pull_at', DateTime.now().toUtc().toIso8601String());
 
     _logger.info('sync.pull.delta.done', logger: 'SyncService', data: {
       'changed': changedTasks.length,

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
-import '../config/spacing.dart';
-import '../config/typography.dart';
 import '../models/task.dart';
+import '../utils/string_extensions.dart';
 
-/// A compact task row used in subtask lists and domain root views.
+/// A compact task row used in domain root views.
+/// Styled to match the subtask items in task detail overlay.
 class TaskRowTile extends StatelessWidget {
   final DomainPalette domain;
   final Task task;
@@ -21,90 +22,121 @@ class TaskRowTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompleted = task.isCompleted;
+    final isOverdue = task.isOverdue;
 
-    return GestureDetector(
+    Widget row = GestureDetector(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Opacity(
-          opacity: isCompleted ? 0.5 : 1.0,
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  domain.surface.withValues(alpha: 0.85),
-                  domain.surface.withValues(alpha: 0.55),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-              border: Border.all(
-                color: domain.primary.withValues(alpha: 0.05),
-                width: 0.5,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: isOverdue
+              ? AppColors.overdue.withValues(alpha: 0.05)
+              : domain.primary.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            // Accent bar
+            Container(
+              width: 3,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isCompleted
+                    ? domain.primary.withValues(alpha: 0.3)
+                    : domain.primary,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 6,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: AppSpacing.leftAccentBar,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: domain.primary,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: AppTypography.metadataText(color: domain.primary)
-                        .copyWith(
+            const SizedBox(width: 10),
+            // Title + metadata
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    task.sentenceTitle,
+                    style: GoogleFonts.dmSans(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      decoration:
-                          isCompleted ? TextDecoration.lineThrough : null,
-                      decorationColor: domain.primary.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w500,
+                      color: isCompleted
+                          ? AppColors.darkText.withValues(alpha: 0.4)
+                          : AppColors.darkText.withValues(alpha: 0.8),
+                      decoration: isCompleted ? TextDecoration.lineThrough : null,
+                      decorationColor: AppColors.darkText.withValues(alpha: 0.3),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                // Metadata hints
-                if (task.priority != null) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    task.priority![0].toUpperCase(),
-                    style: AppTypography.metadataText(
-                      color: domain.primary.withValues(alpha: 0.6),
-                    ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
+                  if (task.dueDate != null || task.priority != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (task.dueDate != null) ...[
+                          if (isOverdue) ...[
+                            Container(
+                              width: 5,
+                              height: 5,
+                              decoration: const BoxDecoration(
+                                color: AppColors.overdue,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            DateFormat('MMM d').format(task.dueDate!),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: isOverdue
+                                  ? AppColors.overdue
+                                  : domain.primary.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                        if (task.dueDate != null && task.priority != null)
+                          const SizedBox(width: 8),
+                        if (task.priority != null)
+                          Text(
+                            task.priority!.capitalize,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: switch (task.priority!.toLowerCase()) {
+                                'high' => AppColors.priorityHigh,
+                                'medium' => AppColors.priorityMedium,
+                                'low' => AppColors.priorityLow,
+                                _ => domain.primary.withValues(alpha: 0.4),
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
-                if (task.dueDate != null) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    DateFormat('MMM d, yyyy').format(task.dueDate!),
-                    style: AppTypography.metadataText(
-                      color: domain.primary.withValues(alpha: 0.6),
-                    ).copyWith(fontSize: 11),
-                  ),
-                ],
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right,
-                  size: 16,
-                  color: domain.primary.withValues(alpha: 0.4),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            // Status indicator
+            if (isCompleted)
+              Icon(Icons.check_circle, size: 16, color: AppColors.completed.withValues(alpha: 0.6))
+            else
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: domain.primary.withValues(alpha: 0.3),
+              ),
+          ],
         ),
       ),
     );
+
+    if (isCompleted) {
+      row = Opacity(opacity: 0.6, child: row);
+    }
+
+    return row;
   }
 }

@@ -197,7 +197,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
     final isTutorialMode = widget.onTutorialStepComplete != null;
 
     // Left side line 2: domain name for root tasks, L1 parent for child tasks
-    final String subtitleText = widget.parentName ?? task.category.capitalize;
+    final String subtitleText = (widget.parentName ?? task.category).capitalize;
 
     // Row content
     Widget rowContent = Container(
