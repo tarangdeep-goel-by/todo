@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
@@ -12,7 +13,6 @@ import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import 'domain_root_view.dart';
 import 'task_parent_picker.dart';
-import 'task_row_tile.dart';
 import 'styled_snackbar.dart';
 import 'undo_snackbar.dart';
 import '../screens/ramble_screen.dart';
@@ -20,6 +20,12 @@ import '../utils/string_extensions.dart';
 
 /// Sentinel for "field not provided" in _updateField
 const _noChange = Object();
+
+class _BreadcrumbItem {
+  final String label;
+  final VoidCallback onTap;
+  const _BreadcrumbItem({required this.label, required this.onTap});
+}
 
 /// Shows estimate picker dialog. Returns:
 /// - a positive double (new estimate)
@@ -116,7 +122,7 @@ void showTaskDetailOverlay(
     barrierDismissible: true,
     barrierLabel: 'Close task detail',
     barrierColor: Colors.black54,
-    transitionDuration: AppAnimations.cardExpand,
+    transitionDuration: const Duration(milliseconds: 280),
     pageBuilder: (context, animation, secondaryAnimation) {
       return TaskDetailOverlay(taskId: taskId, domainRoot: domainRoot);
     },
@@ -634,24 +640,6 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   String _formatDateTime(DateTime dt) =>
       DateFormat('MMM d, yyyy h:mm a').format(dt);
 
-  String _priorityLabel(String? priority) {
-    if (priority == null || priority == 'none') return 'No priority';
-    return priority.capitalize;
-  }
-
-  IconData _priorityIcon(String? priority) {
-    switch (priority) {
-      case 'high':
-        return Icons.keyboard_double_arrow_up;
-      case 'medium':
-        return Icons.drag_handle;
-      case 'low':
-        return Icons.keyboard_double_arrow_down;
-      default:
-        return Icons.remove;
-    }
-  }
-
   // --- AI placement helpers ---
 
   bool _hasAiPlacement(Task task) {
@@ -708,6 +696,72 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     return ancestors;
   }
 
+  Widget _buildBreadcrumbs(DomainPalette domain, Task task, List<Task> allTasks) {
+    final ancestors = _buildAncestorChain(task, allTasks);
+    final crumbs = <_BreadcrumbItem>[
+      _BreadcrumbItem(
+        label: task.category.capitalize,
+        onTap: () => _navigateToDomainRoot(task.category),
+      ),
+      for (final a in ancestors)
+        _BreadcrumbItem(
+          label: a.sentenceTitle,
+          onTap: () => _navigateTo(a.id),
+        ),
+    ];
+
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: domain.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (int i = 0; i < crumbs.length; i++) ...[
+                  if (i > 0) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 14,
+                        color: domain.primary.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ],
+                  GestureDetector(
+                    onTap: crumbs[i].onTap,
+                    child: Text(
+                      crumbs[i].label,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: i == crumbs.length - 1 ? FontWeight.w600 : FontWeight.w400,
+                        color: i == crumbs.length - 1
+                            ? domain.primary
+                            : domain.primary.withValues(alpha: 0.5),
+                        letterSpacing: 0.36,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // --- Build ---
 
   @override
@@ -734,7 +788,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           child: Center(
             child: Text(
               'Task not found',
-              style: AppTypography.metadataText(color: AppColors.darkText),
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: AppColors.darkText,
+              ),
             ),
           ),
         ),
@@ -742,7 +799,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     }
 
     final domain = DomainColors.getDomain(task.category, true, ref.watch(domainPalettesProvider));
-    final ancestors = _buildAncestorChain(task, allTasks);
+    final isCompleted = task.isCompleted;
 
     return PopScope(
       canPop: _navHistory.isEmpty,
@@ -755,84 +812,39 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Close button — always dismisses overlay entirely
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    top: AppSpacing.sm,
-                    right: AppSpacing.md,
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.close, color: domain.primary, size: 28),
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ),
-              ),
-
-              // Breadcrumb bar
+              // Header bar: back arrow + "Task Detail" + more icon
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      // Category as first breadcrumb — tappable to navigate to domain root
-                      Semantics(
-                        button: true,
-                        label: 'Navigate to ${task.category}',
-                        child: GestureDetector(
-                          onTap: () => _navigateToDomainRoot(task.category),
-                          child: Text(
-                            task.category,
-                            style: AppTypography.metadataText(
-                              color: domain.primary.withValues(alpha: 0.7),
-                            ).copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Color(0x80F0EBE5), size: 20),
+                      tooltip: _navHistory.isEmpty ? 'Close' : 'Back',
+                      onPressed: _navHistory.isEmpty
+                          ? () => Navigator.of(context).pop()
+                          : _navigateBack,
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Task Detail',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: AppColors.darkText,
                           ),
                         ),
                       ),
-                      // Ancestors
-                      for (int i = 0; i < ancestors.length; i++) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Icon(
-                            Icons.chevron_right,
-                            size: 14,
-                            color: domain.primary.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        Semantics(
-                          button: true,
-                          label: 'Navigate to ${ancestors[i].title}',
-                          child: GestureDetector(
-                            onTap: () => _navigateTo(ancestors[i].id),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 120),
-                              child: Text(
-                                ancestors[i].title,
-                                style: AppTypography.metadataText(
-                                  color: domain.primary.withValues(alpha: 0.7),
-                                ).copyWith(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.more_horiz, color: Color(0x80F0EBE5), size: 20),
+                      tooltip: 'More',
+                      onPressed: () => _showMoreMenu(context, task, domain),
+                    ),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: AppSpacing.sm),
 
               // Scrollable content
               Expanded(
@@ -841,34 +853,49 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const SizedBox(height: 8),
+
+                      // Breadcrumb: Domain > Parent > ...
+                      _buildBreadcrumbs(domain, task, allTasks),
+
+                      const SizedBox(height: 16),
+
                       // Title
                       _buildTitle(domain, task),
 
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: 24),
 
-                      // Priority + Due date + Complete chips
-                      _buildChipRow(domain, task),
+                      // Metadata rows
+                      _buildMetadataRows(domain, task, allTasks),
 
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: 24),
 
                       // Description
                       _buildDescription(domain, task),
 
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: 24),
 
-                      // Metadata (read-only)
-                      _buildMetadata(domain, task),
+                      // Divider
+                      Container(height: 1, color: const Color(0x0FF0EBE5)),
 
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: 24),
 
                       // Subtasks
                       _buildSubtasksSection(domain, task, subtasks),
+
+                      const SizedBox(height: 24),
+
+                      // Secondary metadata (timestamps, AI, transcription)
+                      _buildSecondaryMetadata(domain, task),
 
                       const SizedBox(height: 120),
                     ],
                   ),
                 ),
               ),
+
+              // Action bar
+              _buildActionBar(domain, task, isCompleted),
             ],
           ),
         ),
@@ -876,21 +903,145 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
+  // --- More menu (move, delete, etc.) ---
+
+  void _showMoreMenu(BuildContext context, Task task, DomainPalette domain) {
+    HapticService.light();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.drive_file_move_outline, color: const Color(0x66F0EBE5)),
+              title: Text(
+                _savingMove ? 'Moving...' : 'Move',
+                style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0x99F0EBE5)),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openMoveSheet(task);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.mic_none_rounded, color: const Color(0x66F0EBE5)),
+              title: Text(
+                'Add subtasks with voice',
+                style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0x99F0EBE5)),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _launchRambleSubtasks(task);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Action bar ---
+
+  Widget _buildActionBar(DomainPalette domain, Task task, bool isCompleted) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: _savingStatus
+                  ? null
+                  : () => _toggleStatus(task, isCompleted ? 'active' : 'completed'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0x1550E890),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isCompleted ? Icons.undo : Icons.check,
+                      size: 18,
+                      color: const Color(0xFF50E890),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _savingStatus
+                          ? 'Saving...'
+                          : (isCompleted ? 'Reactivate' : 'Complete'),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF50E890),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _startEditingTitle(task),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0x0AF0EBE5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 18, color: Color(0x66F0EBE5)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Edit',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0x66F0EBE5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- Title widget ---
 
   Widget _buildTitle(DomainPalette domain, Task task) {
+    final titleStyle = GoogleFonts.bricolageGrotesque(
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+      color: AppColors.darkText,
+      letterSpacing: -0.56,
+      height: 1.21,
+    );
+
     if (_editingTitle) {
       return TextField(
         controller: _titleController,
         focusNode: _titleFocus,
-        style: AppTypography.domainTitle(context, color: domain.primary)
-            .copyWith(fontSize: 28),
+        style: titleStyle,
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: 'Task title',
-          hintStyle: AppTypography.domainTitle(context,
-                  color: domain.primary.withValues(alpha: 0.3))
-              .copyWith(fontSize: 28),
+          hintStyle: titleStyle.copyWith(
+            color: AppColors.darkText.withValues(alpha: 0.3),
+          ),
         ),
         onSubmitted: (_) => _saveTitle(task),
         onTapOutside: (_) => _saveTitle(task),
@@ -905,8 +1056,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         onTap: () => _startEditingTitle(task),
         child: Text(
           task.sentenceTitle,
-          style: AppTypography.domainTitle(context, color: domain.primary)
-              .copyWith(fontSize: 28),
+          style: titleStyle,
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
@@ -914,103 +1064,96 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
-  // --- Chip row ---
+  // --- Metadata rows (status, priority, due, parent, estimate) ---
 
-  Widget _buildActionChip({
-    required VoidCallback? onTap,
-    required IconData icon,
-    required String label,
-    required Color backgroundColor,
-    required Color foregroundColor,
-  }) {
-    final child = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: foregroundColor),
-          const SizedBox(width: 6),
-          Text(
+  Widget _buildMetadataRow(String label, Widget value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
             label,
-            style: AppTypography.metadataText(color: foregroundColor)
-                .copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+            style: GoogleFonts.dmSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: const Color(0x40F0EBE5),
+            ),
           ),
-        ],
-      ),
-    );
-    if (onTap == null) return child;
-    return Semantics(
-      button: true,
-      label: label,
-      child: GestureDetector(onTap: onTap, child: child),
+        ),
+        Expanded(child: value),
+      ],
     );
   }
 
-  Widget _buildChipRow(DomainPalette domain, Task task) {
-    final isCompleted = task.isCompleted;
-    final isOverdue = task.isOverdue;
-    final defaultBg = domain.primary.withValues(alpha: 0.15);
-    final defaultFg = domain.primary;
+  Widget _buildMetadataRows(DomainPalette domain, Task task, List<Task> allTasks) {
+    final valueStyle = GoogleFonts.dmSans(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: const Color(0x66F0EBE5),
+    );
+    final ancestors = _buildAncestorChain(task, allTasks);
+
+    // Status
+    final displayStatus = task.isOverdue ? 'overdue' : task.status;
+    Color statusColor;
+    String statusLabel;
+    switch (displayStatus) {
+      case 'completed':
+        statusColor = const Color(0xFF50E890);
+        statusLabel = 'Completed';
+      case 'overdue':
+        statusColor = const Color(0xFFFF6B6B);
+        statusLabel = 'Overdue';
+      default:
+        statusColor = const Color(0xFFFF9A50);
+        statusLabel = 'Active';
+    }
+
+    // Priority
+    Widget priorityWidget;
+    final p = task.priority ?? 'none';
+    switch (p) {
+      case 'high':
+        priorityWidget = Text('High', style: GoogleFonts.dmSans(
+          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.priorityHigh,
+        ));
+      case 'medium':
+        priorityWidget = Text('Medium', style: GoogleFonts.dmSans(
+          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.priorityMedium,
+        ));
+      case 'low':
+        priorityWidget = Text('Low', style: GoogleFonts.dmSans(
+          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.priorityLow,
+        ));
+      default:
+        priorityWidget = Text('None', style: GoogleFonts.dmSans(
+          fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0x40F0EBE5),
+        ));
+    }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            _buildActionChip(
-              onTap: _togglePriorityExpanded,
-              icon: _priorityIcon(task.priority),
-              label: _savingPriority ? 'Saving...' : _priorityLabel(task.priority),
-              backgroundColor: defaultBg,
-              foregroundColor: defaultFg,
-            ),
-            _buildActionChip(
-              onTap: () => _pickDueDate(task),
-              icon: Icons.calendar_today,
-              label: _savingDueDate ? 'Saving...' : (task.dueDate != null ? _formatDate(task.dueDate!) : 'No due date'),
-              backgroundColor: defaultBg,
-              foregroundColor: defaultFg,
-            ),
-            _buildActionChip(
-              onTap: () => _pickEstimate(task),
-              icon: Icons.timer_outlined,
-              label: _savingEstimate ? 'Saving...' : (task.estimatedHours != null
-                  ? '${task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)}h'
-                  : 'No estimate'),
-              backgroundColor: defaultBg,
-              foregroundColor: defaultFg,
-            ),
-            if (isOverdue)
-              _buildActionChip(
-                onTap: null,
-                icon: Icons.warning_amber_rounded,
-                label: 'Overdue',
-                backgroundColor: AppColors.overdue,
-                foregroundColor: AppColors.darkBg,
-              ),
-            _buildActionChip(
-              onTap: () => _openMoveSheet(task),
-              icon: Icons.drive_file_move_outline,
-              label: _savingMove ? 'Moving...' : 'Move',
-              backgroundColor: defaultBg,
-              foregroundColor: defaultFg,
-            ),
-            _buildActionChip(
-              onTap: () => _toggleStatus(task, isCompleted ? 'active' : 'completed'),
-              icon: isCompleted ? Icons.check_box : Icons.check_box_outline_blank,
-              label: _savingStatus ? 'Saving...' : 'Complete',
-              backgroundColor: isCompleted ? domain.primary : defaultBg,
-              foregroundColor: isCompleted ? domain.textOnPrimary : defaultFg,
-            ),
-          ],
-        ),
+        // Status row — bold colored text, no pill
+        _buildMetadataRow('Status', Text(
+          statusLabel,
+          style: GoogleFonts.dmSans(
+            fontSize: 13, fontWeight: FontWeight.w700, color: statusColor,
+          ),
+        )),
+        const SizedBox(height: 14),
 
+        // Priority row (tappable to expand) — bold colored text, no pill
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _togglePriorityExpanded,
+          child: _buildMetadataRow('Priority', Row(
+            children: [
+              _savingPriority
+                  ? Text('Saving...', style: valueStyle)
+                  : priorityWidget,
+            ],
+          )),
+        ),
         // Priority expansion panel
         AnimatedCrossFade(
           firstChild: const SizedBox.shrink(),
@@ -1021,6 +1164,58 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           duration: const Duration(milliseconds: 200),
           sizeCurve: AppAnimations.easeOutCubic,
         ),
+        const SizedBox(height: 14),
+
+        // Due date row (tappable) — accent color, red if overdue
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _pickDueDate(task),
+          child: _buildMetadataRow('Due', Text(
+            _savingDueDate
+                ? 'Saving...'
+                : (task.dueDate != null ? _formatDate(task.dueDate!) : 'Not set'),
+            style: valueStyle.copyWith(
+              fontWeight: FontWeight.w600,
+              color: task.isOverdue
+                  ? AppColors.overdue
+                  : task.dueDate != null
+                      ? domain.primary
+                      : const Color(0x40F0EBE5),
+            ),
+          )),
+        ),
+
+        // Parent row (if has parent)
+        if (ancestors.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _navigateTo(ancestors.last.id),
+            child: _buildMetadataRow('Parent', Text(
+              ancestors.last.sentenceTitle,
+              style: valueStyle.copyWith(
+                color: domain.primary.withValues(alpha: 0.5),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )),
+          ),
+        ],
+
+        // Estimate row (if has estimate)
+        if (task.estimatedHours != null) ...[
+          const SizedBox(height: 14),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _pickEstimate(task),
+            child: _buildMetadataRow('Estimate', Text(
+              _savingEstimate
+                  ? 'Saving...'
+                  : '${task.estimatedHours!.toStringAsFixed(task.estimatedHours! % 1 == 0 ? 0 : 1)}h',
+              style: valueStyle,
+            )),
+          ),
+        ],
       ],
     );
   }
@@ -1067,10 +1262,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
             const SizedBox(width: 10),
             Text(
               label,
-              style: AppTypography.metadataText(color: domain.primary)
-                  .copyWith(
+              style: GoogleFonts.dmSans(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: domain.primary,
               ),
             ),
             if (isSelected) ...[
@@ -1083,39 +1278,43 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     );
   }
 
-  // --- Section header ---
-
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: AppTypography.metadataText(
-        color: AppColors.secondaryText,
-      ).copyWith(fontSize: 11, fontWeight: FontWeight.w700),
-    );
-  }
-
   // --- Description ---
 
   Widget _buildDescription(DomainPalette domain, Task task) {
+    final labelStyle = GoogleFonts.dmSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      color: const Color(0x40F0EBE5),
+    );
+
     if (_editingDescription) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('DESCRIPTION'),
+          Text('DESCRIPTION', style: GoogleFonts.dmSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: const Color(0x80F0EBE5),
+            letterSpacing: 0.6,
+          )),
           const SizedBox(height: 4),
           TextField(
             controller: _descriptionController,
             focusNode: _descriptionFocus,
             maxLines: null,
             minLines: 3,
-            style: AppTypography.metadataText(color: domain.primary)
-                .copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: const Color(0x99F0EBE5),
+            ),
             decoration: InputDecoration(
               border: InputBorder.none,
               hintText: 'Add a description...',
-              hintStyle: AppTypography.metadataText(
-                color: domain.primary.withValues(alpha: 0.3),
-              ).copyWith(fontSize: 14),
+              hintStyle: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: const Color(0x30F0EBE5),
+              ),
             ),
             enabled: !_savingDescription,
           ),
@@ -1125,8 +1324,11 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
               onPressed: _savingDescription ? null : () => _saveDescription(task),
               child: Text(
                 _savingDescription ? 'Saving...' : 'Done',
-                style: AppTypography.metadataText(color: domain.primary)
-                    .copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: domain.primary,
+                ),
               ),
             ),
           ),
@@ -1139,29 +1341,33 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('DESCRIPTION'),
+          Text('Description', style: labelStyle),
           const SizedBox(height: 4),
           Text(
             task.description?.isNotEmpty == true
                 ? task.description!
                 : 'Add a description...',
-            style: AppTypography.metadataText(
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
               color: task.description?.isNotEmpty == true
-                  ? domain.primary
-                  : domain.primary.withValues(alpha: 0.5),
-            ).copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+                  ? const Color(0x80F0EBE5)
+                  : const Color(0x30F0EBE5),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // --- Metadata ---
+  // --- Secondary metadata (timestamps, AI, transcription) ---
 
-  Widget _buildMetadata(DomainPalette domain, Task task) {
-    final dimColor = AppColors.darkText.withValues(alpha: 0.4);
-    final dimStyle = AppTypography.metadataText(color: dimColor)
-        .copyWith(fontSize: 11);
+  Widget _buildSecondaryMetadata(DomainPalette domain, Task task) {
+    final dimColor = const Color(0x40F0EBE5);
+    final dimStyle = GoogleFonts.dmSans(
+      fontSize: 11,
+      color: dimColor,
+    );
     final showAi = _hasAiPlacement(task);
     final showTranscription = _hasVoiceTranscription(task);
 
@@ -1246,30 +1452,34 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   Widget _buildSubtaskInputRow(DomainPalette domain, Task task) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
+          // Empty checkbox placeholder
           Container(
-            width: AppSpacing.leftAccentBar,
-            height: 28,
+            width: 18,
+            height: 18,
             decoration: BoxDecoration(
-              color: domain.primary.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: const Color(0x30F0EBE5), width: 1.5),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _subtaskController,
               focusNode: _subtaskFocus,
-              style: AppTypography.metadataText(color: domain.primary)
-                  .copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: const Color(0x99F0EBE5),
+              ),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: 'New subtask...',
-                hintStyle: AppTypography.metadataText(
-                  color: domain.primary.withValues(alpha: 0.5),
-                ).copyWith(fontSize: 14),
+                hintStyle: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: const Color(0x30F0EBE5),
+                ),
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -1278,18 +1488,18 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
             ),
           ),
           if (_savingSubtask)
-            SizedBox(
+            const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: domain.primary,
+                color: Color(0xFF50E890),
               ),
             )
           else
             GestureDetector(
               onTap: () => _saveSubtask(task),
-              child: Icon(Icons.check, size: 20, color: domain.primary),
+              child: const Icon(Icons.check, size: 20, color: Color(0xFF50E890)),
             ),
         ],
       ),
@@ -1298,37 +1508,143 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
 
   // --- Subtasks ---
 
+  Widget _buildSubtaskItem(DomainPalette domain, Task sub) {
+    final isComplete = sub.isCompleted;
+
+    final checkboxWidget = GestureDetector(
+      onTap: () => _toggleStatus(sub, isComplete ? 'active' : 'completed'),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: isComplete ? domain.primary.withValues(alpha: 0.2) : Colors.transparent,
+            border: Border.all(
+              color: isComplete ? domain.primary : const Color(0x30F0EBE5),
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: isComplete
+              ? Icon(Icons.check, size: 12, color: domain.primary)
+              : null,
+        ),
+      ),
+    );
+
+    Widget row = GestureDetector(
+      onTap: () => _navigateTo(sub.id),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: domain.primary.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            // Accent bar
+            Container(
+              width: 3,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isComplete
+                    ? domain.primary.withValues(alpha: 0.3)
+                    : domain.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Title
+            Expanded(
+              child: Text(
+                sub.sentenceTitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isComplete
+                      ? AppColors.darkText.withValues(alpha: 0.4)
+                      : AppColors.darkText.withValues(alpha: 0.8),
+                  decoration: isComplete ? TextDecoration.lineThrough : null,
+                  decorationColor: AppColors.darkText.withValues(alpha: 0.3),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Checkbox (right side)
+            checkboxWidget,
+            const SizedBox(width: 4),
+            // Chevron hint
+            Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: domain.primary.withValues(alpha: 0.3),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (isComplete) {
+      row = Opacity(opacity: 0.6, child: row);
+    }
+
+    return row;
+  }
+
   Widget _buildSubtasksSection(DomainPalette domain, Task task, List<Task> subtasks) {
+    final completedCount = subtasks.where((s) => s.isCompleted).length;
+    final totalCount = subtasks.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildSectionHeader('SUBTASKS'),
-            if (!_addingSubtask)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Semantics(
-                    button: true,
-                    label: 'Add subtask with voice',
-                    child: GestureDetector(
-                      onTap: () => _launchRambleSubtasks(task),
-                      child: Icon(Icons.mic_none_rounded, size: 20, color: domain.primary),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Semantics(
-                    button: true,
-                    label: 'Add subtask with text',
-                    child: GestureDetector(
-                      onTap: _startAddingSubtask,
-                      child: Icon(Icons.add, size: 20, color: domain.primary),
-                    ),
-                  ),
-                ],
+            Text(
+              'SUBTASKS',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0x80F0EBE5),
+                letterSpacing: 0.6,
               ),
+            ),
+            if (totalCount > 0) ...[
+              const SizedBox(width: 8),
+              Text(
+                '$completedCount / $totalCount',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: const Color(0x40F0EBE5),
+                ),
+              ),
+            ],
+            const Spacer(),
+            if (!_addingSubtask) ...[
+              Semantics(
+                button: true,
+                label: 'Add subtask with voice',
+                child: GestureDetector(
+                  onTap: () => _launchRambleSubtasks(task),
+                  child: const Icon(Icons.mic_none_rounded, size: 20, color: Color(0x66F0EBE5)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Semantics(
+                button: true,
+                label: 'Add subtask with text',
+                child: GestureDetector(
+                  onTap: _startAddingSubtask,
+                  child: const Icon(Icons.add, size: 20, color: Color(0x66F0EBE5)),
+                ),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -1336,17 +1652,14 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         if (subtasks.isEmpty && !_addingSubtask)
           Text(
             'No subtasks',
-            style: AppTypography.metadataText(
-              color: domain.primary.withValues(alpha: 0.5),
-            ).copyWith(fontSize: 13),
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: const Color(0x30F0EBE5),
+            ),
           ),
 
         // Subtask rows
-        ...subtasks.map((sub) => TaskRowTile(
-          domain: domain,
-          task: sub,
-          onTap: () => _navigateTo(sub.id),
-        )),
+        ...subtasks.map((sub) => _buildSubtaskItem(domain, sub)),
 
         // Inline add subtask
         if (_addingSubtask)

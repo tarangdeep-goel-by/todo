@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
@@ -10,9 +11,9 @@ import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/flat_task_row.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
-import '../widgets/task_item.dart';
 import '../models/api_error.dart';
 import '../services/tracker/tracker.dart';
 
@@ -36,6 +37,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   final TextEditingController _searchController = TextEditingController();
   int _displayCount = 50;
   int _swipeTutorialStep = 0;
+  String _statusFilter = 'all'; // 'all', 'active', 'overdue', 'done'
 
   Timer? _debounce;
   List<Task>? _searchResults;
@@ -146,6 +148,65 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     });
   }
 
+  List<Task> _applyStatusFilter(List<Task> tasks) {
+    switch (_statusFilter) {
+      case 'active':
+        return tasks.where((t) => t.isActive && !t.isOverdue).toList();
+      case 'overdue':
+        return tasks.where((t) => t.isOverdue).toList();
+      case 'done':
+        return tasks.where((t) => t.isCompleted).toList();
+      default:
+        return tasks;
+    }
+  }
+
+  Widget _buildQuickFilterChips() {
+    const filters = [
+      ('All', 'all'),
+      ('Active', 'active'),
+      ('Overdue', 'overdue'),
+      ('Done', 'done'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Row(
+        children: filters.map((f) {
+          final isActive = _statusFilter == f.$2;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _statusFilter = f.$2;
+                _displayCount = 50;
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? const Color(0x20FF9A50)
+                      : const Color(0x0AF0EBE5),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  f.$1,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isActive
+                        ? const Color(0xFFFF9A50)
+                        : const Color(0x66F0EBE5),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -197,11 +258,11 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
     }
 
     final isSearching = _searchResults != null;
-    final displaySource = isSearching ? _searchResults! : allFiltered;
+    final filteredTasks = isSearching ? _searchResults! : _applyStatusFilter(allFiltered);
     final displayTasks = isSearching
-        ? displaySource
-        : displaySource.take(_displayCount).toList();
-    final hasMore = !isSearching && _displayCount < allFiltered.length;
+        ? filteredTasks
+        : filteredTasks.take(_displayCount).toList();
+    final hasMore = !isSearching && _displayCount < filteredTasks.length;
     final isTutorial = widget.tutorialActive && _swipeTutorialStep < 3;
 
     return Column(
@@ -306,6 +367,9 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
               ],
             ),
           ),
+        // Quick filter chips (hide during search)
+        if (!isSearching)
+          _buildQuickFilterChips(),
         // Search empty state
         if (isSearching && _searchResults!.isEmpty && !_searchLoading)
           const Expanded(
@@ -349,10 +413,11 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                   final isDemoTask =
                       task.id == OnboardingService.demoTaskId;
 
-                  final taskItem = TaskItem(
+                  final domain = DomainColors.getDomain(task.category, true, paletteMap);
+                  final taskItem = FlatTaskRow(
                     key: ValueKey(task.id),
                     task: task,
-                    isDark: true,
+                    domain: domain,
                     parentName: parentNames[task.id],
                     onTutorialStepComplete:
                         isDemoTask ? _onTutorialStepComplete : null,
@@ -360,8 +425,6 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
                   // Wrap demo task with tutorial overlay
                   if (isDemoTask && isTutorial) {
-                    final domain = DomainColors.getDomain(
-                        task.category, true, paletteMap);
                     return Stack(
                       children: [
                         taskItem,

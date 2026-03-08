@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
-import '../config/spacing.dart';
-import '../config/typography.dart';
+
 import '../services/haptic_service.dart';
 import 'base_snackbar_overlay.dart';
 
@@ -83,18 +83,10 @@ class _UndoSnackbarOverlayState
       child: Row(
         children: [
           // Check icon
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: palette.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.check,
-              size: 16,
-              color: palette.primary,
-            ),
+          Icon(
+            Icons.check,
+            size: 16,
+            color: palette.primary,
           ),
           const SizedBox(width: 12),
 
@@ -102,11 +94,10 @@ class _UndoSnackbarOverlayState
           Expanded(
             child: Text(
               widget.message,
-              style: AppTypography.metadataText(
-                color: palette.primary,
-              ).copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.darkText,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -118,24 +109,12 @@ class _UndoSnackbarOverlayState
           // Undo button
           GestureDetector(
             onTap: widget.onUndo,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
+            child: Text(
+              'Undo',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
                 color: palette.primary,
-                borderRadius:
-                    BorderRadius.circular(AppSpacing.radiusPill),
-              ),
-              child: Text(
-                'Undo',
-                style: AppTypography.metadataText(
-                  color: palette.textOnPrimary,
-                ).copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
             ),
           ),
