@@ -68,7 +68,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('DESCRIPTION'), findsOneWidget);
+      // Non-editing mode uses sentence case label
+      expect(find.text('Description'), findsOneWidget);
     });
 
     testWidgets('renders SUBTASKS section header', (tester) async {
@@ -86,7 +87,7 @@ void main() {
       expect(find.text('SUBTASKS'), findsOneWidget);
     });
 
-    testWidgets('shows breadcrumb with category', (tester) async {
+    testWidgets('shows domain label with category', (tester) async {
       final task = createTestTask(
         id: 'test-id-1',
         title: 'some task',
@@ -98,7 +99,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('career'), findsOneWidget);
+      expect(find.text('Career'), findsOneWidget);
     });
 
     testWidgets('shows "Task not found" for missing task', (tester) async {

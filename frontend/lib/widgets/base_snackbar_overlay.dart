@@ -87,18 +87,13 @@ abstract class BaseSnackbarOverlayState<T extends StatefulWidget> extends State<
               ),
               decoration: BoxDecoration(
                 color: palette.surface,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                border: Border.all(
-                  color: palette.primary.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border(
+                  left: BorderSide(
+                    color: palette.primary,
+                    width: 4,
                   ),
-                ],
+                ),
               ),
               child: child,
             ),

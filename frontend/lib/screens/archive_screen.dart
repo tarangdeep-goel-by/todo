@@ -7,6 +7,7 @@ import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
+import '../widgets/flat_task_row.dart';
 import '../widgets/styled_snackbar.dart';
 
 class ArchiveScreen extends ConsumerStatefulWidget {
@@ -249,18 +250,47 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
             color: AppColors.darkText,
             backgroundColor: AppColors.navBg,
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               itemCount: _archivedTasks.length,
               itemBuilder: (context, index) {
                 final task = _archivedTasks[index];
                 final paletteMap = ref.read(domainPalettesProvider);
                 final domain = DomainColors.getDomain(
                     task.category, true, paletteMap);
-                return _ArchiveTaskTile(
-                  task: task,
-                  domain: domain,
-                  onRestore: () => _restoreTask(task, index),
-                  onPermanentDelete: () => _permanentDeleteTask(task, index),
+                return Dismissible(
+                  key: Key('archive-${task.id}'),
+                  background: Container(
+                    color: domain.primary,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: AppSpacing.lg),
+                    child: Icon(
+                      Icons.undo_rounded,
+                      color: domain.textOnPrimary,
+                      size: 32,
+                    ),
+                  ),
+                  secondaryBackground: Container(
+                    color: AppColors.deleteAction,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: AppSpacing.lg),
+                    child: const Icon(
+                      Icons.delete_forever,
+                      color: AppColors.darkBg,
+                      size: 32,
+                    ),
+                  ),
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.startToEnd) {
+                      await _restoreTask(task, index);
+                    } else {
+                      await _permanentDeleteTask(task, index);
+                    }
+                    return false;
+                  },
+                  child: FlatTaskRow(
+                    task: task,
+                    domain: domain,
+                    showSwipeActions: false,
+                  ),
                 );
               },
             ),
@@ -276,100 +306,6 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ArchiveTaskTile extends StatelessWidget {
-  final Task task;
-  final DomainPalette domain;
-  final VoidCallback onRestore;
-  final VoidCallback onPermanentDelete;
-
-  const _ArchiveTaskTile({
-    required this.task,
-    required this.domain,
-    required this.onRestore,
-    required this.onPermanentDelete,
-  });
-
-  String _relativeTime(DateTime archivedAt) {
-    final diff = DateTime.now().difference(archivedAt);
-    if (diff.inDays > 0) {
-      return 'Archived ${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
-    } else if (diff.inHours > 0) {
-      return 'Archived ${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
-    }
-    return 'Archived just now';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dismissible(
-      key: Key('archive-${task.id}'),
-      background: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        color: AppColors.completed,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: AppSpacing.lg),
-        child: const Icon(Icons.undo_rounded, color: AppColors.darkBg, size: 28),
-      ),
-      secondaryBackground: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        color: AppColors.deleteAction,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.lg),
-        child: const Icon(Icons.delete_forever, color: AppColors.darkBg, size: 28),
-      ),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          onRestore();
-        } else {
-          onPermanentDelete();
-        }
-        return false;
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        decoration: BoxDecoration(
-          color: domain.surface,
-          border: Border(
-            left: BorderSide(
-              color: domain.primary.withValues(alpha: 0.5),
-              width: AppSpacing.leftAccentBar,
-            ),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              task.sentenceTitle,
-              style: AppTypography.metadataText(
-                color: domain.primary.withValues(alpha: 0.7),
-              ).copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              task.archivedAt != null
-                  ? _relativeTime(task.archivedAt!)
-                  : task.category,
-              style: AppTypography.metadataText(
-                color: domain.primary.withValues(alpha: 0.4),
-              ).copyWith(fontSize: 12),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

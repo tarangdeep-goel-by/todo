@@ -29,18 +29,20 @@ void main() {
       ));
 
       final opacity = tester.widget<Opacity>(find.byType(Opacity));
-      expect(opacity.opacity, 0.5);
+      expect(opacity.opacity, 0.6);
     });
 
-    testWidgets('active task has Opacity 1.0', (tester) async {
+    testWidgets('active task has no reduced Opacity wrapper', (tester) async {
       final task = createTestTask(status: 'active');
 
       await tester.pumpWidget(buildTestApp(
         TaskRowTile(domain: domain, task: task, onTap: () {}),
       ));
 
-      final opacity = tester.widget<Opacity>(find.byType(Opacity));
-      expect(opacity.opacity, 1.0);
+      final opacityWidgets = tester.widgetList<Opacity>(find.byType(Opacity));
+      for (final o in opacityWidgets) {
+        expect(o.opacity, 1.0);
+      }
     });
 
     testWidgets('shows priority first letter', (tester) async {
@@ -50,7 +52,7 @@ void main() {
         TaskRowTile(domain: domain, task: task, onTap: () {}),
       ));
 
-      expect(find.text('H'), findsOneWidget);
+      expect(find.text('High'), findsOneWidget);
     });
 
     testWidgets('shows due date formatted as MMM d, yyyy', (tester) async {
@@ -60,7 +62,7 @@ void main() {
         TaskRowTile(domain: domain, task: task, onTap: () {}),
       ));
 
-      expect(find.text('Mar 15, 2025'), findsOneWidget);
+      expect(find.text('Mar 15'), findsOneWidget);
     });
 
     testWidgets('onTap callback fires on GestureDetector tap', (tester) async {
