@@ -134,13 +134,13 @@ class _PendingSyncBadgeState extends ConsumerState<_PendingSyncBadge> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.sync_rounded,
+            Icons.cloud_upload_outlined,
             size: 12,
             color: AppColors.priorityMedium,
           ),
           const SizedBox(width: 4),
           Text(
-            '$_displayCount pending',
+            '$_displayCount pending sync',
             style: AppTypography.metadataText(
               color: AppColors.priorityMedium,
             ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),

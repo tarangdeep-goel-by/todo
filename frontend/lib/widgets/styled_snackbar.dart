@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
-import '../config/typography.dart';
 import 'base_snackbar_overlay.dart';
 
 /// Snackbar style variants.
@@ -99,18 +99,10 @@ class _StyledSnackbarOverlayState
       child: Row(
         children: [
           // Icon
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: palette.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              widget.icon,
-              size: 16,
-              color: palette.primary,
-            ),
+          Icon(
+            widget.icon,
+            size: 16,
+            color: palette.primary,
           ),
           const SizedBox(width: 12),
 
@@ -118,11 +110,10 @@ class _StyledSnackbarOverlayState
           Expanded(
             child: Text(
               widget.message,
-              style: AppTypography.metadataText(
-                color: palette.primary,
-              ).copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.darkText,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
