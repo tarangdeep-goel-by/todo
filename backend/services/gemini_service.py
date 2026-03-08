@@ -473,7 +473,7 @@ Respond ONLY with a valid JSON array of strings. Example:
         """
         safe_content = self._sanitize_prompt_input(content)
 
-        prompt = f"""Given a new task and a domain's existing task subtree, decide where this task should be placed.
+        prompt = f"""You are placing a new task into an existing task hierarchy. Your job is to decide: does this task belong under an existing group, or at the root level?
 
 DOMAIN: {domain}
 
@@ -482,17 +482,31 @@ EXISTING SUBTREE:
 
 NEW TASK: "{safe_content}"
 
-If this task is clearly a subtask or belongs under an existing group in the subtree, return the parent task's title as parentQuery. If it's an independent task that belongs at the root level of this domain, return null.
+Return the parent group's title as parentQuery, or null to place at root level.
 
-Rules:
-- Match by semantic meaning, not just keywords
-- Group items logically: "pay electric bill" → parent "Bills & Payments" (a bill payment belongs under bills)
-- "buy protein powder" → parent "Meal prep system" (ingredient for meal prep)
-- "learn kubernetes" → null (independent learning goal, not a subtask of anything)
-- "schedule dentist" → parent "Medical appointments" (if that group exists)
-- Only return a parent that actually exists in the subtree above
-- Prefer specificity: if both "Health" root and "Fitness" subgroup exist, and the task is "buy running shoes", return "Fitness" not null
-- If no parent is a good semantic match, return null — don't force nesting"""
+CRITICAL: Your default answer should be null. Only return a parent when you are CONFIDENT the new task is a clear, specific instance of that group's purpose. When in doubt, return null — wrong nesting is worse than no nesting.
+
+The test for nesting: "Would a human organizing physical folders file this task INSIDE that group's folder?" If the answer isn't an obvious yes, return null.
+
+Examples of CORRECT nesting (return the parent):
+- "pay electric bill" → "Bills & Payments" (paying a bill goes in the bills folder)
+- "order protein powder" → "Fitness" (fitness supplement goes under fitness)
+- "cobra payment" → "Insurance" (COBRA is health insurance)
+- "gather W-2 forms" → "Tax preparation 2026" (tax documents go under tax prep)
+
+Examples where you MUST return null:
+- "book physio appointment" → null (medical appointment, not a fitness workout)
+- "make expense report" → null (work admin task, not a bill)
+- "book storage unit" → null (one-off errand, not a chore)
+- "watch a movie" → null (standalone entertainment, not part of a plan)
+- "write book report" → null (standalone task, not part of a reading list)
+- "call dog groomer" → null (pet care errand, not a household chore)
+- "install new router" → null (one-off tech task, not an ongoing repair)
+- "update bios on website" → null (standalone web task)
+
+When choosing between two groups, pick the MORE SPECIFIC one:
+- "IRS payment" → "Tax preparation 2026" (not "Bills & Payments")
+- "buy gym shorts" → "Fitness" (not "Groceries & Shopping")"""
 
         t0 = time.monotonic()
         try:
