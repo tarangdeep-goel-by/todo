@@ -35,6 +35,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     setState(() {
       _displayedMonth =
           DateTime(_displayedMonth.year, _displayedMonth.month - 1);
+      _selectedDate = null;
     });
   }
 
@@ -42,6 +43,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     setState(() {
       _displayedMonth =
           DateTime(_displayedMonth.year, _displayedMonth.month + 1);
+      _selectedDate = null;
     });
   }
 

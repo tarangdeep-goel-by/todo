@@ -280,9 +280,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                   ),
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.startToEnd) {
-                      _restoreTask(task, index);
+                      await _restoreTask(task, index);
                     } else {
-                      _permanentDeleteTask(task, index);
+                      await _permanentDeleteTask(task, index);
                     }
                     return false;
                   },
