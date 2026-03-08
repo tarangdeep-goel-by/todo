@@ -134,6 +134,20 @@ def _apply_check(actual_value: Any, operator: str, expected_value: Any) -> bool:
             return False
         return str(expected_value).lower() in str(actual_value).lower()
 
+    elif operator == "fuzzy":
+        # Token-overlap match: passes if ≥50% of expected key tokens appear in actual.
+        # Handles Gemini reformulations like "pay cr card" → "pay credit card",
+        # "finish qbr deck" → "QBR deck", "signup health insurance" → "sign up for health insurance".
+        if actual_value is None:
+            return False
+        STOP_WORDS = {"the", "a", "an", "to", "for", "of", "and", "in", "on", "my", "your", "i"}
+        exp_tokens = [w for w in str(expected_value).lower().split() if w not in STOP_WORDS and len(w) > 1]
+        act_text = str(actual_value).lower()
+        if not exp_tokens:
+            return True
+        hits = sum(1 for t in exp_tokens if t in act_text)
+        return hits / len(exp_tokens) >= 0.5
+
     elif operator == "in":
         if actual_value is None:
             return False
