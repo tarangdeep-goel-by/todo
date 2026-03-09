@@ -462,7 +462,10 @@ Respond ONLY with a valid JSON array of strings. Example:
                 lines.append(f"{indent}├── {title} (id: {task_id})")
                 _render(child.get("id"), depth + 1)
 
-        _render(None, 0)
+        domain_task_ids = {t.get("id") for t in domain_tasks}
+        root_parents = {None} | {t.get("parent_id") for t in domain_tasks if t.get("parent_id") not in domain_task_ids}
+        for rp in root_parents:
+            _render(rp, 0)
         return "\n".join(lines)
 
     async def place_in_subtree(self, content: str, domain: str, subtree_str: str) -> Dict[str, Any]:
