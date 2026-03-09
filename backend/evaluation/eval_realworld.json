@@ -99,11 +99,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "recreation",
-              "career",
-              "relationships"
-            ],
+            "category": "recreation",
             "parentQuery_contains": "Weekend Plans",
             "content_fuzzy": "plan portland trip",
             "actionConfidence_gte": 0.5
@@ -1110,10 +1106,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "health",
-              "recreation"
-            ],
+            "category": "health",
             "parentQuery_contains": "Fitness",
             "content_fuzzy": "gym sauna",
             "actionConfidence_gte": 0.5
@@ -1153,10 +1146,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "health",
-              "home"
-            ],
+            "category": "health",
             "parentQuery_contains": "Fitness",
             "content_fuzzy": "order exercise equipment",
             "actionConfidence_gte": 0.5
@@ -1259,10 +1249,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "health",
-              "relationships"
-            ],
+            "category": "health",
             "parentQuery_contains": "Fitness",
             "content_fuzzy": "gymnastics sign up",
             "actionConfidence_gte": 0.5
@@ -2576,10 +2563,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "community",
-              "growth"
-            ],
+            "category": "community",
             "parentQuery_null": true,
             "content_fuzzy": "turn nhs hours",
             "actionConfidence_gte": 0.5
@@ -2682,10 +2666,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "recreation",
-              "relationships"
-            ],
+            "category": "recreation",
             "parentQuery_null": true,
             "content_fuzzy": "figure out travel",
             "actionConfidence_gte": 0.5
@@ -2705,10 +2686,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "recreation",
-              "relationships"
-            ],
+            "category": "recreation",
             "parentQuery_contains": "Weekend Plans",
             "content_fuzzy": "plan hk trip",
             "actionConfidence_gte": 0.5
@@ -2814,10 +2792,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "recreation",
-              "relationships"
-            ],
+            "category": "recreation",
             "parentQuery_contains": "Weekend Plans",
             "content_fuzzy": "plan camping trip",
             "actionConfidence_gte": 0.5
@@ -3152,10 +3127,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "recreation",
-              "relationships"
-            ],
+            "category": "recreation",
             "parentQuery_null": true,
             "content_fuzzy": "figure out trips",
             "actionConfidence_gte": 0.5
@@ -3985,10 +3957,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "community",
-              "health"
-            ],
+            "category": "community",
             "parentQuery_contains": "Food bank volunteering",
             "content_fuzzy": "volunteer clinic",
             "actionConfidence_gte": 0.5
@@ -4425,10 +4394,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "community",
-              "health"
-            ],
+            "category": "community",
             "parentQuery_contains": "Food bank volunteering",
             "content_fuzzy": "volunteer clinic",
             "actionConfidence_gte": 0.5
@@ -5463,10 +5429,7 @@
         {
           "action": "add",
           "checks": {
-            "category_in": [
-              "health",
-              "finance"
-            ],
+            "category": "health",
             "content_fuzzy": "gym membership",
             "actionConfidence_gte": 0.5
           }
@@ -8280,10 +8243,7 @@
           "action": "add",
           "checks": {
             "content_fuzzy": "workout room",
-            "category_in": [
-              "health",
-              "home"
-            ],
+            "category": "health",
             "actionConfidence_gte": 0.5
           }
         }
@@ -8469,10 +8429,7 @@
           "action": "add",
           "checks": {
             "content_fuzzy": "workout bras",
-            "category_in": [
-              "health",
-              "home"
-            ],
+            "category": "health",
             "actionConfidence_gte": 0.5
           }
         }
@@ -8614,10 +8571,7 @@
           "action": "add",
           "checks": {
             "content_fuzzy": "gym",
-            "category_in": [
-              "health",
-              "relationships"
-            ],
+            "category": "health",
             "actionConfidence_gte": 0.5
           }
         }

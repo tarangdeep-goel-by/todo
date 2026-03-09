@@ -80,11 +80,12 @@ class GeminiService:
     def _build_stage1_prompt(self, transcription: str, task_tree_context: str) -> str:
         """Build the Stage 1 prompt for action detection (no parent placement)."""
         safe_transcription = self._sanitize_prompt_input(transcription)
+        safe_tree_context = self._sanitize_prompt_input(task_tree_context)
 
         return f"""<context>
 The task tree below shows the user's current tasks for reference. It helps identify existing tasks for complete/edit/delete actions. Do NOT use the tree's category headers to determine domain — use the 8 domain definitions below instead.
 
-{task_tree_context}
+{safe_tree_context}
 </context>
 
 <input>
@@ -318,14 +319,17 @@ For edit actions, populate the changes object:
                         if domain not in subtree_cache:
                             subtree_cache[domain] = self._build_domain_subtree(task_tree, domain)
 
-                    # Fire all placement calls in parallel
+                    # Fire all placement calls in parallel (bounded concurrency)
+                    stage2_semaphore = asyncio.Semaphore(5)
+
                     async def _place(idx: int, task: Dict) -> tuple:
-                        domain = task["category"]
-                        subtree = subtree_cache[domain]
-                        if not subtree.strip():
-                            return idx, None, 0.0  # Empty domain — no parent to find
-                        placement = await self.place_in_subtree(task["content"], domain, subtree)
-                        return idx, placement.get("parentQuery"), placement.get("parentConfidence", 0.0)
+                        async with stage2_semaphore:
+                            domain = task["category"]
+                            subtree = subtree_cache[domain]
+                            if not subtree.strip():
+                                return idx, None, 0.0  # Empty domain — no parent to find
+                            placement = await self.place_in_subtree(task["content"], domain, subtree)
+                            return idx, placement.get("parentQuery"), placement.get("parentConfidence", 0.0)
 
                     t1 = time.monotonic()
                     placement_results = await asyncio.gather(
@@ -453,7 +457,7 @@ Respond ONLY with a valid JSON array of strings. Example:
         def _render(parent_id: Optional[str], depth: int) -> None:
             for child in children_map.get(parent_id, []):
                 indent = "  " * depth
-                title = child.get("title", "Untitled")
+                title = GeminiService._sanitize_prompt_input(child.get("title", "Untitled"))
                 task_id = child.get("id", "?")
                 lines.append(f"{indent}├── {title} (id: {task_id})")
                 _render(child.get("id"), depth + 1)
