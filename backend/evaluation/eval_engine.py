@@ -10,6 +10,7 @@ Provides:
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -42,7 +43,8 @@ def build_tree_context(tasks: List[Dict], user_id: str = "eval-user", compressed
 
     for category, cat_tasks in sorted(categories.items()):
         tree_str += f"{category.upper()} TASKS:\n"
-        top_level = [t for t in cat_tasks if t["parent_id"] is None]
+        category_task_ids = {t["id"] for t in cat_tasks}
+        top_level = [t for t in cat_tasks if t["parent_id"] is None or t["parent_id"] not in category_task_ids]
         for task in top_level:
             status_tag = " [COMPLETED]" if task["status"] == "completed" else ""
             tree_str += f"├── {task['title']} (id: {task['id']}){status_tag}\n"
@@ -57,7 +59,8 @@ def _build_compressed_tree(categories: Dict[str, List[Dict]]) -> str:
     tree_str = ""
     for category, cat_tasks in sorted(categories.items()):
         tree_str += f"{category.upper()}:\n"
-        top_level = [t for t in cat_tasks if t["parent_id"] is None]
+        category_task_ids = {t["id"] for t in cat_tasks}
+        top_level = [t for t in cat_tasks if t["parent_id"] is None or t["parent_id"] not in category_task_ids]
         for task in top_level:
             status_tag = " [done]" if task["status"] == "completed" else ""
             tree_str += f"- {task['title']}{status_tag}\n"
@@ -145,8 +148,9 @@ def _apply_check(actual_value: Any, operator: str, expected_value: Any) -> bool:
         act_text = str(actual_value).lower()
         if not exp_tokens:
             return True
-        hits = sum(1 for t in exp_tokens if t in act_text)
-        return hits / len(exp_tokens) >= 0.5
+        hits = sum(1 for t in exp_tokens if re.search(r'\b' + re.escape(t) + r'\b', act_text))
+        threshold = 1.0 if len(exp_tokens) <= 2 else 0.5
+        return hits / len(exp_tokens) >= threshold
 
     elif operator == "in":
         if actual_value is None:
