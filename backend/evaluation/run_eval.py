@@ -109,6 +109,7 @@ async def run_eval(
     no_llm: bool = False,
     search_engine: str = "fuzzy",
     no_prefilter: bool = False,
+    task_tree: Optional[List[Dict]] = None,
 ) -> List[Dict]:
     """Run all eval cases and return results."""
     results = []
@@ -133,7 +134,7 @@ async def run_eval(
                 actual_actions = [{"action": "unknown", "content": "", "confidence": 0.1}]
             else:
                 try:
-                    actual_actions = await gemini.detect_brain_dump(transcription, tree_context)
+                    actual_actions = await gemini.detect_brain_dump(transcription, tree_context, task_tree=task_tree)
                 except Exception as e:
                     actual_actions = [{"action": "error", "content": "", "confidence": 0.0}]
                 # Rate limiting — only for actual LLM calls
@@ -289,7 +290,7 @@ async def main():
     print_header("TODO AGENT EVAL — Brain Dump Detection", model_name, len(cases), len(tasks))
 
     # Run eval
-    results = await run_eval(cases, tree_context, gemini, no_llm=args.no_llm, search_engine=search_engine, no_prefilter=args.no_prefilter)
+    results = await run_eval(cases, tree_context, gemini, no_llm=args.no_llm, search_engine=search_engine, no_prefilter=args.no_prefilter, task_tree=tasks)
 
     # LLM Judge pass (optional)
     if args.with_judge and not args.no_llm:
