@@ -453,7 +453,8 @@ class TaskService:
                 children_by_parent.setdefault(t.parent_id, []).append(t)
 
             tree_str += f"{category.upper()} TASKS:\n"
-            top_level = children_by_parent.get(None, [])
+            category_task_ids = {t.id for t in tasks}
+            top_level = [t for t in tasks if t.parent_id is None or t.parent_id not in category_task_ids]
             for task in top_level:
                 status_tag = " [COMPLETED]" if task.status == "completed" else ""
                 tree_str += f"├── {task.title} (id: {task.id}){status_tag}\n"
@@ -470,7 +471,8 @@ class TaskService:
                 children_by_parent.setdefault(t.parent_id, []).append(t)
 
             tree_str += f"{category.upper()}:\n"
-            top_level = children_by_parent.get(None, [])
+            category_task_ids = {t.id for t in tasks}
+            top_level = [t for t in tasks if t.parent_id is None or t.parent_id not in category_task_ids]
             for task in top_level:
                 status_tag = " [done]" if task.status == "completed" else ""
                 tree_str += f"- {task.title}{status_tag}\n"

@@ -10,6 +10,7 @@ Provides:
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -42,7 +43,8 @@ def build_tree_context(tasks: List[Dict], user_id: str = "eval-user", compressed
 
     for category, cat_tasks in sorted(categories.items()):
         tree_str += f"{category.upper()} TASKS:\n"
-        top_level = [t for t in cat_tasks if t["parent_id"] is None]
+        category_task_ids = {t["id"] for t in cat_tasks}
+        top_level = [t for t in cat_tasks if t["parent_id"] is None or t["parent_id"] not in category_task_ids]
         for task in top_level:
             status_tag = " [COMPLETED]" if task["status"] == "completed" else ""
             tree_str += f"├── {task['title']} (id: {task['id']}){status_tag}\n"
@@ -57,7 +59,8 @@ def _build_compressed_tree(categories: Dict[str, List[Dict]]) -> str:
     tree_str = ""
     for category, cat_tasks in sorted(categories.items()):
         tree_str += f"{category.upper()}:\n"
-        top_level = [t for t in cat_tasks if t["parent_id"] is None]
+        category_task_ids = {t["id"] for t in cat_tasks}
+        top_level = [t for t in cat_tasks if t["parent_id"] is None or t["parent_id"] not in category_task_ids]
         for task in top_level:
             status_tag = " [done]" if task["status"] == "completed" else ""
             tree_str += f"- {task['title']}{status_tag}\n"
@@ -134,6 +137,21 @@ def _apply_check(actual_value: Any, operator: str, expected_value: Any) -> bool:
             return False
         return str(expected_value).lower() in str(actual_value).lower()
 
+    elif operator == "fuzzy":
+        # Token-overlap match: passes if ≥50% of expected key tokens appear in actual.
+        # Handles Gemini reformulations like "pay cr card" → "pay credit card",
+        # "finish qbr deck" → "QBR deck", "signup health insurance" → "sign up for health insurance".
+        if actual_value is None:
+            return False
+        STOP_WORDS = {"the", "a", "an", "to", "for", "of", "and", "in", "on", "my", "your", "i"}
+        exp_tokens = [w for w in str(expected_value).lower().split() if w not in STOP_WORDS and len(w) > 1]
+        act_text = str(actual_value).lower()
+        if not exp_tokens:
+            return True
+        hits = sum(1 for t in exp_tokens if re.search(r'\b' + re.escape(t) + r'\b', act_text))
+        threshold = 1.0 if len(exp_tokens) <= 2 else 0.5
+        return hits / len(exp_tokens) >= threshold
+
     elif operator == "in":
         if actual_value is None:
             return False
@@ -204,12 +222,12 @@ def check_entry_result(
         params = actual_entry
 
     for check_key, expected_value in checks.items():
-        # Special case: confidence is always at top level
-        if check_key.startswith("confidence_"):
-            operator = check_key.split("_", 1)[1]
-            actual_value = actual_entry.get("confidence")
+        # Special case: confidence fields are always at top level
+        if check_key.startswith("confidence_") or check_key.startswith("actionConfidence_") or check_key.startswith("domainConfidence_") or check_key.startswith("parentConfidence_"):
+            field_name, operator = check_key.rsplit("_", 1)
+            actual_value = actual_entry.get(field_name)
             passed = _apply_check(actual_value, operator, expected_value)
-            results.append(CheckResult("confidence", operator, expected_value, actual_value, passed))
+            results.append(CheckResult(field_name, operator, expected_value, actual_value, passed))
             continue
 
         # Parse field_operator from key (last _ segment is operator)
@@ -357,10 +375,12 @@ def classify_failure_mode(
 
     # Categorize by field
     has_action_fail = any(c["field"] in ("action", "intent") for c in failed_checks)
-    has_confidence_fail = any(c["field"] == "confidence" for c in failed_checks)
+    confidence_fields = ("confidence", "actionConfidence", "domainConfidence", "parentConfidence")
+    has_confidence_fail = any(c["field"] in confidence_fields for c in failed_checks)
     has_content_fail = any(c["field"] == "content" for c in failed_checks)
+    non_meta_fields = ("action", "intent", "content") + confidence_fields
     has_field_fail = any(
-        c["field"] not in ("action", "intent", "confidence", "content")
+        c["field"] not in non_meta_fields
         for c in failed_checks
     )
 

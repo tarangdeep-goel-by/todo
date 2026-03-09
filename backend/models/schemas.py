@@ -54,6 +54,9 @@ class BrainDumpTaskProposal(BaseModel):
     changes: Optional[Dict[str, Any]] = None
     matched_task_id: Optional[str] = None
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    actionConfidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    domainConfidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    parentConfidence: Optional[float] = Field(None, ge=0.0, le=1.0)
     tags: Optional[List[str]] = Field(None, max_length=20)
     estimated_hours: Optional[float] = Field(None, ge=0.0, le=999.9)
     alternate_matches: Optional[List[Dict[str, str]]] = None
