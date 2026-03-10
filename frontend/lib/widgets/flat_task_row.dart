@@ -3,25 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
-import '../config/spacing.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
+import '../services/tracker/tracker.dart';
 import '../utils/string_extensions.dart';
 import 'task_detail_overlay.dart';
 import 'undo_snackbar.dart';
 import 'styled_snackbar.dart';
-import '../services/tracker/tracker.dart';
 
-/// Flat task row widget for the new Paper design style.
+/// Shared flat task row used by Flat View and Calendar View.
 ///
-/// Used by both Flat View and Calendar View. Clean flat rows with accent bar,
-/// no gradient backgrounds. Swipe behavior matches TaskItem:
-/// - Active: right swipe = complete, left swipe = delete/archive
-/// - Completed: left swipe only = restore
+/// Two-line layout with accent bar, swipe-to-complete/delete/restore.
 class FlatTaskRow extends ConsumerStatefulWidget {
   final Task task;
   final DomainPalette domain;
@@ -44,6 +40,8 @@ class FlatTaskRow extends ConsumerStatefulWidget {
 
 class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
   bool get _isDemoTask => widget.task.id == OnboardingService.demoTaskId;
+
+  // ── Actions ──────────────────────────────────────────────────────────
 
   Future<void> _toggleTask(BuildContext context) async {
     final task = widget.task;
@@ -165,23 +163,22 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
     return true;
   }
 
-  Widget _buildStatusBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        text,
-        style: GoogleFonts.dmSans(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
+  // ── Helpers ──────────────────────────────────────────────────────────
+
+  Color _priorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return AppColors.priorityHigh;
+      case 'medium':
+        return AppColors.priorityMedium;
+      case 'low':
+        return AppColors.priorityLow;
+      default:
+        return const Color(0x66F0EBE5);
+    }
   }
+
+  // ── Build ────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -200,125 +197,123 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
     final String subtitleText = (widget.parentName ?? task.category).capitalize;
 
     // Row content
-    Widget rowContent = Container(
-      decoration: BoxDecoration(
-        // Subtle red tint for overdue rows
-        color: isOverdue
-            ? AppColors.overdue.withValues(alpha: 0.05)
-            : Colors.transparent,
-        border: const Border(
-          bottom: BorderSide(
-            color: Color(0x0FF0EBE5),
-            width: 1,
+    Widget rowContent = GestureDetector(
+      onTap: isTutorialMode
+          ? null
+          : () => showTaskDetailOverlay(context, taskId: task.id),
+      child: Container(
+        decoration: BoxDecoration(
+          // Subtle red tint for overdue rows
+          color: isOverdue
+              ? AppColors.overdue.withValues(alpha: 0.05)
+              : Colors.transparent,
+          border: const Border(
+            bottom: BorderSide(
+              color: Color(0x0FF0EBE5),
+              width: 1,
+            ),
           ),
         ),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Accent bar
-          Container(
-            width: 4,
-            height: 36,
-            decoration: BoxDecoration(
-              color: domain.primary,
-              borderRadius: const BorderRadius.all(Radius.circular(2)),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Accent bar
+            Container(
+              width: 4,
+              height: 36,
+              decoration: BoxDecoration(
+                color: domain.primary,
+                borderRadius: const BorderRadius.all(Radius.circular(2)),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          // Left side: title + subtitle
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 10),
+            // Left side: title + subtitle
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    task.sentenceTitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                      color: AppColors.darkText,
+                      decoration:
+                          isCompleted ? TextDecoration.lineThrough : null,
+                      decorationColor:
+                          isCompleted ? AppColors.darkText.withValues(alpha: 0.5) : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitleText,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: domain.primary.withValues(alpha: 0.5),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Right side: date + priority (no "Done" pill)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  task.sentenceTitle,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                    color: AppColors.darkText,
-                    decoration:
-                        isCompleted ? TextDecoration.lineThrough : null,
-                    decorationColor:
-                        isCompleted ? AppColors.darkText.withValues(alpha: 0.5) : null,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitleText,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: domain.primary.withValues(alpha: 0.5),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Right side: line 1 (date or status pill) + line 2 (priority)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Line 1: date with optional red dot for overdue
-              if (isCompleted)
-                _buildStatusBadge('Done', AppColors.completed)
-              else if (task.dueDate != null)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isOverdue) ...[
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.overdue,
-                          shape: BoxShape.circle,
+                // Line 1: date with optional red dot for overdue
+                if (task.dueDate != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isOverdue) ...[
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: AppColors.overdue,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        DateFormat('MMM d').format(task.dueDate!),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          color: isOverdue
+                              ? AppColors.overdue
+                              : isDueSoon
+                                  ? AppColors.dueSoon
+                                  : const Color(0x66F0EBE5),
                         ),
                       ),
-                      const SizedBox(width: 4),
                     ],
-                    Text(
-                      DateFormat('MMM d').format(task.dueDate!),
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        color: isOverdue
-                            ? AppColors.overdue
-                            : isDueSoon
-                                ? AppColors.dueSoon
-                                : const Color(0x66F0EBE5),
-                      ),
-                    ),
-                  ],
-                ),
-              // Line 2: priority (semantic colors)
-              if (task.priority != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  task.priority!.capitalize,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: switch (task.priority!.toLowerCase()) {
-                      'high' => AppColors.priorityHigh,
-                      'medium' => AppColors.priorityMedium,
-                      'low' => AppColors.priorityLow,
-                      _ => const Color(0x66F0EBE5),
-                    },
                   ),
-                ),
+                // Line 2: priority (semantic colors)
+                if (task.priority != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    task.priority!.capitalize,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: _priorityColor(task.priority!),
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
 
@@ -327,23 +322,14 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
       rowContent = Opacity(opacity: 0.4, child: rowContent);
     }
 
-    // Wrap with gesture detector
-    Widget taskContent = GestureDetector(
-      onTap: isTutorialMode ? null : () => _toggleTask(context),
-      onLongPress: isTutorialMode
-          ? null
-          : () => showTaskDetailOverlay(context, taskId: task.id),
-      child: rowContent,
-    );
-
     // Pending mutation indicator
     if (isPending) {
-      taskContent = Opacity(opacity: 0.6, child: taskContent);
+      rowContent = Opacity(opacity: 0.6, child: rowContent);
     }
 
     // If swipe actions disabled, return without Dismissible
     if (!widget.showSwipeActions) {
-      return taskContent;
+      return rowContent;
     }
 
     // Swipe direction and background based on task status
@@ -357,12 +343,8 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
       background = Container(
         color: domain.primary,
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.lg),
-        child: Icon(
-          Icons.undo_rounded,
-          color: domain.textOnPrimary,
-          size: 32,
-        ),
+        padding: const EdgeInsets.only(right: 24),
+        child: Icon(Icons.undo_rounded, color: domain.textOnPrimary, size: 32),
       );
       secondaryBackground = null;
     } else {
@@ -371,22 +353,16 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
       background = Container(
         color: domain.primary,
         alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: AppSpacing.lg),
-        child: Icon(
-          Icons.check_circle,
-          color: domain.textOnPrimary,
-          size: 32,
-        ),
+        padding: const EdgeInsets.only(left: 24),
+        child:
+            Icon(Icons.check_circle, color: domain.textOnPrimary, size: 32),
       );
       secondaryBackground = Container(
         color: AppColors.deleteAction,
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: AppSpacing.lg),
-        child: const Icon(
-          Icons.archive_rounded,
-          color: AppColors.darkBg,
-          size: 32,
-        ),
+        padding: const EdgeInsets.only(right: 24),
+        child: const Icon(Icons.archive_rounded,
+            color: AppColors.darkBg, size: 32),
       );
     }
 
@@ -415,7 +391,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
       },
       background: background,
       secondaryBackground: secondaryBackground,
-      child: taskContent,
+      child: rowContent,
     );
   }
 }

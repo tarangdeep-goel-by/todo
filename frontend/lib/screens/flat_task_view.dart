@@ -219,6 +219,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   Widget build(BuildContext context) {
     final storeState = ref.watch(taskStoreProvider);
     final allFiltered = ref.watch(flatViewTasksProvider);
+    final statusFiltered = _applyStatusFilter(allFiltered);
     final parentNames = ref.watch(l1ParentNamesProvider);
     final paletteMap = ref.watch(domainPalettesProvider);
 
@@ -383,6 +384,16 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
               ),
             ),
           )
+        // Status filter empty state
+        else if (statusFiltered.isEmpty && allFiltered.isNotEmpty && _searchResults == null)
+          Expanded(
+            child: Center(
+              child: Text(
+                'No $_statusFilter tasks',
+                style: const TextStyle(color: AppColors.secondaryText, fontSize: 15),
+              ),
+            ),
+          )
         // Task list
         else
           Expanded(
@@ -420,7 +431,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                     domain: domain,
                     parentName: parentNames[task.id],
                     onTutorialStepComplete:
-                        isDemoTask ? _onTutorialStepComplete : null,
+                        isDemoTask ? () => _onTutorialStepComplete(_swipeTutorialStep + 1) : null,
                   );
 
                   // Wrap demo task with tutorial overlay

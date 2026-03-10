@@ -99,7 +99,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Career'), findsOneWidget);
+      expect(find.text('CAREER'), findsOneWidget);
     });
 
     testWidgets('shows "Task not found" for missing task', (tester) async {
