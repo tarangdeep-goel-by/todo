@@ -52,10 +52,10 @@ async def get_current_user(
 
     Raises 401 if token is missing or invalid.
     """
-    # Accept test tokens ONLY in test environment — never in production
+    # Accept test tokens in non-production environments (test + development)
     settings = get_settings()
     if cred.credentials == "test-token-e2e":
-        if settings.app_env != "test":
+        if settings.app_env not in ("test", "development"):
             logger.error("auth.test_token_rejected", app_env=settings.app_env)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
