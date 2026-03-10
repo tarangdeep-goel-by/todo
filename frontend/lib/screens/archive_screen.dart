@@ -52,10 +52,13 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     }
   }
 
-  Future<void> _restoreTask(Task task, int index) async {
+  Future<void> _restoreTask(Task task) async {
+    final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
+    if (originalIndex == -1) return;
+
     HapticService.light();
     setState(() {
-      _archivedTasks.removeAt(index);
+      _archivedTasks.removeAt(originalIndex);
     });
 
     try {
@@ -73,7 +76,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       // Rollback
       if (mounted) {
         setState(() {
-          _archivedTasks.insert(index, task);
+          final insertAt = originalIndex < _archivedTasks.length
+              ? originalIndex
+              : _archivedTasks.length;
+          _archivedTasks.insert(insertAt, task);
         });
         showStyledSnackbar(
           context,
@@ -84,7 +90,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     }
   }
 
-  Future<void> _permanentDeleteTask(Task task, int index) async {
+  Future<void> _permanentDeleteTask(Task task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -118,9 +124,12 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
 
     if (confirmed != true) return;
 
+    final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
+    if (originalIndex == -1) return;
+
     HapticService.medium();
     setState(() {
-      _archivedTasks.removeAt(index);
+      _archivedTasks.removeAt(originalIndex);
     });
 
     try {
@@ -137,7 +146,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       // Rollback
       if (mounted) {
         setState(() {
-          _archivedTasks.insert(index, task);
+          final insertAt = originalIndex < _archivedTasks.length
+              ? originalIndex
+              : _archivedTasks.length;
+          _archivedTasks.insert(insertAt, task);
         });
         showStyledSnackbar(
           context,
@@ -273,9 +285,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                   ),
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.startToEnd) {
-                      _restoreTask(task, index);
+                      _restoreTask(task);
                     } else {
-                      _permanentDeleteTask(task, index);
+                      _permanentDeleteTask(task);
                     }
                     return false;
                   },
