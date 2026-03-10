@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:frontend/widgets/calendar_task_view.dart';
 import 'package:frontend/widgets/task_detail_overlay.dart';
-import 'package:frontend/widgets/task_item.dart';
+import 'package:frontend/widgets/flat_task_row.dart';
 import 'package:frontend/services/tracker/tracker_keys.dart';
 import '../helpers/test_app.dart';
 import '../helpers/api_cleanup.dart';
@@ -64,7 +64,7 @@ void main() {
     // Long-press "Submit expense report" to open detail overlay and set due date to tomorrow
     final expenseItem = find.ancestor(
       of: find.textContaining('expense report'),
-      matching: find.byType(TaskItem),
+      matching: find.byType(FlatTaskRow),
     );
     if (expenseItem.evaluate().isNotEmpty) {
       await tester.longPress(expenseItem.first);

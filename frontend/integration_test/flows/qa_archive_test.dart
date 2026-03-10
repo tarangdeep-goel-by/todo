@@ -4,7 +4,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:frontend/screens/flat_task_view.dart';
 import 'package:frontend/screens/archive_screen.dart';
 import 'package:frontend/screens/profile_screen.dart';
-import 'package:frontend/widgets/task_item.dart';
+import 'package:frontend/widgets/flat_task_row.dart';
 import 'package:frontend/services/tracker/tracker_keys.dart';
 import '../helpers/test_app.dart';
 import '../helpers/api_cleanup.dart';
@@ -44,7 +44,7 @@ void main() {
 
     final garageItem = find.ancestor(
       of: find.textContaining('garage'),
-      matching: find.byType(TaskItem),
+      matching: find.byType(FlatTaskRow),
     ).first;
 
     // Swipe left (endToStart) to archive
@@ -95,7 +95,7 @@ void main() {
 
     final restoredItem = find.ancestor(
       of: find.textContaining('garage'),
-      matching: find.byType(TaskItem),
+      matching: find.byType(FlatTaskRow),
     ).first;
     await tester.drag(restoredItem, const Offset(-300, 0));
     await settle(tester, const Duration(seconds: 3));

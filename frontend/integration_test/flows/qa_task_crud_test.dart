@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:frontend/screens/flat_task_view.dart';
-import 'package:frontend/widgets/task_item.dart';
+import 'package:frontend/widgets/flat_task_row.dart';
 import 'package:frontend/services/tracker/tracker_keys.dart';
 import '../helpers/test_app.dart';
 import '../helpers/api_cleanup.dart';
@@ -68,7 +68,7 @@ void main() {
 
     final dentistItem = find.ancestor(
       of: find.textContaining('dentist appointment'),
-      matching: find.byType(TaskItem),
+      matching: find.byType(FlatTaskRow),
     ).first;
     await tester.tap(dentistItem);
     await settle(tester, const Duration(seconds: 3));
@@ -78,7 +78,7 @@ void main() {
       find.descendant(
         of: find.ancestor(
           of: find.textContaining('dentist appointment'),
-          matching: find.byType(TaskItem),
+          matching: find.byType(FlatTaskRow),
         ).first,
         matching: find.textContaining('dentist appointment'),
       ),
