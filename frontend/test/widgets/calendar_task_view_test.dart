@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/widgets/calendar_task_view.dart';
 import 'package:frontend/providers/task_store_provider.dart';
 import 'package:frontend/providers/api_provider.dart';
+import 'package:intl/intl.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
@@ -24,11 +25,15 @@ void main() {
   }
 
   group('CalendarTaskView', () {
-    testWidgets('shows empty state when no active tasks', (tester) async {
+    testWidgets('shows month header with current month', (tester) async {
       await tester.pumpWidget(buildCalendarView());
       await tester.pump();
 
-      expect(find.text('Calendar is clear'), findsOneWidget);
+      // With no tasks, calendar grid renders with empty day state
+      final now = DateTime.now();
+      final monthText = DateFormat('MMMM yyyy').format(now);
+      expect(find.text(monthText), findsOneWidget);
+      expect(find.text('No tasks on this day'), findsOneWidget);
     });
 
     testWidgets('shows month header with navigation', (tester) async {
@@ -116,12 +121,12 @@ void main() {
       ]);
 
       container.read(taskStoreProvider.notifier).upsertTask(
-        createTestTask(
-          id: 'no-date',
-          title: 'Undated Task',
-          status: 'active',
-        ),
-      );
+            createTestTask(
+              id: 'no-date',
+              title: 'Undated Task',
+              status: 'active',
+            ),
+          );
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
@@ -174,13 +179,13 @@ void main() {
       ]);
 
       container.read(taskStoreProvider.notifier).upsertTask(
-        createTestTask(
-          id: 'done',
-          title: 'Completed Task',
-          status: 'completed',
-          dueDate: DateTime.now().add(const Duration(hours: 12)),
-        ),
-      );
+            createTestTask(
+              id: 'done',
+              title: 'Completed Task',
+              status: 'completed',
+              dueDate: DateTime.now().add(const Duration(hours: 12)),
+            ),
+          );
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
@@ -191,6 +196,21 @@ void main() {
       await tester.pump();
 
       expect(find.text('Completed Task'), findsNothing);
+    });
+
+    testWidgets('month navigation arrows work', (tester) async {
+      await tester.pumpWidget(buildCalendarView());
+      await tester.pump();
+
+      final now = DateTime.now();
+      final nextMonth = DateTime(now.year, now.month + 1);
+      final nextMonthText = DateFormat('MMMM yyyy').format(nextMonth);
+
+      // Tap right arrow to go to next month
+      await tester.tap(find.byIcon(Icons.chevron_right));
+      await tester.pump();
+
+      expect(find.text(nextMonthText), findsOneWidget);
     });
   });
 }

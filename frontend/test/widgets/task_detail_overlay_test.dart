@@ -68,8 +68,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Non-editing mode uses sentence case label
-      expect(find.text('Description'), findsOneWidget);
+      // Section header uses uppercase
+      expect(find.text('DESCRIPTION'), findsOneWidget);
     });
 
     testWidgets('renders SUBTASKS section header', (tester) async {
@@ -99,7 +99,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      expect(find.text('Career'), findsOneWidget);
+      expect(find.text('CAREER'), findsOneWidget);
     });
 
     testWidgets('shows "Task not found" for missing task', (tester) async {

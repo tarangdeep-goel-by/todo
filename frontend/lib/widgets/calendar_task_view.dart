@@ -4,13 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../models/task.dart';
-import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../providers/sync_provider.dart';
 import 'flat_task_row.dart';
 import 'empty_state.dart';
 import 'loading_state.dart';
 
-/// Calendar month grid view — select a day to see its tasks below.
+/// Calendar month-grid view — dot indicators per day, task list for selected day.
 class CalendarTaskView extends ConsumerStatefulWidget {
   const CalendarTaskView({super.key});
 
@@ -20,7 +20,7 @@ class CalendarTaskView extends ConsumerStatefulWidget {
 
 class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
   late DateTime _displayedMonth;
-  DateTime? _selectedDate;
+  late DateTime _selectedDate;
   bool _showNoDates = false;
 
   @override
@@ -31,330 +31,39 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     _selectedDate = DateTime(now.year, now.month, now.day);
   }
 
-  void _previousMonth() {
-    setState(() {
-      _displayedMonth =
-          DateTime(_displayedMonth.year, _displayedMonth.month - 1);
-      _selectedDate = null;
-    });
+  // ── Grid helpers ────────────────────────────────────────────────────
+
+  int _daysInMonth(DateTime month) {
+    return DateTime(month.year, month.month + 1, 0).day;
   }
 
-  void _nextMonth() {
-    setState(() {
-      _displayedMonth =
-          DateTime(_displayedMonth.year, _displayedMonth.month + 1);
-      _selectedDate = null;
-    });
+  int _firstWeekdayOffset(DateTime month) {
+    // Monday = 0, Sunday = 6
+    return DateTime(month.year, month.month, 1).weekday - 1;
   }
 
-  Widget _buildMonthHeader() {
-    final label = DateFormat('MMMM yyyy').format(_displayedMonth);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: _previousMonth,
-            child: const Icon(Icons.chevron_left,
-                color: Color(0x66F0EBE5), size: 24),
-          ),
-          Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
-            ),
-          ),
-          GestureDetector(
-            onTap: _nextMonth,
-            child: const Icon(Icons.chevron_right,
-                color: Color(0x66F0EBE5), size: 24),
-          ),
-        ],
-      ),
-    );
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Widget _buildDayHeaders() {
-    const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: days
-            .map((d) => Expanded(
-                  child: Center(
-                    child: Text(
-                      d,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0x40F0EBE5),
-                        letterSpacing: 0.5,
-                        height: 2.4,
-                      ),
-                    ),
-                  ),
-                ))
-            .toList(),
-      ),
-    );
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return _isSameDay(date, DateTime(now.year, now.month, now.day));
   }
 
-  Widget _buildCalendarGrid(Map<DateTime, List<Task>> tasksByDay) {
-    final year = _displayedMonth.year;
-    final month = _displayedMonth.month;
-    final firstDay = DateTime(year, month, 1);
-    final lastDay = DateTime(year, month + 1, 0);
+  bool _isPast(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-
-    // Monday = 1 in Dart, we want Monday-first grid
-    final startWeekday = firstDay.weekday; // 1=Mon, 7=Sun
-    final leadingBlanks = startWeekday - 1;
-    final totalCells = leadingBlanks + lastDay.day;
-    final rows = (totalCells / 7).ceil();
-    final paletteMap = ref.watch(domainPalettesProvider);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: List.generate(rows, (row) {
-          return SizedBox(
-            height: 44,
-            child: Row(
-              children: List.generate(7, (col) {
-                final cellIndex = row * 7 + col;
-                final dayNum = cellIndex - leadingBlanks + 1;
-
-                if (dayNum < 1 || dayNum > lastDay.day) {
-                  return const Expanded(child: SizedBox());
-                }
-
-                final date = DateTime(year, month, dayNum);
-                final isToday = date == today;
-                final isPast = date.isBefore(today);
-                final isSelected =
-                    _selectedDate != null && date == _selectedDate;
-                final dayTasks = tasksByDay[date] ?? [];
-
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedDate = date),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0x20FF9A50)
-                            : isToday
-                                ? const Color(0x10FF9A50)
-                                : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$dayNum',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13,
-                              fontWeight:
-                                  isToday ? FontWeight.w700 : FontWeight.w400,
-                              color: isToday
-                                  ? const Color(0xFFFF9A50)
-                                  : isPast
-                                      ? const Color(0x66F0EBE5)
-                                      : AppColors.darkText,
-                            ),
-                          ),
-                          if (dayTasks.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children:
-                                  _buildDotIndicators(dayTasks, paletteMap),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          );
-        }),
-      ),
-    );
+    return date.isBefore(today);
   }
 
-  List<Widget> _buildDotIndicators(
-      List<Task> tasks, Map<String, DomainPalette> paletteMap) {
-    // Get unique domain colors (max 4)
-    final seen = <Color>{};
-    final dots = <Widget>[];
-    for (final task in tasks) {
-      final domain = DomainColors.getDomain(task.category, true, paletteMap);
-      if (seen.add(domain.primary) && dots.length < 4) {
-        if (dots.isNotEmpty) dots.add(const SizedBox(width: 2));
-        dots.add(Container(
-          width: 4,
-          height: 4,
-          decoration: BoxDecoration(
-            color: domain.primary,
-            shape: BoxShape.circle,
-          ),
-        ));
-      }
-    }
-    return dots;
-  }
-
-  Widget _buildSelectedDayTasks(
-      List<Task> allActiveTasks, List<Task> undatedTasks) {
-    final paletteMap = ref.watch(domainPalettesProvider);
-
-    // Tasks for selected day
-    List<Task> dayTasks = [];
-    String headerLabel = '';
-
-    if (_selectedDate != null) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-
-      dayTasks = allActiveTasks.where((t) {
-        if (t.dueDate == null) return false;
-        final dueDay =
-            DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
-        return dueDay == _selectedDate;
-      }).toList();
-
-      if (_selectedDate == today) {
-        headerLabel = 'Today, ${DateFormat('MMM d').format(_selectedDate!)}';
-      } else {
-        headerLabel = DateFormat('EEE, MMM d').format(_selectedDate!);
-      }
-    }
-
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 120),
-      physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics()),
-      children: [
-        // Selected day header
-        if (_selectedDate != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              headerLabel,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFFFF9A50),
-              ),
-            ),
-          ),
-
-        // Tasks for selected day
-        if (dayTasks.isEmpty && _selectedDate != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Column(
-              children: [
-                Text(
-                  'No tasks on this day',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0x66F0EBE5),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tap the mic or type to add one',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: const Color(0x40F0EBE5),
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ...dayTasks.map((task) {
-            final domain =
-                DomainColors.getDomain(task.category, true, paletteMap);
-            return FlatTaskRow(
-              key: ValueKey(task.id),
-              task: task,
-              domain: domain,
-            );
-          }),
-
-        // Undated tasks section
-        if (undatedTasks.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          _buildUndatedSection(undatedTasks, paletteMap),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildUndatedSection(
-      List<Task> tasks, Map<String, DomainPalette> paletteMap) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => setState(() => _showNoDates = !_showNoDates),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
-              children: [
-                Text(
-                  'No due date',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0x80F0EBE5),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '(${tasks.length})',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: const Color(0x66F0EBE5),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  _showNoDates ? Icons.expand_less : Icons.expand_more,
-                  size: 18,
-                  color: const Color(0x80F0EBE5),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_showNoDates)
-          ...tasks.map((task) {
-            final domain =
-                DomainColors.getDomain(task.category, true, paletteMap);
-            return FlatTaskRow(
-              key: ValueKey(task.id),
-              task: task,
-              domain: domain,
-            );
-          }),
-      ],
-    );
-  }
+  // ── Build ───────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final storeState = ref.watch(taskStoreProvider);
     final allTasks = ref.watch(allTasksProvider);
+    final paletteMap = ref.watch(domainPalettesProvider);
 
     if (storeState.isLoading && allTasks.isEmpty) {
       return const LoadingState();
@@ -371,49 +80,417 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
       );
     }
 
-    final activeTasks = allTasks.where((t) => t.isActive).toList();
-    final undatedTasks = activeTasks.where((t) => t.dueDate == null).toList();
-    final datedTasks = activeTasks.where((t) => t.dueDate != null).toList();
+    // Filter: only active tasks
+    final activeTasks =
+        allTasks.where((t) => t.status == 'active').toList();
 
-    if (datedTasks.isEmpty && undatedTasks.isEmpty) {
-      return const EmptyState(
-        title: 'Calendar is clear',
-        message: 'Add a due date to any task\nand it will show up here.',
-        textColor: AppColors.darkText,
-        icon: Icons.calendar_today,
-        examples: [
-          'Add dentist appointment, due Friday',
-          'Schedule team review for next week',
+    // Split: dated vs undated
+    final datedTasks = activeTasks.where((t) => t.dueDate != null).toList();
+    final undatedTasks = activeTasks.where((t) => t.dueDate == null).toList();
+
+    // Build tasks-per-day map for dot indicators
+    final Map<String, List<Task>> tasksByDay = {};
+    for (final t in datedTasks) {
+      final key = DateFormat('yyyy-MM-dd').format(t.dueDate!);
+      tasksByDay.putIfAbsent(key, () => []).add(t);
+    }
+
+    // Tasks for selected day
+    final selectedKey = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final selectedDayTasks = tasksByDay[selectedKey] ?? [];
+
+    return RefreshIndicator(
+      color: AppColors.darkText,
+      backgroundColor: AppColors.darkBg,
+      onRefresh: () => ref.read(syncServiceProvider).sync(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Month header ──
+            _buildMonthHeader(),
+
+            // ── Day-of-week headers ──
+            _buildDayOfWeekHeaders(),
+
+            // ── Calendar grid ──
+            _buildCalendarGrid(tasksByDay, paletteMap),
+
+            // ── Divider ──
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                height: 1,
+                color: const Color(0x0FF0EBE5),
+              ),
+            ),
+
+            // ── Selected day header ──
+            _buildSelectedDayHeader(),
+
+            // ── Task list for selected day ──
+            if (selectedDayTasks.isEmpty)
+              _buildEmptyDayState()
+            else
+              ...selectedDayTasks.map((task) {
+                final domain =
+                    DomainColors.getDomain(task.category, true, paletteMap);
+                return FlatTaskRow(task: task, domain: domain);
+              }),
+
+            // ── Collapsible "No Date" section ──
+            if (undatedTasks.isNotEmpty)
+              _buildNoDatesSection(undatedTasks, paletteMap),
+
+            const SizedBox(height: 120),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Month header ──────────────────────────────────────────────────
+
+  Widget _buildMonthHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Text(
+            DateFormat('MMMM yyyy').format(_displayedMonth),
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.darkText,
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                final prev = DateTime(
+                  _displayedMonth.year,
+                  _displayedMonth.month - 1,
+                );
+                _displayedMonth = prev;
+                // Keep selected day in the new month, clamped to last day
+                final day = _selectedDate.day > _daysInMonth(prev)
+                    ? _daysInMonth(prev)
+                    : _selectedDate.day;
+                _selectedDate = DateTime(prev.year, prev.month, day);
+              });
+            },
+            child: const Icon(
+              Icons.chevron_left,
+              size: 20,
+              color: Color(0x66F0EBE5),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                final next = DateTime(
+                  _displayedMonth.year,
+                  _displayedMonth.month + 1,
+                );
+                _displayedMonth = next;
+                final day = _selectedDate.day > _daysInMonth(next)
+                    ? _daysInMonth(next)
+                    : _selectedDate.day;
+                _selectedDate = DateTime(next.year, next.month, day);
+              });
+            },
+            child: const Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: Color(0x66F0EBE5),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ── Day-of-week headers ───────────────────────────────────────────
+
+  Widget _buildDayOfWeekHeaders() {
+    const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 4),
+      child: Row(
+        children: days
+            .map(
+              (d) => Expanded(
+                child: Center(
+                  child: Text(
+                    d,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0x40F0EBE5),
+                      letterSpacing: 0.5,
+                      height: 24 / 10,
+                    ),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  // ── Calendar grid ─────────────────────────────────────────────────
+
+  Widget _buildCalendarGrid(
+    Map<String, List<Task>> tasksByDay,
+    Map<String, DomainPalette> paletteMap,
+  ) {
+    final daysInMonth = _daysInMonth(_displayedMonth);
+    final offset = _firstWeekdayOffset(_displayedMonth);
+    final totalCells = offset + daysInMonth;
+    final rows = (totalCells / 7).ceil();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: List.generate(rows, (row) {
+          return Row(
+            children: List.generate(7, (col) {
+              final index = row * 7 + col;
+              if (index < offset || index >= offset + daysInMonth) {
+                return const Expanded(
+                  child: SizedBox(height: 44),
+                );
+              }
+
+              final day = index - offset + 1;
+              final date = DateTime(
+                _displayedMonth.year,
+                _displayedMonth.month,
+                day,
+              );
+              final key = DateFormat('yyyy-MM-dd').format(date);
+              final dayTasks = tasksByDay[key] ?? [];
+
+              return Expanded(
+                child: _buildDayCell(date, day, dayTasks, paletteMap),
+              );
+            }),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildDayCell(
+    DateTime date,
+    int day,
+    List<Task> dayTasks,
+    Map<String, DomainPalette> paletteMap,
+  ) {
+    final isSelected = _isSameDay(date, _selectedDate);
+    final today = _isToday(date);
+    final past = _isPast(date) && !today;
+
+    // Day number color
+    Color dayColor;
+    FontWeight dayWeight = FontWeight.normal;
+    if (today) {
+      dayColor = const Color(0xFFFF9A50);
+      dayWeight = FontWeight.w700;
+    } else if (past) {
+      dayColor = const Color(0x66F0EBE5);
+    } else {
+      dayColor = const Color(0xFFF0EBE5);
+    }
+
+    // Background
+    BoxDecoration? bgDecoration;
+    if (today) {
+      bgDecoration = BoxDecoration(
+        color: const Color(0x20FF9A50),
+        borderRadius: BorderRadius.circular(10),
+      );
+    } else if (isSelected) {
+      bgDecoration = BoxDecoration(
+        color: const Color(0x15F0EBE5),
+        borderRadius: BorderRadius.circular(10),
       );
     }
 
-    // Build tasks-by-day map for dot indicators
-    final tasksByDay = <DateTime, List<Task>>{};
-    for (final task in datedTasks) {
-      final day = DateTime(
-          task.dueDate!.year, task.dueDate!.month, task.dueDate!.day);
-      tasksByDay.putIfAbsent(day, () => []).add(task);
+    // Dot colors (max 3)
+    final dotColors = <Color>[];
+    final seen = <String>{};
+    for (final t in dayTasks) {
+      if (dotColors.length >= 3) break;
+      final palette =
+          DomainColors.getDomain(t.category, true, paletteMap);
+      final colorKey = palette.primary.toARGB32().toString();
+      if (!seen.contains(colorKey)) {
+        seen.add(colorKey);
+        dotColors.add(palette.primary);
+      }
     }
 
-    return Column(
-      children: [
-        _buildMonthHeader(),
-        _buildDayHeaders(),
-        _buildCalendarGrid(tasksByDay),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          height: 1,
-          color: const Color(0x0FF0EBE5),
+    return GestureDetector(
+      onTap: () => setState(() => _selectedDate = date),
+      child: Container(
+        height: 44,
+        decoration: bgDecoration,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$day',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: dayWeight,
+                color: dayColor,
+              ),
+            ),
+            if (dotColors.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: dotColors.map((c) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 1),
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: c,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
         ),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.darkText,
-            backgroundColor: AppColors.darkBg,
-            onRefresh: () => ref.read(syncServiceProvider).sync(),
-            child: _buildSelectedDayTasks(activeTasks, undatedTasks),
+      ),
+    );
+  }
+
+  // ── Selected day header ───────────────────────────────────────────
+
+  Widget _buildSelectedDayHeader() {
+    final today = _isToday(_selectedDate);
+    final String label;
+    final Color color;
+
+    if (today) {
+      label = 'Today, ${DateFormat('MMM d').format(_selectedDate)}';
+      color = const Color(0xFFFF9A50);
+    } else {
+      label = DateFormat('EEE, MMM d').format(_selectedDate);
+      color = AppColors.darkText;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(
+        label,
+        style: GoogleFonts.dmSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  // ── Empty day state ───────────────────────────────────────────────
+
+  Widget _buildEmptyDayState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Center(
+        child: Column(
+          children: [
+            Text(
+              'No tasks on this day',
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: AppColors.secondaryText,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap the mic or type to add one',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: const Color(0x40F0EBE5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── No-date collapsible section ───────────────────────────────────
+
+  Widget _buildNoDatesSection(
+    List<Task> undatedTasks,
+    Map<String, DomainPalette> paletteMap,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Divider before section
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            height: 1,
+            color: const Color(0x0FF0EBE5),
           ),
         ),
+        GestureDetector(
+          onTap: () => setState(() => _showNoDates = !_showNoDates),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Text(
+                  'No due date',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0x66F0EBE5),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${undatedTasks.length}',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: const Color(0x40F0EBE5),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _showNoDates ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: const Color(0x66F0EBE5),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_showNoDates)
+          ...undatedTasks.map((task) {
+            final domain =
+                DomainColors.getDomain(task.category, true, paletteMap);
+            return FlatTaskRow(task: task, domain: domain);
+          }),
       ],
     );
   }
