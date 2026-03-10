@@ -431,7 +431,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                     domain: domain,
                     parentName: parentNames[task.id],
                     onTutorialStepComplete:
-                        isDemoTask ? () => _onTutorialStepComplete(_swipeTutorialStep + 1) : null,
+                        isDemoTask ? (step) => _onTutorialStepComplete(step) : null,
                   );
 
                   // Wrap demo task with tutorial overlay

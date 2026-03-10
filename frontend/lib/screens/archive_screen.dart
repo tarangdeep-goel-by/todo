@@ -250,6 +250,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
             color: AppColors.darkText,
             backgroundColor: AppColors.navBg,
             child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               itemCount: _archivedTasks.length,
               itemBuilder: (context, index) {
                 final task = _archivedTasks[index];
@@ -259,30 +260,22 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                 return Dismissible(
                   key: Key('archive-${task.id}'),
                   background: Container(
-                    color: domain.primary,
+                    color: AppColors.completed,
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.only(left: AppSpacing.lg),
-                    child: Icon(
-                      Icons.undo_rounded,
-                      color: domain.textOnPrimary,
-                      size: 32,
-                    ),
+                    child: const Icon(Icons.undo_rounded, color: AppColors.darkBg, size: 28),
                   ),
                   secondaryBackground: Container(
                     color: AppColors.deleteAction,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: AppSpacing.lg),
-                    child: const Icon(
-                      Icons.delete_forever,
-                      color: AppColors.darkBg,
-                      size: 32,
-                    ),
+                    child: const Icon(Icons.delete_forever, color: AppColors.darkBg, size: 28),
                   ),
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.startToEnd) {
-                      await _restoreTask(task, index);
+                      _restoreTask(task, index);
                     } else {
-                      await _permanentDeleteTask(task, index);
+                      _permanentDeleteTask(task, index);
                     }
                     return false;
                   },
@@ -309,3 +302,4 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     );
   }
 }
+

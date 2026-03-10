@@ -68,8 +68,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Non-editing mode uses sentence case label
-      expect(find.text('Description'), findsOneWidget);
+      // Section header uses uppercase
+      expect(find.text('DESCRIPTION'), findsOneWidget);
     });
 
     testWidgets('renders SUBTASKS section header', (tester) async {
