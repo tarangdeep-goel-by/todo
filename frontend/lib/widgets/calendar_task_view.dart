@@ -172,10 +172,16 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
           GestureDetector(
             onTap: () {
               setState(() {
-                _displayedMonth = DateTime(
+                final prev = DateTime(
                   _displayedMonth.year,
                   _displayedMonth.month - 1,
                 );
+                _displayedMonth = prev;
+                // Keep selected day in the new month, clamped to last day
+                final day = _selectedDate.day > _daysInMonth(prev)
+                    ? _daysInMonth(prev)
+                    : _selectedDate.day;
+                _selectedDate = DateTime(prev.year, prev.month, day);
               });
             },
             child: const Icon(
@@ -188,10 +194,15 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
           GestureDetector(
             onTap: () {
               setState(() {
-                _displayedMonth = DateTime(
+                final next = DateTime(
                   _displayedMonth.year,
                   _displayedMonth.month + 1,
                 );
+                _displayedMonth = next;
+                final day = _selectedDate.day > _daysInMonth(next)
+                    ? _daysInMonth(next)
+                    : _selectedDate.day;
+                _selectedDate = DateTime(next.year, next.month, day);
               });
             },
             child: const Icon(
