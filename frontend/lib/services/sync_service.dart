@@ -73,7 +73,12 @@ class SyncService {
     _syncing = true;
     try {
       await push();
-      await _refreshStore();
+      // Only refresh store if no new mutations arrived during push.
+      // Otherwise the push's server response (written to local DB) would
+      // overwrite the newer optimistic state from the pending mutation.
+      if (!_pushPending) {
+        await _refreshStore();
+      }
       if (_pushPending) {
         _pushPending = false;
         await push();
@@ -276,7 +281,15 @@ class SyncService {
             if (serverTask.id != entry.entityId) {
               await _localDb.deleteTask(entry.entityId);
             }
-            await _localDb.upsertTask(serverTask, pendingSync: false);
+            // Ack before checking for pending — so the current mutation
+            // is removed before we ask "are there newer ones?"
+            await _localDb.ackMutation(entry.id);
+            // Only write server response if no newer mutations are queued
+            // (prevents overwriting a concurrent undo's optimistic state)
+            final createEntityId = serverTask.id != entry.entityId ? serverTask.id : entry.entityId;
+            if (!await _localDb.hasPendingMutationsForEntity(createEntityId)) {
+              await _localDb.upsertTask(serverTask, pendingSync: false);
+            }
             break;
 
           case 'update':
@@ -300,22 +313,26 @@ class SyncService {
                     : null,
               ),
             );
-            await _localDb.upsertTask(serverTask, pendingSync: false);
+            await _localDb.ackMutation(entry.id);
+            if (!await _localDb.hasPendingMutationsForEntity(entry.entityId)) {
+              await _localDb.upsertTask(serverTask, pendingSync: false);
+            }
             break;
 
           case 'complete':
             final serverTask = await _api.completeTask(entry.entityId);
-            await _localDb.upsertTask(serverTask, pendingSync: false);
+            await _localDb.ackMutation(entry.id);
+            if (!await _localDb.hasPendingMutationsForEntity(entry.entityId)) {
+              await _localDb.upsertTask(serverTask, pendingSync: false);
+            }
             break;
 
           case 'delete':
             await _api.deleteTask(entry.entityId);
             await _localDb.markPendingSync(entry.entityId, false);
+            await _localDb.ackMutation(entry.id);
             break;
         }
-
-        // Success — remove from queue
-        await _localDb.ackMutation(entry.id);
         _logger.debug('sync.push.ack', logger: 'SyncService', data: {
           'id': entry.id, 'action': entry.action, 'entity': entry.entityId,
         });

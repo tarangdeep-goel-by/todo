@@ -347,72 +347,75 @@ class _DomainCardState extends ConsumerState<DomainCard>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Domain name and task count row
-                            Flexible(flex: 1, child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => showTaskDetailOverlay(
-                                      context,
-                                      taskId: '',
-                                      domainRoot: domain.name.toLowerCase(),
-                                    ),
-                                    child: Text(
-                                      domain.name,
-                                      style: AppTypography.domainTitle(
-                                        context,
-                                        color: domain.textOnPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  _formatTaskCount(taskCount),
-                                  style: AppTypography.metadataText(
-                                    color: domain.textOnPrimary.withValues(alpha: 0.8),
-                                  ).copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            )),
-
-                            const SizedBox(height: AppSpacing.sm),
-
-                            // Dark inset task preview or empty state
                             Flexible(
-                              flex: 4,
-                              child: Container(
-                                width: double.infinity,
-                                clipBehavior: Clip.hardEdge,
-                                decoration: BoxDecoration(
-                                  color: AppColors.cardInset,
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                                  border: Border.all(
-                                    color: domain.primary.withValues(alpha: 0.08),
-                                    width: 0.5,
-                                  ),
-                                ),
-                                child: topTasks.isEmpty
-                                    ? _buildEmptyState()
-                                    : ListView.separated(
-                                        padding: const EdgeInsets.all(AppSpacing.sm),
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: topTasks.length,
-                                        separatorBuilder: (_, _) =>
-                                            const SizedBox(height: 4),
-                                        itemBuilder: (_, i) =>
-                                            _buildTaskRow(topTasks[i]),
+                              flex: 1,
+                              child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => showTaskDetailOverlay(
+                                          context,
+                                          taskId: '',
+                                          domainRoot: domain.name.toLowerCase(),
+                                        ),
+                                        child: Text(
+                                          domain.name,
+                                          style: AppTypography.domainTitle(
+                                            context,
+                                            color: domain.textOnPrimary,
+                                          ),
+                                        ),
                                       ),
+                                    ),
+                                    Text(
+                                      _formatTaskCount(taskCount),
+                                      style: AppTypography.metadataText(
+                                        color: domain.textOnPrimary.withValues(alpha: 0.8),
+                                      ).copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+
+                              const SizedBox(height: AppSpacing.sm),
+
+                              // Dark inset task preview or empty state
+                              Flexible(
+                                flex: 4,
+                                child: Container(
+                                  width: double.infinity,
+                                  clipBehavior: Clip.hardEdge,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardInset,
+                                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                                    border: Border.all(
+                                      color: domain.primary.withValues(alpha: 0.08),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: topTasks.isEmpty
+                                      ? _buildEmptyState()
+                                      : ListView.separated(
+                                          padding: const EdgeInsets.all(AppSpacing.sm),
+                                          physics: const NeverScrollableScrollPhysics(),
+                                          itemCount: topTasks.length,
+                                          separatorBuilder: (_, _) =>
+                                              const SizedBox(height: 4),
+                                          itemBuilder: (_, i) =>
+                                              _buildTaskRow(topTasks[i]),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

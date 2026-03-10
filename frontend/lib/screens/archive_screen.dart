@@ -57,10 +57,13 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     }
   }
 
-  Future<void> _restoreTask(Task task, int index) async {
+  Future<void> _restoreTask(Task task) async {
+    final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
+    if (originalIndex == -1) return;
+
     HapticService.light();
     setState(() {
-      _archivedTasks.removeAt(index);
+      _archivedTasks.removeAt(originalIndex);
     });
 
     try {
@@ -81,7 +84,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       // Rollback
       if (mounted) {
         setState(() {
-          _archivedTasks.insert(index, task);
+          final insertAt = originalIndex < _archivedTasks.length
+              ? originalIndex
+              : _archivedTasks.length;
+          _archivedTasks.insert(insertAt, task);
         });
         showStyledSnackbar(
           context,
@@ -92,7 +98,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     }
   }
 
-  Future<void> _permanentDeleteTask(Task task, int index) async {
+  Future<void> _permanentDeleteTask(Task task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -126,9 +132,12 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
 
     if (confirmed != true) return;
 
+    final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
+    if (originalIndex == -1) return;
+
     HapticService.medium();
     setState(() {
-      _archivedTasks.removeAt(index);
+      _archivedTasks.removeAt(originalIndex);
     });
 
     try {
@@ -145,7 +154,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       // Rollback
       if (mounted) {
         setState(() {
-          _archivedTasks.insert(index, task);
+          final insertAt = originalIndex < _archivedTasks.length
+              ? originalIndex
+              : _archivedTasks.length;
+          _archivedTasks.insert(insertAt, task);
         });
         showStyledSnackbar(
           context,
@@ -258,6 +270,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
             color: AppColors.darkText,
             backgroundColor: AppColors.navBg,
             child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               itemCount: _archivedTasks.length,
               itemBuilder: (context, index) {
                 final task = _archivedTasks[index];
@@ -267,30 +280,22 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                 return Dismissible(
                   key: Key('archive-${task.id}'),
                   background: Container(
-                    color: domain.primary,
+                    color: AppColors.completed,
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.only(left: AppSpacing.lg),
-                    child: Icon(
-                      Icons.undo_rounded,
-                      color: domain.textOnPrimary,
-                      size: 32,
-                    ),
+                    child: const Icon(Icons.undo_rounded, color: AppColors.darkBg, size: 28),
                   ),
                   secondaryBackground: Container(
                     color: AppColors.deleteAction,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: AppSpacing.lg),
-                    child: const Icon(
-                      Icons.delete_forever,
-                      color: AppColors.darkBg,
-                      size: 32,
-                    ),
+                    child: const Icon(Icons.delete_forever, color: AppColors.darkBg, size: 28),
                   ),
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.startToEnd) {
-                      await _restoreTask(task, index);
+                      _restoreTask(task);
                     } else {
-                      await _permanentDeleteTask(task, index);
+                      _permanentDeleteTask(task);
                     }
                     return false;
                   },
@@ -318,3 +323,4 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     );
   }
 }
+

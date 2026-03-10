@@ -83,6 +83,11 @@ class LocalDataService {
 
   Future<void> ackMutation(int id) => _db.syncQueueDao.ack(id);
 
+  Future<bool> hasPendingMutationsForEntity(String entityId) async {
+    final entries = await _db.syncQueueDao.getAllForEntity(entityId);
+    return entries.where((e) => !e.failed).isNotEmpty;
+  }
+
   Future<void> failMutation(int id, String error) =>
       _db.syncQueueDao.markFailed(id, error);
 
