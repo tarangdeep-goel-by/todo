@@ -250,8 +250,27 @@ class TaskService:
         await _with_deadlock_retry(_do_archive)
         return len(all_ids)
 
+    async def _get_archived_ancestors(self, task: 'Task') -> List[str]:
+        """Walk up parent chain collecting archived ancestor IDs (cycle-safe)."""
+        ancestor_ids = []
+        seen = {task.id}
+        current = task
+
+        while current.parent_id:
+            if current.parent_id in seen:
+                break  # Cycle detected
+            seen.add(current.parent_id)
+
+            parent = await self.get_task(current.parent_id)
+            if not parent or not parent.archived_at:
+                break  # Hit a non-archived (or missing) ancestor — stop
+            ancestor_ids.append(parent.id)
+            current = parent
+
+        return ancestor_ids
+
     async def restore_task_with_children(self, task_id: str) -> int:
-        """Restore archived task and children archived at the same time."""
+        """Restore archived task, its ancestor chain, and children archived at the same time."""
         task = await self.get_task(task_id)
         if not task or not task.archived_at:
             return 0
@@ -262,13 +281,19 @@ class TaskService:
             d.id for d in descendants if d.archived_at == archived_at
         ]
 
-        await self.db.execute(
-            update(Task)
-            .where(Task.id.in_(all_ids))
-            .values(status="active", archived_at=None)
-        )
-        await self._maybe_commit()
+        # Also restore archived ancestors so we don't get orphaned active tasks
+        ancestor_ids = await self._get_archived_ancestors(task)
+        all_ids.extend(ancestor_ids)
 
+        async def _do_restore():
+            await self.db.execute(
+                update(Task)
+                .where(Task.id.in_(all_ids))
+                .values(status="active", archived_at=None)
+            )
+            await self._maybe_commit()
+
+        await _with_deadlock_retry(_do_restore)
         return len(all_ids)
 
     async def get_archived_tasks(self, user_id: str) -> List[Task]:

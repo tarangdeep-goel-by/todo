@@ -149,6 +149,8 @@ void main() {
 
       expect(storeTask?.status, 'active',
           reason: 'Task should be active after undo');
+      expect(storeTask?.completedAt, isNull,
+          reason: 'completedAt should be null after undo');
     });
   });
 }

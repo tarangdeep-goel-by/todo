@@ -24,6 +24,7 @@ class FlatTaskRow extends ConsumerStatefulWidget {
   final String? parentName;
   final ValueChanged<int>? onTutorialStepComplete;
   final bool showSwipeActions;
+  final bool detailOnTap;
 
   const FlatTaskRow({
     super.key,
@@ -32,6 +33,7 @@ class FlatTaskRow extends ConsumerStatefulWidget {
     this.parentName,
     this.onTutorialStepComplete,
     this.showSwipeActions = true,
+    this.detailOnTap = false,
   });
 
   @override
@@ -134,6 +136,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
 
     // Offline-first: remove from store + enqueue delete for sync
     final mutation = ref.read(taskMutationServiceProvider);
+    final apiService = ref.read(apiServiceProvider);
     await mutation.deleteTask(task);
 
     if (context.mounted) {
@@ -142,9 +145,8 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         message: 'Archived: ${task.sentenceTitle}',
         domain: domain,
         onUndo: () async {
-          // Restore requires online — calls API directly
+          // apiService captured before widget disposal (delete removes row from list)
           try {
-            final apiService = ref.read(apiServiceProvider);
             final restoredTask = await apiService.restoreTask(task.id);
             store.upsertTask(restoredTask);
           } catch (_) {

@@ -5,7 +5,7 @@ import 'package:frontend/screens/parent_node_view.dart';
 import 'package:frontend/screens/flat_task_view.dart';
 import 'package:frontend/widgets/calendar_task_view.dart';
 import 'package:frontend/widgets/task_detail_overlay.dart';
-import 'package:frontend/widgets/task_item.dart';
+import 'package:frontend/widgets/flat_task_row.dart';
 import 'package:frontend/services/tracker/tracker_keys.dart';
 import '../helpers/test_app.dart';
 import '../helpers/api_cleanup.dart';
@@ -90,7 +90,7 @@ void main() {
     // Find a TaskItem containing "Buy groceries"
     final groceryItem = find.ancestor(
       of: find.textContaining('Buy groceries'),
-      matching: find.byType(TaskItem),
+      matching: find.byType(FlatTaskRow),
     ).first;
     await tester.longPress(groceryItem);
     await settle(tester);
