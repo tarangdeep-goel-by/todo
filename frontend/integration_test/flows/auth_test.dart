@@ -39,11 +39,10 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Login screen renders when unauthenticated', (tester) async {
-    // Stream that emits null (no user signed in)
     final controller = StreamController<User?>();
     controller.add(null);
 
-    await pumpAppWithAuth(tester, controller.stream);
+    final container = await pumpAppWithAuth(tester, controller.stream);
 
     // Login screen elements visible
     expect(find.text('Amble'), findsOneWidget);
@@ -60,13 +59,13 @@ void main() {
     expect(find.byKey(TK.pttButton), findsNothing);
 
     await controller.close();
+    container.dispose();
   });
 
   testWidgets('Loading spinner shown while auth state resolves', (tester) async {
-    // Stream that never emits — auth state is loading
     final controller = StreamController<User?>();
 
-    await pumpAppWithAuth(tester, controller.stream);
+    final container = await pumpAppWithAuth(tester, controller.stream);
 
     // Should show loading spinner, not login or home
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -74,46 +73,46 @@ void main() {
     expect(find.byKey(TK.pttButton), findsNothing);
 
     await controller.close();
+    container.dispose();
   });
 
   testWidgets('Login screen shows error state gracefully', (tester) async {
-    // Stream that emits an error
     final controller = StreamController<User?>();
     controller.addError('Auth service unavailable');
 
-    await pumpAppWithAuth(tester, controller.stream);
+    final container = await pumpAppWithAuth(tester, controller.stream);
 
     // Error state should fall back to LoginScreen (per AuthGate logic)
     expect(find.byKey(TK.signInButton), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
 
     await controller.close();
+    container.dispose();
   });
 
   testWidgets('Sign-in button shows loading indicator when tapped', (tester) async {
     final controller = StreamController<User?>();
     controller.add(null);
 
-    await pumpAppWithAuth(tester, controller.stream);
+    final container = await pumpAppWithAuth(tester, controller.stream);
 
     // Verify sign-in button is present
     expect(find.byKey(TK.signInButton), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
 
-    // Tap sign-in button — it will fail (no real Google Sign-In)
-    // but we can verify the button is tappable
+    // Tap sign-in button — Google Sign-In will fail in test env,
+    // but we verify the button is tappable and recovers gracefully
     await tester.tap(find.byKey(TK.signInButton));
-    await tester.pump(const Duration(milliseconds: 500));
 
-    // After tap, button should show loading spinner (CircularProgressIndicator)
-    // inside the button area, and 'Continue with Google' text should be gone
-    // Note: This may show an error snackbar since Google Sign-In isn't available,
-    // but the loading state transition is what we're testing
-    await tester.pump(const Duration(seconds: 2));
+    // Pump several frames to let the tap + error recovery play out
+    for (int i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
-    // Eventually returns to showing the button text (after error)
+    // Eventually returns to showing the button (after error)
     expect(find.byKey(TK.signInButton), findsOneWidget);
 
     await controller.close();
+    container.dispose();
   });
 }
