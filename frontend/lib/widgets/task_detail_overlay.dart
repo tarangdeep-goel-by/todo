@@ -948,38 +948,49 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   // --- Action bar ---
 
   Widget _buildActionBar(DomainPalette domain, Task task, bool isCompleted) {
+    final isArchived = task.status == 'archived';
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       child: Row(
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: _savingStatus
+              onTap: (_savingStatus || isArchived)
                   ? null
                   : () => _toggleStatus(task, isCompleted ? 'active' : 'completed'),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0x1550E890),
+                  color: isArchived
+                      ? const Color(0x158E8E93)
+                      : const Color(0x1550E890),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      isCompleted ? Icons.undo : Icons.check,
+                      isArchived
+                          ? Icons.archive_rounded
+                          : (isCompleted ? Icons.undo : Icons.check),
                       size: 18,
-                      color: const Color(0xFF50E890),
+                      color: isArchived
+                          ? const Color(0xFF8E8E93)
+                          : const Color(0xFF50E890),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _savingStatus
-                          ? 'Saving...'
-                          : (isCompleted ? 'Reactivate' : 'Complete'),
+                      isArchived
+                          ? 'Archived'
+                          : _savingStatus
+                              ? 'Saving...'
+                              : (isCompleted ? 'Reactivate' : 'Complete'),
                       style: GoogleFonts.dmSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF50E890),
+                        color: isArchived
+                            ? const Color(0xFF8E8E93)
+                            : const Color(0xFF50E890),
                       ),
                     ),
                   ],
@@ -1104,6 +1115,9 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       case 'overdue':
         statusColor = const Color(0xFFFF6B6B);
         statusLabel = 'Overdue';
+      case 'archived':
+        statusColor = const Color(0xFF8E8E93);
+        statusLabel = 'Archived';
       default:
         statusColor = const Color(0xFFFF9A50);
         statusLabel = 'Active';

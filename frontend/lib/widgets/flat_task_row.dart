@@ -19,7 +19,7 @@ import '../services/tracker/tracker.dart';
 /// Flat task row widget for the new Paper design style.
 ///
 /// Used by both Flat View and Calendar View. Clean flat rows with accent bar,
-/// no gradient backgrounds. Swipe behavior matches TaskItem:
+/// no gradient backgrounds. Swipe behavior:
 /// - Active: right swipe = complete, left swipe = delete/archive
 /// - Completed: left swipe only = restore
 class FlatTaskRow extends ConsumerStatefulWidget {
@@ -28,6 +28,7 @@ class FlatTaskRow extends ConsumerStatefulWidget {
   final String? parentName;
   final ValueChanged<int>? onTutorialStepComplete;
   final bool showSwipeActions;
+  final bool detailOnTap;
 
   const FlatTaskRow({
     super.key,
@@ -36,6 +37,7 @@ class FlatTaskRow extends ConsumerStatefulWidget {
     this.parentName,
     this.onTutorialStepComplete,
     this.showSwipeActions = true,
+    this.detailOnTap = false,
   });
 
   @override
@@ -98,22 +100,17 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         context,
         message: message,
         domain: domain,
-        onUndo: () => _undoToggle(context),
+        onUndo: () {
+          // Capture mutation & task before widget disposal (list re-sort disposes old row)
+          final reversePayload = <String, dynamic>{'status': task.status};
+          if (task.isCompleted) {
+            reversePayload['completed_at'] =
+                (task.completedAt ?? DateTime.now()).toIso8601String();
+          }
+          mutation.updateTask(task, reversePayload);
+        },
       );
     }
-  }
-
-  Future<void> _undoToggle(BuildContext context) async {
-    final task = widget.task;
-    final payload = <String, dynamic>{
-      'status': task.status,
-    };
-    if (task.isCompleted) {
-      payload['completed_at'] =
-          (task.completedAt ?? DateTime.now()).toIso8601String();
-    }
-    final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.updateTask(task, payload);
   }
 
   Future<bool> _deleteTask(BuildContext context) async {
@@ -136,6 +133,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
 
     // Offline-first: remove from store + enqueue delete for sync
     final mutation = ref.read(taskMutationServiceProvider);
+    final apiService = ref.read(apiServiceProvider);
     await mutation.deleteTask(task);
 
     if (context.mounted) {
@@ -144,9 +142,8 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         message: 'Archived: ${task.sentenceTitle}',
         domain: domain,
         onUndo: () async {
-          // Restore requires online — calls API directly
+          // apiService captured before widget disposal (delete removes row from list)
           try {
-            final apiService = ref.read(apiServiceProvider);
             final restoredTask = await apiService.restoreTask(task.id);
             store.upsertTask(restoredTask);
           } catch (_) {
@@ -329,7 +326,11 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
 
     // Wrap with gesture detector
     Widget taskContent = GestureDetector(
-      onTap: isTutorialMode ? null : () => _toggleTask(context),
+      onTap: isTutorialMode
+          ? null
+          : widget.detailOnTap
+              ? () => showTaskDetailOverlay(context, taskId: task.id)
+              : () => _toggleTask(context),
       onLongPress: isTutorialMode
           ? null
           : () => showTaskDetailOverlay(context, taskId: task.id),
