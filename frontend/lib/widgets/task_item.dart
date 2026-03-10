@@ -95,21 +95,20 @@ class _TaskItemState extends ConsumerState<TaskItem> {
         context,
         message: message,
         domain: domain,
-        onUndo: () => _undoToggle(context),
+        onUndo: () => _undoToggle(context, task),
       );
     }
   }
 
-  Future<void> _undoToggle(BuildContext context) async {
-    final task = widget.task;
+  Future<void> _undoToggle(BuildContext context, Task originalTask) async {
     final payload = <String, dynamic>{
-      'status': task.status,
+      'status': originalTask.status,
+      'completed_at': originalTask.isCompleted
+          ? (originalTask.completedAt ?? DateTime.now()).toIso8601String()
+          : null,
     };
-    if (task.isCompleted) {
-      payload['completed_at'] = (task.completedAt ?? DateTime.now()).toIso8601String();
-    }
     final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.updateTask(task, payload);
+    await mutation.updateTask(originalTask, payload);
   }
 
   Future<bool> _deleteTask(BuildContext context) async {

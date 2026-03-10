@@ -96,22 +96,22 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         context,
         message: message,
         domain: domain,
-        onUndo: () => _undoToggle(context),
+        onUndo: () => _undoToggle(context, task),
       );
     }
   }
 
-  Future<void> _undoToggle(BuildContext context) async {
-    final task = widget.task;
+  Future<void> _undoToggle(BuildContext context, Task originalTask) async {
     final payload = <String, dynamic>{
-      'status': task.status,
+      'status': originalTask.status,
+      // Explicitly include completed_at so compact merge doesn't leak
+      // the toggle's completed_at into the undo payload
+      'completed_at': originalTask.isCompleted
+          ? (originalTask.completedAt ?? DateTime.now()).toIso8601String()
+          : null,
     };
-    if (task.isCompleted) {
-      payload['completed_at'] =
-          (task.completedAt ?? DateTime.now()).toIso8601String();
-    }
     final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.updateTask(task, payload);
+    await mutation.updateTask(originalTask, payload);
   }
 
   Future<bool> _deleteTask(BuildContext context) async {
@@ -193,8 +193,10 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
     // During tutorial, disable tap/long-press to prevent bypassing swipe steps
     final isTutorialMode = widget.onTutorialStepComplete != null;
 
-    // Left side line 2: domain name for root tasks, L1 parent for child tasks
-    final String subtitleText = (widget.parentName ?? task.category).capitalize;
+    // Subtitle text: parent name for children, category for root tasks
+    final subtitleText = (widget.parentName ?? task.category).capitalize;
+
+    // ── Row content ──
 
     // Row content
     Widget rowContent = GestureDetector(

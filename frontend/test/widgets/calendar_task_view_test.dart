@@ -29,7 +29,11 @@ void main() {
       await tester.pumpWidget(buildCalendarView());
       await tester.pump();
 
-      expect(find.text('Calendar is clear'), findsOneWidget);
+      // With no tasks, calendar grid renders with empty day state
+      final now = DateTime.now();
+      final monthText = DateFormat('MMMM yyyy').format(now);
+      expect(find.text(monthText), findsOneWidget);
+      expect(find.text('No tasks on this day'), findsOneWidget);
     });
 
     testWidgets('shows month header with navigation', (tester) async {

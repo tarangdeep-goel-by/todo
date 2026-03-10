@@ -1489,61 +1489,75 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       behavior: HitTestBehavior.opaque,
       onTap: () => _navigateTo(sub.id),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            // Custom checkbox
-            GestureDetector(
-              onTap: () => _toggleStatus(sub, sub.isCompleted ? 'active' : 'completed'),
-              child: Container(
-                width: 18,
-                height: 18,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: domain.primary.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              // Accent bar on LEFT
+              Container(
+                width: 3,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: sub.isCompleted
-                      ? const Color(0x3050E890)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  border: sub.isCompleted
-                      ? null
-                      : Border.all(
-                          color: const Color(0x30F0EBE5),
-                          width: 1.5,
-                        ),
+                  color: domain.primary,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: sub.isCompleted
-                    ? const Icon(
-                        Icons.check,
-                        size: 13,
-                        color: Color(0xFF50E890),
-                      )
-                    : null,
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                sub.sentenceTitle,
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: sub.isCompleted
-                      ? const Color(0x40F0EBE5)
-                      : AppColors.darkText,
-                  decoration: sub.isCompleted
-                      ? TextDecoration.lineThrough
+              const SizedBox(width: 8),
+              // Title
+              Expanded(
+                child: Text(
+                  sub.sentenceTitle,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: sub.isCompleted
+                        ? const Color(0x40F0EBE5)
+                        : AppColors.darkText,
+                    decoration: sub.isCompleted ? TextDecoration.lineThrough : null,
+                    decorationColor: const Color(0x40F0EBE5),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Checkbox on RIGHT — domain accent color
+              GestureDetector(
+                onTap: () => _toggleStatus(sub, sub.isCompleted ? 'active' : 'completed'),
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: sub.isCompleted
+                        ? domain.primary.withValues(alpha: 0.3)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                    border: sub.isCompleted
+                        ? null
+                        : Border.all(
+                            color: domain.primary.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                  ),
+                  child: sub.isCompleted
+                      ? Icon(Icons.check, size: 13, color: domain.primary)
                       : null,
-                  decorationColor: const Color(0x40F0EBE5),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: Color(0x30F0EBE5),
-            ),
-          ],
+              const SizedBox(width: 4),
+              // Chevron after checkbox
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: domain.primary.withValues(alpha: 0.4),
+              ),
+            ],
+          ),
         ),
       ),
     );
