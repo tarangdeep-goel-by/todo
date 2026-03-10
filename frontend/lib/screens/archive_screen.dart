@@ -37,6 +37,11 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       final apiService = ref.read(apiServiceProvider);
       final tasks = await apiService.getArchivedTasks();
       if (mounted) {
+        // Upsert archived tasks into the store so TaskDetailOverlay can read them
+        final store = ref.read(taskStoreProvider.notifier);
+        for (final task in tasks) {
+          store.upsertTask(task);
+        }
         setState(() {
           _archivedTasks = tasks;
           _isLoading = false;
@@ -63,8 +68,11 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
 
     try {
       final apiService = ref.read(apiServiceProvider);
-      final restoredTask = await apiService.restoreTask(task.id);
-      ref.read(taskStoreProvider.notifier).upsertTask(restoredTask);
+      await apiService.restoreTask(task.id);
+      // Restore may also restore ancestors — refresh full store to pick them all up
+      await ref.read(taskStoreProvider.notifier).fetchAll();
+      // Reload archive list since ancestors may have been restored too
+      await _loadArchivedTasks();
       if (mounted) {
         showStyledSnackbar(
           context,
@@ -295,6 +303,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                     task: task,
                     domain: domain,
                     showSwipeActions: false,
+                    detailOnTap: true,
                   ),
                 );
               },
