@@ -8,7 +8,6 @@ import 'package:frontend/providers/task_store_provider.dart';
 import 'package:frontend/config/theme.dart';
 import 'package:frontend/models/task.dart';
 import 'package:frontend/services/task_mutation_service.dart';
-import 'package:frontend/services/local_data_service.dart';
 import '../helpers/test_helpers.dart';
 
 /// In-memory mutation service that logs and upserts to store.
