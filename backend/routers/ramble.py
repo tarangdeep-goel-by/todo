@@ -97,7 +97,7 @@ async def ramble_websocket(websocket: WebSocket):
     settings = get_settings()
     token = msg["token"]
     if token == "test-token-e2e":
-        if not settings.allow_test_token:
+        if settings.app_env == "production" or not settings.allow_test_token:
             logger.error("ws.test_token_rejected", app_env=settings.app_env)
             await websocket.close(code=4001, reason="Invalid token")
             return
