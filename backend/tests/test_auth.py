@@ -38,10 +38,10 @@ class TestAuthFlow:
     """Auth flow tests exercising get_current_user paths."""
 
     async def test_valid_test_token_returns_uid(self, auth_client):
-        """With APP_ENV=test, test-token-e2e works."""
+        """With ALLOW_TEST_TOKEN=true, test-token-e2e works."""
         # Temporarily enable test auth by clearing settings cache
-        old_env = os.environ.get("APP_ENV")
-        os.environ["APP_ENV"] = "test"
+        old_val = os.environ.get("ALLOW_TEST_TOKEN")
+        os.environ["ALLOW_TEST_TOKEN"] = "true"
         get_settings.cache_clear()
         try:
             resp = await auth_client.get(
@@ -51,10 +51,10 @@ class TestAuthFlow:
             # Should authenticate successfully (200, not 401)
             assert resp.status_code == 200
         finally:
-            if old_env is not None:
-                os.environ["APP_ENV"] = old_env
+            if old_val is not None:
+                os.environ["ALLOW_TEST_TOKEN"] = old_val
             else:
-                os.environ.pop("APP_ENV", None)
+                os.environ.pop("ALLOW_TEST_TOKEN", None)
             get_settings.cache_clear()
 
     async def test_missing_auth_header_returns_401(self, auth_client):
