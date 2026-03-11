@@ -72,7 +72,8 @@ class Settings(BaseSettings):
     # WebSocket connection limits
     max_ws_connections_per_user: int = 3
 
-    # Test auth is enabled when APP_ENV=test (never in production)
+    # E2E test auth — explicit opt-in, never in production
+    allow_test_token: bool = False
 
     @field_validator("search_engine")
     @classmethod
