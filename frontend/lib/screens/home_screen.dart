@@ -157,6 +157,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final showFlatNudge =
         _tutorialActive && !_flatViewNudgeSeen && viewMode == ViewMode.node;
 
+    _log.debug('home.build', logger: 'HomeScreen', data: {
+      'viewMode': viewMode.name, 'taskCount': taskCount,
+      'tutorialActive': _tutorialActive, 'flatViewNudgeSeen': _flatViewNudgeSeen,
+      'showFlatNudge': showFlatNudge, 'showCoaching': taskCount == 0 && !_tutorialActive,
+    });
+
     return Scaffold(
       body: SafeArea(
         child: Stack(

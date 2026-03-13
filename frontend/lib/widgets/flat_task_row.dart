@@ -7,6 +7,7 @@ import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../services/app_logger.dart';
 import '../services/haptic_service.dart';
 import '../services/tracker/tracker.dart';
 import '../utils/string_extensions.dart';
@@ -40,6 +41,8 @@ class FlatTaskRow extends ConsumerStatefulWidget {
 }
 
 class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
+  final _log = AppLogger.instance;
+
   // ── Actions ──────────────────────────────────────────────────────────
 
   Future<void> _toggleTask(BuildContext context) async {
@@ -342,20 +345,27 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
       key: Key(task.id),
       direction: direction,
       confirmDismiss: (dir) async {
+        _log.debug('row.swipe', logger: 'FlatTaskRow', data: {
+          'taskId': task.id, 'direction': dir.name, 'isCompleted': isCompleted,
+          'isTutorial': widget.onTutorialStepComplete != null,
+        });
         if (isCompleted) {
           // Left swipe on completed -> restore
           await _toggleTask(context);
+          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 2});
           widget.onTutorialStepComplete?.call(2);
           return false;
         }
         if (dir == DismissDirection.startToEnd) {
           // Right swipe on active -> complete
           await _toggleTask(context);
+          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 1});
           widget.onTutorialStepComplete?.call(1);
           return false;
         } else if (dir == DismissDirection.endToStart) {
           // Left swipe on active -> delete
           await _deleteTask(context);
+          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 3});
           widget.onTutorialStepComplete?.call(3);
           return false;
         }

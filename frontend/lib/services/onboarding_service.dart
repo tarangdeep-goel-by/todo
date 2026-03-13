@@ -1,4 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_logger.dart';
+
+final _log = AppLogger.instance;
 
 /// Tracks first-use onboarding milestones via SharedPreferences.
 class OnboardingService {
@@ -19,40 +22,52 @@ class OnboardingService {
 
   static Future<bool> hasSeenWelcome() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_welcomeKey) ?? false;
+    final seen = prefs.getBool(_welcomeKey) ?? false;
+    _log.debug('onboard.hasSeenWelcome', logger: 'OnboardingService', data: {'seen': seen});
+    return seen;
   }
 
   static Future<void> markWelcomeSeen() async {
+    _log.debug('onboard.markWelcomeSeen', logger: 'OnboardingService');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_welcomeKey, true);
   }
 
   static Future<bool> hasSeenHint(String key) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(key) ?? false;
+    final seen = prefs.getBool(key) ?? false;
+    _log.debug('onboard.hasSeenHint', logger: 'OnboardingService', data: {'key': key, 'seen': seen});
+    return seen;
   }
 
   static Future<void> markHintSeen(String key) async {
+    _log.debug('onboard.markHintSeen', logger: 'OnboardingService', data: {'key': key});
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);
   }
 
   static Future<int> getSwipeTutorialStep() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(swipeTutorialStepKey) ?? 0;
+    final step = prefs.getInt(swipeTutorialStepKey) ?? 0;
+    _log.debug('onboard.getSwipeTutorialStep', logger: 'OnboardingService', data: {'step': step});
+    return step;
   }
 
   static Future<void> setSwipeTutorialStep(int step) async {
+    _log.debug('onboard.setSwipeTutorialStep', logger: 'OnboardingService', data: {'step': step});
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(swipeTutorialStepKey, step);
   }
 
   static Future<bool> hasCreatedFirstTask() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(firstTaskCreatedKey) ?? false;
+    final created = prefs.getBool(firstTaskCreatedKey) ?? false;
+    _log.debug('onboard.hasCreatedFirstTask', logger: 'OnboardingService', data: {'created': created});
+    return created;
   }
 
   static Future<void> markFirstTaskCreated() async {
+    _log.debug('onboard.markFirstTaskCreated', logger: 'OnboardingService');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(firstTaskCreatedKey, true);
   }
