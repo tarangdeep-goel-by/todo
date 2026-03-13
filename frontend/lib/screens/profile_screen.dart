@@ -6,11 +6,9 @@ import 'package:intl/intl.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
-import '../providers/api_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
-import '../providers/task_filter_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/tracker/tracker.dart';
@@ -220,21 +218,25 @@ class ProfileScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(ctx).pop();
-              Navigator.of(context).pop(); // Close profile screen
+              // Capture refs before navigation pops dispose the widget
+              final sync = ref.read(syncServiceProvider);
+              final store = ref.read(taskStoreProvider.notifier);
+              final localDb = ref.read(localDataServiceProvider);
+              final auth = ref.read(authServiceProvider);
+
+              // Capture navigators before async gap
+              final dialogNav = Navigator.of(ctx);
+              final screenNav = Navigator.of(context);
+
               // Full cleanup before sign out
-              ref.read(syncServiceProvider).stopPeriodicSync();
-              ref.invalidate(audioServiceProvider);
-              // Clear in-memory state first to prevent flicker on re-login
-              ref.read(taskStoreProvider.notifier).clear();
-              ref.invalidate(categoriesProvider);
-              await ref.read(localDataServiceProvider).clearAll();
-              await ref.read(authServiceProvider).signOut();
-              // Invalidate providers to reset state
-              ref.invalidate(syncServiceProvider);
-              ref.invalidate(taskStoreProvider);
-              ref.invalidate(categoriesProvider);
-              ref.invalidate(taskFilterProvider);
+              sync.stopPeriodicSync();
+              store.clear();
+              await localDb.clearAll();
+
+              dialogNav.pop();
+              screenNav.pop(); // Close profile screen
+
+              await auth.signOut();
             },
             child: Text(
               'Sign out',
