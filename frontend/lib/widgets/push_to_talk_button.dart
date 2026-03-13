@@ -5,7 +5,9 @@ import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
 import '../providers/recording_provider.dart';
+import '../screens/home_screen.dart' show tutorialTriggerProvider;
 import '../services/haptic_service.dart';
+import '../services/onboarding_service.dart';
 import '../screens/ramble_screen.dart';
 import 'add_task_sheet.dart';
 import 'styled_snackbar.dart';
@@ -125,6 +127,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
         message: 'Task added',
         style: SnackbarStyle.success,
       );
+      _maybeActivateTutorial();
     }
   }
 
@@ -140,6 +143,15 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
         message: result.message,
         style: result.success ? SnackbarStyle.success : SnackbarStyle.error,
       );
+      if (result.success) _maybeActivateTutorial();
+    }
+  }
+
+  Future<void> _maybeActivateTutorial() async {
+    final alreadyCreated = await OnboardingService.hasCreatedFirstTask();
+    if (!alreadyCreated) {
+      await OnboardingService.markFirstTaskCreated();
+      ref.read(tutorialTriggerProvider.notifier).state++;
     }
   }
 }

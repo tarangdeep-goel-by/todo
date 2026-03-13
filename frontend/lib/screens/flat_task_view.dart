@@ -421,8 +421,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                   }
 
                   final task = displayTasks[index];
-                  final isDemoTask =
-                      task.id == OnboardingService.demoTaskId;
+                  final isTutorialTarget = isTutorial && index == 0;
 
                   final domain = DomainColors.getDomain(task.category, true, paletteMap);
                   final taskItem = FlatTaskRow(
@@ -431,11 +430,11 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                     domain: domain,
                     parentName: parentNames[task.id],
                     onTutorialStepComplete:
-                        isDemoTask ? (step) => _onTutorialStepComplete(step) : null,
+                        isTutorialTarget ? (step) => _onTutorialStepComplete(step) : null,
                   );
 
-                  // Wrap demo task with tutorial overlay
-                  if (isDemoTask && isTutorial) {
+                  // Wrap first task with tutorial overlay
+                  if (isTutorialTarget) {
                     return Stack(
                       children: [
                         taskItem,

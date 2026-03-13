@@ -1,6 +1,4 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/task.dart';
-import '../models/category.dart';
 
 /// Tracks first-use onboarding milestones via SharedPreferences.
 class OnboardingService {
@@ -18,10 +16,6 @@ class OnboardingService {
   // 2 = show "swipe left to delete"
   // 3 = tutorial done
   static const flatViewNudgeKey = 'onboarding_flat_view_nudge_seen';
-
-  // Demo task/category IDs
-  static const demoTaskId = 'onboarding-demo-task';
-  static const demoCategoryName = 'user';
 
   static Future<bool> hasSeenWelcome() async {
     final prefs = await SharedPreferences.getInstance();
@@ -53,22 +47,13 @@ class OnboardingService {
     await prefs.setInt(swipeTutorialStepKey, step);
   }
 
-  static Task createDemoTask() => Task(
-        id: demoTaskId,
-        userId: 'default-user',
-        title: 'hello world',
-        category: demoCategoryName,
-        status: 'active',
-        priority: 'high',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        transcription: '',
-      );
+  static Future<bool> hasCreatedFirstTask() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(firstTaskCreatedKey) ?? false;
+  }
 
-  static Category createDemoCategory() => Category(
-        id: 'onboarding-demo-category',
-        name: demoCategoryName,
-        position: 0,
-        createdAt: DateTime.now(),
-      );
+  static Future<void> markFirstTaskCreated() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(firstTaskCreatedKey, true);
+  }
 }
