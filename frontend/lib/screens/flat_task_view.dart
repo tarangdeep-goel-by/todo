@@ -9,6 +9,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_filter_provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/flat_task_row.dart';
@@ -33,6 +34,7 @@ class FlatTaskView extends ConsumerStatefulWidget {
 }
 
 class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
+  final _log = AppLogger.instance;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   int _displayCount = 50;
@@ -55,12 +57,19 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
   Future<void> _loadTutorialStep() async {
     final step = await OnboardingService.getSwipeTutorialStep();
+    _log.debug('flat.loadTutorialStep', logger: 'FlatTaskView', data: {
+      'step': step, 'tutorialActive': widget.tutorialActive,
+    });
     if (mounted) {
       setState(() => _swipeTutorialStep = step);
     }
   }
 
   void _onTutorialStepComplete(int nextStep) async {
+    _log.debug('flat.tutorialStepComplete', logger: 'FlatTaskView', data: {
+      'currentStep': _swipeTutorialStep, 'nextStep': nextStep,
+      'sequential': nextStep == _swipeTutorialStep + 1,
+    });
     // Only advance sequentially — prevents regression from wrong swipe direction
     if (nextStep != _swipeTutorialStep + 1) return;
     await OnboardingService.setSwipeTutorialStep(nextStep);
@@ -68,6 +77,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       setState(() => _swipeTutorialStep = nextStep);
     }
     if (nextStep >= 3) {
+      _log.debug('flat.tutorialDone', logger: 'FlatTaskView');
       widget.onTutorialComplete?.call();
     }
   }
@@ -265,6 +275,12 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         : filteredTasks.take(_displayCount).toList();
     final hasMore = !isSearching && _displayCount < filteredTasks.length;
     final isTutorial = widget.tutorialActive && _swipeTutorialStep < 3;
+
+    _log.debug('flat.build', logger: 'FlatTaskView', data: {
+      'taskCount': allFiltered.length, 'displayCount': displayTasks.length,
+      'tutorialActive': widget.tutorialActive, 'swipeStep': _swipeTutorialStep,
+      'isTutorial': isTutorial,
+    });
 
     return Column(
       children: [

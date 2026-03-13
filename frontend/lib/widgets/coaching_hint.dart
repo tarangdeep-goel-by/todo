@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/constants.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
+import '../services/app_logger.dart';
 
 /// Floating hint above CTA that cycles through example voice commands.
 /// Shows when user has no tasks to guide first interactions.
@@ -28,6 +29,9 @@ class _CoachingHintState extends State<CoachingHint> {
   @override
   void initState() {
     super.initState();
+    AppLogger.instance.debug('coaching.visible', logger: 'CoachingHint', data: {
+      'hintCount': _hints.length,
+    });
     _timer = Timer.periodic(AppAnimations.coachingCycle, (_) {
       if (mounted) {
         setState(() => _currentIndex = (_currentIndex + 1) % _hints.length);
