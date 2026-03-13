@@ -9,6 +9,7 @@ import '../providers/connectivity_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
+import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../services/notification_service.dart';
 import '../services/version_service.dart';
@@ -26,6 +27,9 @@ import 'parent_node_view.dart';
 import 'flat_task_view.dart';
 import '../widgets/calendar_task_view.dart';
 
+/// Bumped by PushToTalkButton after first task creation to trigger tutorial.
+final tutorialTriggerProvider = StateProvider<int>((ref) => 0);
+
 /// Main home screen with view switching
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -35,9 +39,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _log = AppLogger.instance;
   bool _tutorialActive = false;
   bool _flatViewNudgeSeen = false;
-  bool _demoInjected = false;
 
   @override
   void initState() {
@@ -52,14 +56,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         // User-switch guard: clear local DB if a different user logged in
         final lastUid = await localDb.getMeta('last_user_id');
+        _log.debug('init.user_guard', logger: 'HomeScreen', data: {
+          'lastUid': lastUid, 'currentUid': currentUid,
+          'switched': lastUid != null && lastUid != currentUid,
+        });
         if (lastUid != null && lastUid != currentUid) {
           await localDb.clearAll();
         }
         await localDb.setMeta('last_user_id', currentUid);
 
+        _log.debug('init.loadLocal', logger: 'HomeScreen');
         await store.loadLocal(); // Instant: cached data → UI
+        _log.debug('init.sync_start', logger: 'HomeScreen');
         final syncService = ref.read(syncServiceProvider);
-        syncService.sync(); // Background: push pending + pull fresh (fire-and-forget)
+        syncService.sync(); // Background: push pending + pull fresh
+        _log.debug('init.sync_fired', logger: 'HomeScreen');
         syncService.startPeriodicSync();
         // Initialize connectivity provider
         ref.read(isOnlineProvider);
@@ -73,7 +84,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Test mode: fetch directly from API, skip offline infra
         await store.fetchAll();
       }
-      _checkWelcome();
+      _checkTutorial();
       // Process any deep link that arrived before UI was ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
         processPendingDeepLink();
@@ -99,66 +110,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  Future<void> _checkWelcome() async {
-    final seen = await OnboardingService.hasSeenWelcome();
-    if (!seen) {
-      await OnboardingService.markWelcomeSeen();
-    }
-    await _checkTutorial();
-  }
-
+  /// Check if swipe tutorial should be active.
+  /// Activates when user has created their first task and hasn't finished tutorial.
   Future<void> _checkTutorial() async {
     final step = await OnboardingService.getSwipeTutorialStep();
+    final firstTaskCreated = await OnboardingService.hasCreatedFirstTask();
     final nudgeSeen =
         await OnboardingService.hasSeenHint(OnboardingService.flatViewNudgeKey);
-    if (step < 3 && mounted) {
+    _log.debug('onboard.tutorial_check', logger: 'HomeScreen', data: {
+      'step': step, 'firstTaskCreated': firstTaskCreated,
+      'nudgeSeen': nudgeSeen, 'mounted': mounted,
+    });
+    if (step < 3 && firstTaskCreated && mounted) {
       setState(() {
         _tutorialActive = true;
         _flatViewNudgeSeen = nudgeSeen;
       });
-      _injectDemoTask();
-    }
-  }
-
-  void _injectDemoTask() {
-    if (_demoInjected) return;
-    final store = ref.read(taskStoreProvider.notifier);
-    final allTasks = ref.read(allTasksProvider);
-
-    // Only inject if no real tasks exist
-    if (allTasks.isEmpty ||
-        (allTasks.length == 1 &&
-            allTasks.first.id == OnboardingService.demoTaskId)) {
-      store.upsertTask(OnboardingService.createDemoTask());
-
-      // Inject demo category if not present
-      final cats = ref.read(categoriesProvider);
-      final hasDemo = cats.any(
-          (c) => c.name.toLowerCase() == OnboardingService.demoCategoryName);
-      if (!hasDemo) {
-        ref.read(categoriesProvider.notifier).update(
-            (s) => [...s, OnboardingService.createDemoCategory()]);
-      }
-      _demoInjected = true;
     }
   }
 
   void _onTutorialComplete() {
+    _log.debug('onboard.tutorial_complete', logger: 'HomeScreen');
     if (mounted) {
       setState(() => _tutorialActive = false);
-      // Clean up demo category
-      ref.read(categoriesProvider.notifier).update(
-        (s) => s
-            .where((c) =>
-                c.name.toLowerCase() != OnboardingService.demoCategoryName ||
-                c.id != 'onboarding-demo-category')
-            .toList(),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen for first task creation to activate tutorial
+    ref.listen<int>(tutorialTriggerProvider, (prev, next) => _checkTutorial());
+
     final viewMode = ref.watch(viewModeProvider);
     final taskCount = ref.watch(allTasksProvider).length;
 
@@ -221,8 +203,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Filter button (only in flat view)
             if (viewMode == ViewMode.flat) const FilterButton(),
 
-            // Coaching hint — rotating examples when few tasks exist
-            // Hide during tutorial to avoid visual clutter
+            // Coaching hint — rotating examples when no tasks exist
             if (taskCount == 0 && !_tutorialActive)
               Positioned(
                 left: 0,

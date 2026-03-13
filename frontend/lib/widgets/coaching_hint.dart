@@ -15,11 +15,11 @@ class CoachingHint extends StatefulWidget {
 
 class _CoachingHintState extends State<CoachingHint> {
   static const _hints = [
-    'Add buy groceries to home',
-    'Schedule standup for tomorrow',
-    "What's overdue?",
-    'Complete the meeting prep',
-    'Create a health domain',
+    'Hold the pill and say "buy groceries"',
+    'Try "schedule standup for tomorrow"',
+    'Say "remind me to call mom"',
+    'Or tap the pill to type',
+    'Try "add workout to health"',
   ];
 
   int _currentIndex = 0;

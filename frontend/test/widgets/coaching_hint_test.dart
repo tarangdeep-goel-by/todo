@@ -8,7 +8,7 @@ void main() {
     testWidgets('shows initial hint text', (tester) async {
       await tester.pumpWidget(buildTestApp(const CoachingHint()));
 
-      expect(find.textContaining('Add buy groceries to home'), findsOneWidget);
+      expect(find.textContaining('Hold the pill and say'), findsOneWidget);
     });
 
     testWidgets('hint text changes after 4 seconds', (tester) async {
@@ -19,7 +19,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Second hint should now be visible
-      expect(find.textContaining('Schedule standup for tomorrow'), findsOneWidget);
+      expect(find.textContaining('schedule standup for tomorrow'), findsOneWidget);
     });
 
     testWidgets('widget uses AnimatedSwitcher', (tester) async {

@@ -8,7 +8,6 @@ import '../providers/api_provider.dart';
 import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/haptic_service.dart';
-import '../services/onboarding_service.dart';
 import '../services/tracker/tracker.dart';
 import '../utils/string_extensions.dart';
 import 'task_detail_overlay.dart';
@@ -41,34 +40,14 @@ class FlatTaskRow extends ConsumerStatefulWidget {
 }
 
 class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
-  bool get _isDemoTask => widget.task.id == OnboardingService.demoTaskId;
-
   // ── Actions ──────────────────────────────────────────────────────────
 
   Future<void> _toggleTask(BuildContext context) async {
     final task = widget.task;
     final newStatus = task.isCompleted ? 'active' : 'completed';
-    final store = ref.read(taskStoreProvider.notifier);
     final domain = widget.domain;
 
     HapticService.light();
-
-    // Demo task: just update locally, no API call
-    if (_isDemoTask) {
-      final optimistic = task.copyWith(
-        status: newStatus,
-        completedAt: newStatus == 'completed' ? DateTime.now() : null,
-      );
-      store.upsertTask(optimistic);
-      if (context.mounted) {
-        final message = newStatus == 'completed'
-            ? 'Completed: ${task.sentenceTitle}'
-            : 'Restored: ${task.sentenceTitle}';
-        showStyledSnackbar(context,
-            message: message, style: SnackbarStyle.success);
-      }
-      return;
-    }
 
     if (newStatus == 'completed') {
       Tracker.instance
@@ -122,17 +101,6 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
     final domain = widget.domain;
 
     HapticService.medium();
-
-    // Demo task: just remove locally, no API call
-    if (_isDemoTask) {
-      store.removeTask(task.id);
-      if (context.mounted) {
-        showStyledSnackbar(context,
-            message: 'Deleted: ${task.sentenceTitle}',
-            style: SnackbarStyle.success);
-      }
-      return true;
-    }
 
     // Offline-first: remove from store + enqueue delete for sync
     final mutation = ref.read(taskMutationServiceProvider);
