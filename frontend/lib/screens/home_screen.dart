@@ -115,13 +115,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _checkTutorial() async {
     final step = await OnboardingService.getSwipeTutorialStep();
     final firstTaskCreated = await OnboardingService.hasCreatedFirstTask();
+    final hasTasks = ref.read(allTasksProvider).isNotEmpty;
     final nudgeSeen =
         await OnboardingService.hasSeenHint(OnboardingService.flatViewNudgeKey);
     _log.debug('onboard.tutorial_check', logger: 'HomeScreen', data: {
       'step': step, 'firstTaskCreated': firstTaskCreated,
-      'nudgeSeen': nudgeSeen, 'mounted': mounted,
+      'hasTasks': hasTasks, 'nudgeSeen': nudgeSeen, 'mounted': mounted,
     });
-    if (step < 3 && firstTaskCreated && mounted) {
+    // Activate if user has tasks (flag or store) and tutorial isn't done
+    if (step < 3 && (firstTaskCreated || hasTasks) && mounted) {
+      // Backfill flag if missing (e.g. app data cleared but tasks exist)
+      if (!firstTaskCreated && hasTasks) {
+        await OnboardingService.markFirstTaskCreated();
+      }
       setState(() {
         _tutorialActive = true;
         _flatViewNudgeSeen = nudgeSeen;
