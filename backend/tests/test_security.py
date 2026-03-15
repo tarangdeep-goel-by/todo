@@ -48,9 +48,9 @@ class TestAuditLogging:
         })
         task_id = create_resp.json()["id"]
 
-        # Delete it with audit logger captured
+        # Archive it with audit logger captured
         with caplog.at_level(logging.INFO, logger="audit"):
-            resp = await test_client.delete(f"/tasks/{task_id}")
+            resp = await test_client.put(f"/tasks/{task_id}/archive")
             assert resp.status_code == 200
 
         # Find the audit log entry

@@ -182,10 +182,23 @@ class SyncService {
         continue;
       }
 
-      // Any sequence ending with delete → keep only the delete
-      if (actions.last == 'delete') {
+      // create + archive → remove both + delete local row (never synced)
+      if (actions.first == 'create' && actions.last == 'archive') {
+        _logger.debug('compact.create_archive', logger: 'SyncService', data: {
+          'entity': group.first.entityId, 'removed': group.length,
+        });
+        removedCount += group.length;
+        for (final e in group) {
+          await _localDb.ackMutation(e.id);
+        }
+        await _localDb.deleteTask(group.first.entityId);
+        continue;
+      }
+
+      // Any sequence ending with delete or archive → keep only the last action
+      if (actions.last == 'delete' || actions.last == 'archive') {
         final removed = group.length - 1;
-        _logger.debug('compact.keep_delete', logger: 'SyncService', data: {
+        _logger.debug('compact.keep_last', logger: 'SyncService', data: {
           'entity': group.first.entityId, 'removed': removed,
         });
         removedCount += removed;
@@ -332,6 +345,24 @@ class SyncService {
             }
             break;
 
+          case 'archive':
+            final archivedTasks = await _api.archiveTask(entry.entityId);
+            await _localDb.ackMutation(entry.id);
+            for (final t in archivedTasks) {
+              if (!await _localDb.hasPendingMutationsForEntity(t.id)) {
+                await _localDb.upsertTask(t, pendingSync: false);
+              }
+            }
+            break;
+
+          case 'restore':
+            final serverTask = await _api.restoreTask(entry.entityId);
+            await _localDb.ackMutation(entry.id);
+            if (!await _localDb.hasPendingMutationsForEntity(entry.entityId)) {
+              await _localDb.upsertTask(serverTask, pendingSync: false);
+            }
+            break;
+
           case 'delete':
             await _api.deleteTask(entry.entityId);
             await _localDb.markPendingSync(entry.entityId, false);
@@ -462,6 +493,18 @@ class SyncService {
       offset += limit;
     }
 
+    // Also fetch archived tasks
+    int archivedOffset = 0;
+    while (true) {
+      final archivedTasks = await _api.getArchivedTasks(
+        limit: limit,
+        offset: archivedOffset,
+      );
+      allServerTasks.addAll(archivedTasks);
+      if (archivedTasks.length < limit) break;
+      archivedOffset += limit;
+    }
+
     // Fetch categories
     final categories = await _api.getCategories();
 
@@ -512,12 +555,8 @@ class SyncService {
       final isPending = await _localDb.isTaskPendingSync(serverTask.id);
       if (isPending) continue; // Local has unpushed changes — skip
 
-      if (serverTask.archivedAt != null) {
-        // Archived on server — remove from local
-        await _localDb.deleteTask(serverTask.id);
-      } else {
-        await _localDb.upsertTask(serverTask, pendingSync: false);
-      }
+      // Upsert all tasks (including archived) — store filters them by status
+      await _localDb.upsertTask(serverTask, pendingSync: false);
     }
 
     await _localDb.replaceCategories(categories);

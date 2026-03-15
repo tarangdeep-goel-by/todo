@@ -214,7 +214,20 @@ class ApiService {
     }
   }
 
-  /// Delete task
+  /// Archive task and all descendants
+  Future<List<Task>> archiveTask(String taskId) async {
+    try {
+      final response = await _dio.put('/tasks/$taskId/archive');
+      final tasks = (response.data['tasks'] as List)
+          .map((json) => Task.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return tasks;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Permanently delete task and all descendants (hard delete)
   Future<void> deleteTask(String taskId) async {
     try {
       await _dio.delete('/tasks/$taskId');
@@ -277,15 +290,6 @@ class ApiService {
     try {
       final response = await _dio.put('/tasks/$taskId/restore');
       return Task.fromJson(response.data);
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  /// Permanently delete an archived task
-  Future<void> permanentDeleteTask(String taskId) async {
-    try {
-      await _dio.delete('/tasks/$taskId/permanent');
     } on DioException catch (e) {
       throw _handleError(e);
     }

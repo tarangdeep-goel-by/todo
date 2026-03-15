@@ -201,6 +201,70 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
     state = state.copyWith(tasks: tasks);
   }
 
+  /// Optimistically archive a task and all its descendants (BFS).
+  void archiveWithDescendants(String taskId) {
+    final tasks = Map<String, Task>.from(state.tasks);
+    final now = DateTime.now();
+    final toProcess = [taskId];
+    final visited = <String>{};
+
+    while (toProcess.isNotEmpty) {
+      final currentId = toProcess.removeAt(0);
+      if (visited.contains(currentId)) continue;
+      visited.add(currentId);
+
+      final task = tasks[currentId];
+      if (task != null && task.status != 'archived') {
+        tasks[currentId] = task.copyWith(status: 'archived', archivedAt: now);
+      }
+      // Find children of currentId
+      for (final t in tasks.values) {
+        if (t.parentId == currentId && !visited.contains(t.id)) {
+          toProcess.add(t.id);
+        }
+      }
+    }
+
+    state = state.copyWith(tasks: tasks);
+  }
+
+  /// Optimistically restore an archived task and its descendants + ancestors.
+  void restoreWithDescendants(String taskId) {
+    final tasks = Map<String, Task>.from(state.tasks);
+
+    // Restore descendants (BFS)
+    final toProcess = [taskId];
+    final visited = <String>{};
+    while (toProcess.isNotEmpty) {
+      final currentId = toProcess.removeAt(0);
+      if (visited.contains(currentId)) continue;
+      visited.add(currentId);
+
+      final task = tasks[currentId];
+      if (task != null && task.isArchived) {
+        tasks[currentId] = task.copyWith(status: 'active', archivedAt: null);
+      }
+      for (final t in tasks.values) {
+        if (t.parentId == currentId && !visited.contains(t.id)) {
+          toProcess.add(t.id);
+        }
+      }
+    }
+
+    // Restore archived ancestors
+    String? currentId = tasks[taskId]?.parentId;
+    while (currentId != null) {
+      final ancestor = tasks[currentId];
+      if (ancestor == null) break;
+      if (ancestor.isArchived) {
+        tasks[currentId] = ancestor.copyWith(status: 'active', archivedAt: null);
+      }
+      currentId = ancestor.parentId;
+    }
+
+    state = state.copyWith(tasks: tasks);
+  }
+
   /// Activate entire ancestor chain (set completed ancestors to active).
   void activateAncestorChain(String taskId) {
     final tasks = Map<String, Task>.from(state.tasks);
@@ -228,9 +292,27 @@ final taskStoreProvider =
 
 // --- Derived providers ---
 
-/// All tasks as a list (for node view).
+/// All tasks as a list (for node view), excluding archived.
 final allTasksProvider = Provider<List<Task>>((ref) {
-  return ref.watch(taskStoreProvider).tasks.values.toList();
+  return ref.watch(taskStoreProvider).tasks.values
+      .where((t) => !t.isArchived)
+      .toList();
+});
+
+/// Archived tasks sorted by archivedAt descending (for archive screen).
+final archivedTasksProvider = Provider<List<Task>>((ref) {
+  final tasks = ref.watch(taskStoreProvider).tasks.values
+      .where((t) => t.isArchived)
+      .toList();
+  tasks.sort((a, b) {
+    final aAt = a.archivedAt;
+    final bAt = b.archivedAt;
+    if (aAt == null && bAt == null) return 0;
+    if (aAt == null) return 1;
+    if (bAt == null) return -1;
+    return bAt.compareTo(aAt); // desc
+  });
+  return tasks;
 });
 
 /// Backend-sourced categories (persisted independently of tasks).

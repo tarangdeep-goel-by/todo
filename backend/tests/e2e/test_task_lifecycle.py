@@ -56,7 +56,7 @@ class TestTaskLifecycle:
         assert completed["completed_at"] is not None
 
         # Step 6: Archive task
-        archive_resp = await e2e.delete(f"/tasks/{task_id}", "Archive task")
+        archive_resp = await e2e.put(f"/tasks/{task_id}/archive", "Archive task")
         assert archive_resp["success"] is True
         assert archive_resp["archived_count"] == 1
 
@@ -78,7 +78,7 @@ class TestTaskLifecycle:
 
         # Step 10: Permanent delete
         perm_resp = await e2e.delete(
-            f"/tasks/{task_id}/permanent", "Permanent delete"
+            f"/tasks/{task_id}", "Permanent delete"
         )
         assert perm_resp["success"] is True
         assert perm_resp["deleted_count"] == 1

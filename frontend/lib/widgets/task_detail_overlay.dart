@@ -598,12 +598,22 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           ),
         ),
         PopupMenuItem(
-          value: 'archive',
+          value: task.isArchived ? 'restore' : 'archive',
           child: Row(
             children: [
-              Icon(Icons.archive_outlined, size: 18, color: AppColors.deleteAction),
+              Icon(
+                task.isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
+                size: 18,
+                color: task.isArchived ? AppColors.completed : AppColors.deleteAction,
+              ),
               const SizedBox(width: 8),
-              Text('Archive', style: TextStyle(color: AppColors.deleteAction, fontSize: 14)),
+              Text(
+                task.isArchived ? 'Restore' : 'Archive',
+                style: TextStyle(
+                  color: task.isArchived ? AppColors.completed : AppColors.deleteAction,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ),
@@ -623,6 +633,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
         _openMoveSheet(task);
       } else if (value == 'archive') {
         _archiveFromMenu(task, domain);
+      } else if (value == 'restore') {
+        _restoreFromMenu(task);
       } else if (value == 'delete') {
         _deleteFromMenu(context, task);
       }
@@ -668,11 +680,24 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   Future<void> _archiveFromMenu(Task task, DomainPalette domain) async {
     HapticService.medium();
     final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.deleteTask(task);
+    await mutation.archiveTask(task);
     if (mounted) {
       Navigator.of(context).pop(); // close overlay
       showStyledSnackbar(context,
         message: 'Archived: ${task.sentenceTitle}',
+        style: SnackbarStyle.success,
+      );
+    }
+  }
+
+  Future<void> _restoreFromMenu(Task task) async {
+    HapticService.light();
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.restoreTask(task);
+    if (mounted) {
+      Navigator.of(context).pop(); // close overlay
+      showStyledSnackbar(context,
+        message: 'Restored: ${task.sentenceTitle}',
         style: SnackbarStyle.success,
       );
     }

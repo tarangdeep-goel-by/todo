@@ -117,7 +117,7 @@ class TestArchivedTasks:
     async def test_archived_list(self, test_client):
         resp = await test_client.post("/tasks", json=_t("To archive"))
         task_id = resp.json()["id"]
-        await test_client.delete(f"/tasks/{task_id}")
+        await test_client.put(f"/tasks/{task_id}/archive")
 
         resp = await test_client.get("/tasks/archived")
         assert resp.status_code == 200
@@ -127,7 +127,7 @@ class TestArchivedTasks:
     async def test_archived_not_in_active_list(self, test_client):
         resp = await test_client.post("/tasks", json=_t("Will archive"))
         task_id = resp.json()["id"]
-        await test_client.delete(f"/tasks/{task_id}")
+        await test_client.put(f"/tasks/{task_id}/archive")
 
         resp = await test_client.get("/tasks")
         assert all(t["id"] != task_id for t in resp.json()["tasks"])
@@ -139,7 +139,7 @@ class TestArchivedTasks:
             resp = await test_client.post("/tasks", json=_t(f"Archive {i}"))
             ids.append(resp.json()["id"])
         for tid in ids:
-            await test_client.delete(f"/tasks/{tid}")
+            await test_client.put(f"/tasks/{tid}/archive")
 
         resp = await test_client.get("/tasks/archived", params={"limit": 2, "offset": 0})
         data = resp.json()
@@ -194,7 +194,7 @@ class TestRestoreTask:
     async def test_restore_archived_task(self, test_client):
         resp = await test_client.post("/tasks", json=_t("Restore me"))
         task_id = resp.json()["id"]
-        await test_client.delete(f"/tasks/{task_id}")
+        await test_client.put(f"/tasks/{task_id}/archive")
 
         resp = await test_client.put(f"/tasks/{task_id}/restore")
         assert resp.status_code == 200
@@ -221,15 +221,55 @@ class TestRestoreTask:
         assert resp.status_code == 403
 
 
+class TestDeleteTaskArchive:
+    """PUT /tasks/{id}/archive — archive (soft delete)."""
+
+    @pytest.mark.asyncio
+    async def test_archive_task(self, test_client):
+        resp = await test_client.post("/tasks", json=_t("Archive me"))
+        task_id = resp.json()["id"]
+        resp = await test_client.put(f"/tasks/{task_id}/archive")
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+        assert resp.json()["archived_count"] >= 1
+        assert "tasks" in resp.json()
+
+    @pytest.mark.asyncio
+    async def test_archive_not_found(self, test_client):
+        resp = await test_client.put("/tasks/00000000-0000-0000-0000-000000000999/archive")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_archive_returns_tasks(self, test_client):
+        """Archive a parent with children, verify response has tasks array with all archived tasks."""
+        parent = await test_client.post("/tasks", json=_t("Parent"))
+        parent_id = parent.json()["id"]
+        child = await test_client.post("/tasks", json=_t("Child", parent_id=parent_id))
+        child_id = child.json()["id"]
+
+        resp = await test_client.put(f"/tasks/{parent_id}/archive")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        assert data["archived_count"] == 2
+        assert len(data["tasks"]) == 2
+        returned_ids = {t["id"] for t in data["tasks"]}
+        assert parent_id in returned_ids
+        assert child_id in returned_ids
+        # Verify all returned tasks have archived_at set
+        for t in data["tasks"]:
+            assert t["archived_at"] is not None
+
+
 class TestPermanentDelete:
-    """DELETE /tasks/{id}/permanent."""
+    """DELETE /tasks/{id} — permanent hard delete."""
 
     @pytest.mark.asyncio
     async def test_permanent_delete(self, test_client):
         resp = await test_client.post("/tasks", json=_t("Delete forever"))
         task_id = resp.json()["id"]
 
-        resp = await test_client.delete(f"/tasks/{task_id}/permanent")
+        resp = await test_client.delete(f"/tasks/{task_id}")
         assert resp.status_code == 200
         assert resp.json()["deleted_count"] >= 1
 
@@ -242,20 +282,20 @@ class TestPermanentDelete:
         parent_id = parent.json()["id"]
         await test_client.post("/tasks", json=_t("Child", parent_id=parent_id))
 
-        resp = await test_client.delete(f"/tasks/{parent_id}/permanent")
+        resp = await test_client.delete(f"/tasks/{parent_id}")
         assert resp.status_code == 200
         assert resp.json()["deleted_count"] == 2
 
     @pytest.mark.asyncio
     async def test_permanent_delete_not_found(self, test_client):
-        resp = await test_client.delete("/tasks/00000000-0000-0000-0000-000000000999/permanent")
+        resp = await test_client.delete("/tasks/00000000-0000-0000-0000-000000000999")
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
     async def test_permanent_delete_wrong_user(self, test_client, task_service):
         task = await task_service.create_task(
             user_id="other-user", title="Other's", category="career", transcription="other")
-        resp = await test_client.delete(f"/tasks/{task.id}/permanent")
+        resp = await test_client.delete(f"/tasks/{task.id}")
         assert resp.status_code == 403
 
 
@@ -314,6 +354,13 @@ class TestAuthChecks:
         task = await task_service.create_task(
             user_id="other-user", title="Other's", category="career", transcription="other")
         resp = await test_client.put(f"/tasks/{task.id}/complete")
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_archive_task_wrong_user(self, test_client, task_service):
+        task = await task_service.create_task(
+            user_id="other-user", title="Other's", category="career", transcription="other")
+        resp = await test_client.put(f"/tasks/{task.id}/archive")
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
@@ -459,24 +506,6 @@ class TestTaskStats:
         assert data["by_status"]["completed"] >= 1
 
 
-class TestDeleteTaskArchive:
-    """DELETE /tasks/{id} — archive (soft delete)."""
-
-    @pytest.mark.asyncio
-    async def test_archive_task(self, test_client):
-        resp = await test_client.post("/tasks", json=_t("Archive me"))
-        task_id = resp.json()["id"]
-        resp = await test_client.delete(f"/tasks/{task_id}")
-        assert resp.status_code == 200
-        assert resp.json()["success"] is True
-        assert resp.json()["archived_count"] >= 1
-
-    @pytest.mark.asyncio
-    async def test_archive_not_found(self, test_client):
-        resp = await test_client.delete("/tasks/00000000-0000-0000-0000-000000000999")
-        assert resp.status_code == 404
-
-
 class TestUUIDValidation:
     """Invalid UUIDs should return 422, not 500."""
 
@@ -506,8 +535,8 @@ class TestUUIDValidation:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_permanent_delete_invalid_uuid(self, test_client):
-        resp = await test_client.delete("/tasks/not-a-uuid/permanent")
+    async def test_archive_task_invalid_uuid(self, test_client):
+        resp = await test_client.put("/tasks/not-a-uuid/archive")
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
