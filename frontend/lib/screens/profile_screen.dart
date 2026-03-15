@@ -13,6 +13,7 @@ import '../providers/task_store_provider.dart';
 import '../providers/tutorial_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
+import '../widgets/styled_snackbar.dart';
 import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
 import 'archive_screen.dart';
@@ -193,15 +194,23 @@ class ProfileScreen extends ConsumerWidget {
               final dialogNav = Navigator.of(ctx);
               final screenNav = Navigator.of(context);
 
-              // Full cleanup before sign out
-              sync.stopPeriodicSync();
-              store.clear();
-              await localDb.clearAll();
-
-              dialogNav.pop();
-              screenNav.pop(); // Close profile screen
-
-              await auth.signOut();
+              try {
+                await auth.signOut();
+                sync.stopPeriodicSync();
+                store.clear();
+                await localDb.clearAll();
+                dialogNav.pop();
+                screenNav.pop(); // Close profile screen
+              } catch (_) {
+                dialogNav.pop();
+                if (context.mounted) {
+                  showStyledSnackbar(
+                    context,
+                    message: 'Couldn\'t sign out. Please try again.',
+                    style: SnackbarStyle.error,
+                  );
+                }
+              }
             },
             child: Text(
               'Sign out',
