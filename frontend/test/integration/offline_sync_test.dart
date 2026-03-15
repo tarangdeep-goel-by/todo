@@ -14,6 +14,10 @@ class MockApiService extends Mock implements ApiService {}
 class FakeConnectivityService extends Fake implements ConnectivityService {
   @override
   bool get isOnline => true;
+  @override
+  void reportSuccess() {}
+  @override
+  void reportFailure() {}
 }
 
 class FakeCreateTaskRequest extends Fake implements CreateTaskRequest {}
