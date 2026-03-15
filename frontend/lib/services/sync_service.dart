@@ -348,8 +348,8 @@ class SyncService {
           case 'archive':
             final archivedTasks = await _api.archiveTask(entry.entityId);
             await _localDb.ackMutation(entry.id);
-            if (!await _localDb.hasPendingMutationsForEntity(entry.entityId)) {
-              for (final t in archivedTasks) {
+            for (final t in archivedTasks) {
+              if (!await _localDb.hasPendingMutationsForEntity(t.id)) {
                 await _localDb.upsertTask(t, pendingSync: false);
               }
             }
