@@ -9,6 +9,7 @@ import '../providers/connectivity_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
+import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../services/notification_service.dart';
 import '../services/version_service.dart';
@@ -22,6 +23,7 @@ import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
 import '../widgets/flat_view_nudge.dart';
+import '../providers/tutorial_provider.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
 import '../widgets/calendar_task_view.dart';
@@ -35,9 +37,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _log = AppLogger.instance;
   bool _tutorialActive = false;
-  bool _flatViewNudgeSeen = false;
-  bool _demoInjected = false;
 
   @override
   void initState() {
@@ -52,14 +53,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         // User-switch guard: clear local DB if a different user logged in
         final lastUid = await localDb.getMeta('last_user_id');
+        _log.debug('init.user_guard', logger: 'HomeScreen', data: {
+          'lastUid': lastUid, 'currentUid': currentUid,
+          'switched': lastUid != null && lastUid != currentUid,
+        });
         if (lastUid != null && lastUid != currentUid) {
           await localDb.clearAll();
         }
         await localDb.setMeta('last_user_id', currentUid);
 
+        _log.debug('init.loadLocal', logger: 'HomeScreen');
         await store.loadLocal(); // Instant: cached data → UI
+        _log.debug('init.sync_start', logger: 'HomeScreen');
         final syncService = ref.read(syncServiceProvider);
-        syncService.sync(); // Background: push pending + pull fresh (fire-and-forget)
+        syncService.sync(); // Background: push pending + pull fresh
+        _log.debug('init.sync_fired', logger: 'HomeScreen');
         syncService.startPeriodicSync();
         // Initialize connectivity provider
         ref.read(isOnlineProvider);
@@ -73,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Test mode: fetch directly from API, skip offline infra
         await store.fetchAll();
       }
-      _checkWelcome();
+      _initTutorial();
       // Process any deep link that arrived before UI was ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
         processPendingDeepLink();
@@ -99,81 +107,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  Future<void> _checkWelcome() async {
-    final seen = await OnboardingService.hasSeenWelcome();
-    if (!seen) {
-      await OnboardingService.markWelcomeSeen();
-    }
-    await _checkTutorial();
-  }
-
-  Future<void> _checkTutorial() async {
+  /// Load tutorial state from SharedPreferences into the provider.
+  Future<void> _initTutorial() async {
     final step = await OnboardingService.getSwipeTutorialStep();
-    final nudgeSeen =
-        await OnboardingService.hasSeenHint(OnboardingService.flatViewNudgeKey);
-    if (step < 3 && mounted) {
-      setState(() {
-        _tutorialActive = true;
-        _flatViewNudgeSeen = nudgeSeen;
-      });
-      _injectDemoTask();
+    final firstTaskCreated = await OnboardingService.hasCreatedFirstTask();
+    _log.debug('onboard.init_tutorial', logger: 'HomeScreen', data: {
+      'step': step, 'firstTaskCreated': firstTaskCreated,
+    });
+    if (!mounted) return;
+    if (firstTaskCreated && step < OnboardingService.tutorialDoneStep) {
+      // Resume tutorial from persisted step
+      ref.read(tutorialStepProvider.notifier).state = step;
+      setState(() => _tutorialActive = true);
+    } else if (!firstTaskCreated) {
+      // New user — step -1 (show "add task" nudge)
+      ref.read(tutorialStepProvider.notifier).state = -1;
     }
   }
 
-  void _injectDemoTask() {
-    if (_demoInjected) return;
-    final store = ref.read(taskStoreProvider.notifier);
-    final allTasks = ref.read(allTasksProvider);
-
-    // Only inject if no real tasks exist
-    if (allTasks.isEmpty ||
-        (allTasks.length == 1 &&
-            allTasks.first.id == OnboardingService.demoTaskId)) {
-      store.upsertTask(OnboardingService.createDemoTask());
-
-      // Inject demo category if not present
-      final cats = ref.read(categoriesProvider);
-      final hasDemo = cats.any(
-          (c) => c.name.toLowerCase() == OnboardingService.demoCategoryName);
-      if (!hasDemo) {
-        ref.read(categoriesProvider.notifier).update(
-            (s) => [...s, OnboardingService.createDemoCategory()]);
-      }
-      _demoInjected = true;
-    }
-  }
-
-  void _onTutorialComplete() {
-    if (mounted) {
-      setState(() => _tutorialActive = false);
-      // Clean up demo category
-      ref.read(categoriesProvider.notifier).update(
-        (s) => s
-            .where((c) =>
-                c.name.toLowerCase() != OnboardingService.demoCategoryName ||
-                c.id != 'onboarding-demo-category')
-            .toList(),
-      );
-    }
+  /// Called when flat view swipe steps (0-1) are done → step 2+ on other screens.
+  void _onFlatTutorialComplete() {
+    _log.debug('onboard.flat_tutorial_done', logger: 'HomeScreen');
+    // Tutorial continues on profile/archive — _tutorialActive stays true
   }
 
   @override
   Widget build(BuildContext context) {
+    final tutorialStep = ref.watch(tutorialStepProvider);
     final viewMode = ref.watch(viewModeProvider);
     final taskCount = ref.watch(allTasksProvider).length;
 
-    // Mark flat view nudge seen when user switches to flat
-    if (_tutorialActive && !_flatViewNudgeSeen && viewMode == ViewMode.flat) {
-      _flatViewNudgeSeen = true;
-      OnboardingService.markHintSeen(OnboardingService.flatViewNudgeKey);
-    }
+    // Activate tutorial when first task is created (step advances from -1 to 0)
+    ref.listen<int>(tutorialStepProvider, (prev, next) {
+      if (prev == -1 && next == 0 && mounted) {
+        setState(() => _tutorialActive = true);
+      }
+      // Tutorial done
+      if (next >= OnboardingService.tutorialDoneStep && mounted) {
+        setState(() => _tutorialActive = false);
+      }
+    });
+
+    // Non-blocking: dismiss tutorial if user changes view during flat view steps (0-2)
+    ref.listen<ViewMode>(viewModeProvider, (prev, next) {
+      if (_tutorialActive && tutorialStep >= 0 && tutorialStep < 3 && next != ViewMode.flat) {
+        _log.debug('onboard.dismiss_view_change', logger: 'HomeScreen', data: {
+          'from': prev?.name, 'to': next.name, 'step': tutorialStep,
+        });
+        ref.read(tutorialStepProvider.notifier).state = OnboardingService.tutorialDoneStep;
+        OnboardingService.setSwipeTutorialStep(OnboardingService.tutorialDoneStep);
+        setState(() => _tutorialActive = false);
+      }
+    });
 
     const navTotalHeight =
         AppSpacing.bottomNavHeight + AppSpacing.bottomNavMarginBottom;
 
-    // Show nudge: tutorial active, on node view, nudge not yet seen
-    final showFlatNudge =
-        _tutorialActive && !_flatViewNudgeSeen && viewMode == ViewMode.node;
+    // Show profile nudge: tutorial step 3 = "go to archive"
+    final showProfileNudge = _tutorialActive && tutorialStep == 3;
+
+    _log.debug('home.build', logger: 'HomeScreen', data: {
+      'viewMode': viewMode.name, 'taskCount': taskCount,
+      'tutorialActive': _tutorialActive, 'tutorialStep': tutorialStep,
+      'showProfileNudge': showProfileNudge,
+      'showCoaching': taskCount == 0 && tutorialStep < 0,
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -190,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ViewMode.node => const ParentNodeView(),
                     ViewMode.flat => FlatTaskView(
                         tutorialActive: _tutorialActive,
-                        onTutorialComplete: _onTutorialComplete,
+                        onTutorialComplete: _onFlatTutorialComplete,
                       ),
                     ViewMode.calendar => const CalendarTaskView(),
                   },
@@ -206,24 +204,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: BottomNavBar(),
             ),
 
-            // Flat view nudge — bouncing arrow above "Flat" nav item
-            if (showFlatNudge)
+            // Profile nudge — bouncing arrow above "Profile" nav item (step 2)
+            if (showProfileNudge)
               Positioned(
-                // Approximate position above the "Flat" nav item (second item)
-                left: MediaQuery.of(context).size.width * 0.2,
+                // Profile is the 5th item (rightmost), approximate position
+                right: MediaQuery.of(context).size.width * 0.02,
                 width: MediaQuery.of(context).size.width * 0.2,
                 bottom: navTotalHeight + 4,
                 child: FlatViewNudge(
                   domainColor: DomainColors.palettes.first.primary,
+                  label: 'Go to Archive',
                 ),
               ),
 
             // Filter button (only in flat view)
             if (viewMode == ViewMode.flat) const FilterButton(),
 
-            // Coaching hint — rotating examples when few tasks exist
-            // Hide during tutorial to avoid visual clutter
-            if (taskCount == 0 && !_tutorialActive)
+            // Coaching hint — rotating examples when no tasks exist (step -1)
+            if (taskCount == 0 && tutorialStep < 0)
               Positioned(
                 left: 0,
                 right: 0,

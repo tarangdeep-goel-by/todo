@@ -7,8 +7,8 @@ import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../services/app_logger.dart';
 import '../services/haptic_service.dart';
-import '../services/onboarding_service.dart';
 import '../services/tracker/tracker.dart';
 import '../utils/string_extensions.dart';
 import 'task_detail_overlay.dart';
@@ -41,34 +41,16 @@ class FlatTaskRow extends ConsumerStatefulWidget {
 }
 
 class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
-  bool get _isDemoTask => widget.task.id == OnboardingService.demoTaskId;
+  final _log = AppLogger.instance;
 
   // ── Actions ──────────────────────────────────────────────────────────
 
   Future<void> _toggleTask(BuildContext context) async {
     final task = widget.task;
     final newStatus = task.isCompleted ? 'active' : 'completed';
-    final store = ref.read(taskStoreProvider.notifier);
     final domain = widget.domain;
 
     HapticService.light();
-
-    // Demo task: just update locally, no API call
-    if (_isDemoTask) {
-      final optimistic = task.copyWith(
-        status: newStatus,
-        completedAt: newStatus == 'completed' ? DateTime.now() : null,
-      );
-      store.upsertTask(optimistic);
-      if (context.mounted) {
-        final message = newStatus == 'completed'
-            ? 'Completed: ${task.sentenceTitle}'
-            : 'Restored: ${task.sentenceTitle}';
-        showStyledSnackbar(context,
-            message: message, style: SnackbarStyle.success);
-      }
-      return;
-    }
 
     if (newStatus == 'completed') {
       Tracker.instance
@@ -122,17 +104,6 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
     final domain = widget.domain;
 
     HapticService.medium();
-
-    // Demo task: just remove locally, no API call
-    if (_isDemoTask) {
-      store.removeTask(task.id);
-      if (context.mounted) {
-        showStyledSnackbar(context,
-            message: 'Deleted: ${task.sentenceTitle}',
-            style: SnackbarStyle.success);
-      }
-      return true;
-    }
 
     // Offline-first: remove from store + enqueue delete for sync
     final mutation = ref.read(taskMutationServiceProvider);
@@ -374,20 +345,27 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
       key: Key(task.id),
       direction: direction,
       confirmDismiss: (dir) async {
+        _log.debug('row.swipe', logger: 'FlatTaskRow', data: {
+          'taskId': task.id, 'direction': dir.name, 'isCompleted': isCompleted,
+          'isTutorial': widget.onTutorialStepComplete != null,
+        });
         if (isCompleted) {
-          // Left swipe on completed -> restore
+          // Left swipe on completed -> restore (mark active)
           await _toggleTask(context);
+          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 2});
           widget.onTutorialStepComplete?.call(2);
           return false;
         }
         if (dir == DismissDirection.startToEnd) {
           // Right swipe on active -> complete
           await _toggleTask(context);
+          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 1});
           widget.onTutorialStepComplete?.call(1);
           return false;
         } else if (dir == DismissDirection.endToStart) {
-          // Left swipe on active -> delete
+          // Left swipe on active -> archive
           await _deleteTask(context);
+          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 3});
           widget.onTutorialStepComplete?.call(3);
           return false;
         }

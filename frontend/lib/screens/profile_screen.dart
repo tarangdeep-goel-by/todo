@@ -6,13 +6,13 @@ import 'package:intl/intl.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/theme.dart';
-import '../providers/api_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/local_data_provider.dart';
 import '../providers/sync_provider.dart';
-import '../providers/task_filter_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../providers/tutorial_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/onboarding_service.dart';
 import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
 import 'archive_screen.dart';
@@ -119,44 +119,7 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.xl),
 
                     // Archive row
-                    GestureDetector(
-                      key: TK.archiveLink,
-                      onTap: () {
-                        HapticService.light();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ArchiveScreen(),
-                          ),
-                        );
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.sm),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.archive_outlined,
-                              color: AppColors.secondaryText,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              'Archive',
-                              style: AppTypography.ctaLabelText(
-                                color: AppColors.darkText,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.chevron_right,
-                              color: AppColors.tertiaryText,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _ArchiveRow(key: TK.archiveLink),
 
                     const Spacer(),
 
@@ -220,21 +183,25 @@ class ProfileScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(ctx).pop();
-              Navigator.of(context).pop(); // Close profile screen
+              // Capture refs before navigation pops dispose the widget
+              final sync = ref.read(syncServiceProvider);
+              final store = ref.read(taskStoreProvider.notifier);
+              final localDb = ref.read(localDataServiceProvider);
+              final auth = ref.read(authServiceProvider);
+
+              // Capture navigators before async gap
+              final dialogNav = Navigator.of(ctx);
+              final screenNav = Navigator.of(context);
+
               // Full cleanup before sign out
-              ref.read(syncServiceProvider).stopPeriodicSync();
-              ref.invalidate(audioServiceProvider);
-              // Clear in-memory state first to prevent flicker on re-login
-              ref.read(taskStoreProvider.notifier).clear();
-              ref.invalidate(categoriesProvider);
-              await ref.read(localDataServiceProvider).clearAll();
-              await ref.read(authServiceProvider).signOut();
-              // Invalidate providers to reset state
-              ref.invalidate(syncServiceProvider);
-              ref.invalidate(taskStoreProvider);
-              ref.invalidate(categoriesProvider);
-              ref.invalidate(taskFilterProvider);
+              sync.stopPeriodicSync();
+              store.clear();
+              await localDb.clearAll();
+
+              dialogNav.pop();
+              screenNav.pop(); // Close profile screen
+
+              await auth.signOut();
             },
             child: Text(
               'Sign out',
@@ -243,6 +210,89 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ArchiveRow extends ConsumerWidget {
+  const _ArchiveRow({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tutorialStep = ref.watch(tutorialStepProvider);
+    final isNudge = tutorialStep == 3;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () {
+            HapticService.light();
+            if (isNudge) {
+              ref.read(tutorialStepProvider.notifier).state = 4;
+              OnboardingService.setSwipeTutorialStep(4);
+            }
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ArchiveScreen(),
+              ),
+            );
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            decoration: isNudge
+                ? BoxDecoration(
+                    color: AppColors.navBg,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  )
+                : null,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isNudge ? AppSpacing.sm : 0,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.archive_outlined,
+                    color: isNudge
+                        ? AppColors.darkText
+                        : AppColors.secondaryText,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Archive',
+                    style: AppTypography.ctaLabelText(
+                      color: AppColors.darkText,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.chevron_right,
+                    color: isNudge
+                        ? AppColors.darkText
+                        : AppColors.tertiaryText,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isNudge)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Tap to see archived tasks',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

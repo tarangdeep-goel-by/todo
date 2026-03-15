@@ -9,6 +9,8 @@ import '../providers/api_provider.dart';
 import '../providers/task_filter_provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../providers/tutorial_provider.dart';
+import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/flat_task_row.dart';
@@ -33,10 +35,10 @@ class FlatTaskView extends ConsumerStatefulWidget {
 }
 
 class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
+  final _log = AppLogger.instance;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   int _displayCount = 50;
-  int _swipeTutorialStep = 0;
   String _statusFilter = 'all'; // 'all', 'active', 'overdue', 'done'
 
   Timer? _debounce;
@@ -48,28 +50,25 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    if (widget.tutorialActive) {
-      _loadTutorialStep();
-    }
   }
 
-  Future<void> _loadTutorialStep() async {
-    final step = await OnboardingService.getSwipeTutorialStep();
-    if (mounted) {
-      setState(() => _swipeTutorialStep = step);
-    }
-  }
-
-  void _onTutorialStepComplete(int nextStep) async {
-    // Only advance sequentially — prevents regression from wrong swipe direction
-    if (nextStep != _swipeTutorialStep + 1) return;
-    await OnboardingService.setSwipeTutorialStep(nextStep);
-    if (mounted) {
-      setState(() => _swipeTutorialStep = nextStep);
-    }
-    if (nextStep >= 3) {
-      widget.onTutorialComplete?.call();
-    }
+  void _onTutorialStepComplete(int nextStep) {
+    _log.debug('flat.tutorialStepComplete', logger: 'FlatTaskView', data: {
+      'nextStep': nextStep,
+    });
+    final currentStep = ref.read(tutorialStepProvider);
+    // Only advance sequentially
+    if (nextStep != currentStep + 1) return;
+    // Brief delay so the user sees the result of their swipe
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (!mounted) return;
+      ref.read(tutorialStepProvider.notifier).state = nextStep;
+      OnboardingService.setSwipeTutorialStep(nextStep);
+      if (nextStep >= 3) {
+        // Steps 3+ happen on other screens
+        widget.onTutorialComplete?.call();
+      }
+    });
   }
 
   void _onScroll() {
@@ -264,7 +263,14 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         ? filteredTasks
         : filteredTasks.take(_displayCount).toList();
     final hasMore = !isSearching && _displayCount < filteredTasks.length;
-    final isTutorial = widget.tutorialActive && _swipeTutorialStep < 3;
+    final tutorialStep = ref.watch(tutorialStepProvider);
+    final isTutorial = widget.tutorialActive && tutorialStep >= 0 && tutorialStep < 3;
+
+    _log.debug('flat.build', logger: 'FlatTaskView', data: {
+      'taskCount': allFiltered.length, 'displayCount': displayTasks.length,
+      'tutorialActive': widget.tutorialActive, 'swipeStep': tutorialStep,
+      'isTutorial': isTutorial,
+    });
 
     return Column(
       children: [
@@ -421,8 +427,19 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                   }
 
                   final task = displayTasks[index];
-                  final isDemoTask =
-                      task.id == OnboardingService.demoTaskId;
+                  // Step 0: first active task (swipe right to complete)
+                  // Step 1: first completed task (swipe left to mark active)
+                  // Step 2: first active task (swipe left to archive)
+                  final bool isTutorialTarget;
+                  if (!isTutorial) {
+                    isTutorialTarget = false;
+                  } else if (tutorialStep == 1) {
+                    isTutorialTarget = task.isCompleted &&
+                        displayTasks.indexWhere((t) => t.isCompleted) == index;
+                  } else {
+                    isTutorialTarget = !task.isCompleted &&
+                        displayTasks.indexWhere((t) => !t.isCompleted) == index;
+                  }
 
                   final domain = DomainColors.getDomain(task.category, true, paletteMap);
                   final taskItem = FlatTaskRow(
@@ -431,21 +448,14 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                     domain: domain,
                     parentName: parentNames[task.id],
                     onTutorialStepComplete:
-                        isDemoTask ? (step) => _onTutorialStepComplete(step) : null,
+                        isTutorialTarget ? (step) => _onTutorialStepComplete(step) : null,
                   );
 
-                  // Wrap demo task with tutorial overlay
-                  if (isDemoTask && isTutorial) {
-                    return Stack(
-                      children: [
-                        taskItem,
-                        Positioned.fill(
-                          child: SwipeTutorialOverlay(
-                            step: _swipeTutorialStep,
-                            domainColor: domain.primary,
-                          ),
-                        ),
-                      ],
+                  if (isTutorialTarget) {
+                    return SwipeTutorialOverlay(
+                      step: tutorialStep,
+                      domainColor: domain.primary,
+                      child: taskItem,
                     );
                   }
 
