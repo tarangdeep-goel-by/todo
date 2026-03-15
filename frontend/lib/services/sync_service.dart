@@ -48,8 +48,13 @@ class SyncService {
       await push();
       await pull();
       await _refreshStore();
+      _connectivity.reportSuccess();
       _logger.info('sync.done', logger: 'SyncService');
     } catch (e) {
+      if (e is ApiError &&
+          (e.type == ApiErrorType.network || e.type == ApiErrorType.timeout)) {
+        _connectivity.reportFailure();
+      }
       _logger.error('sync.error', logger: 'SyncService', data: {
         'error': e.toString(),
       });
@@ -333,6 +338,7 @@ class SyncService {
             await _localDb.ackMutation(entry.id);
             break;
         }
+        _connectivity.reportSuccess();
         _logger.debug('sync.push.ack', logger: 'SyncService', data: {
           'id': entry.id, 'action': entry.action, 'entity': entry.entityId,
         });
@@ -345,6 +351,7 @@ class SyncService {
 
         if (e.type == ApiErrorType.network || e.type == ApiErrorType.timeout) {
           // Offline / unreachable — stop queue, don't burn retries
+          _connectivity.reportFailure();
           break;
         } else if (e.type == ApiErrorType.validation) {
           // Permanent failure — mark failed and clean up phantom data

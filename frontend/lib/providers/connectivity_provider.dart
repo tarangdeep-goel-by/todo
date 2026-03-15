@@ -1,10 +1,16 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/environment.dart';
 import '../services/connectivity_service.dart';
 import 'sync_provider.dart';
 
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
-  final service = ConnectivityService();
+  // Derive health URL from API base (e.g. http://host:port/api → http://host:port/health)
+  final apiBase = Environment.apiBaseUrl;
+  final uri = Uri.parse(apiBase);
+  final healthUrl = uri.replace(path: '/health').toString();
+
+  final service = ConnectivityService(healthUrl: healthUrl);
   ref.onDispose(() => service.dispose());
   return service;
 });
