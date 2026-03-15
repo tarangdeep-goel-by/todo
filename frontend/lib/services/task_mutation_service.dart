@@ -68,6 +68,38 @@ class TaskMutationService {
     _store.removeTask(task.id);
     _onPush?.call();
   }
+
+  Future<void> archiveTask(Task task) async {
+    final archived = task.copyWith(
+      status: 'archived',
+      archivedAt: DateTime.now(),
+    );
+    await _localDb.upsertTask(archived, pendingSync: true);
+    await _localDb.enqueueMutation(
+      entityType: 'task',
+      entityId: task.id,
+      action: 'archive',
+      payload: {},
+    );
+    _store.archiveWithDescendants(task.id);
+    _onPush?.call();
+  }
+
+  Future<void> restoreTask(Task task) async {
+    final restored = task.copyWith(
+      status: 'active',
+      archivedAt: null,
+    );
+    await _localDb.upsertTask(restored, pendingSync: true);
+    await _localDb.enqueueMutation(
+      entityType: 'task',
+      entityId: task.id,
+      action: 'restore',
+      payload: {},
+    );
+    _store.restoreWithDescendants(task.id);
+    _onPush?.call();
+  }
 }
 
 /// Test-mode mutation service: optimistic update + direct API call (no local DB).
@@ -123,6 +155,18 @@ class TestMutationService extends TaskMutationService {
   Future<void> deleteTask(Task task) async {
     _store.removeTask(task.id);
     await _api.deleteTask(task.id);
+  }
+
+  @override
+  Future<void> archiveTask(Task task) async {
+    _store.archiveWithDescendants(task.id);
+    await _api.archiveTask(task.id);
+  }
+
+  @override
+  Future<void> restoreTask(Task task) async {
+    _store.restoreWithDescendants(task.id);
+    await _api.restoreTask(task.id);
   }
 }
 

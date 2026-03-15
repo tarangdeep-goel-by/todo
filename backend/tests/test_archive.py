@@ -184,13 +184,16 @@ class TestArchiveAPI:
     """Test archive API endpoints."""
 
     @pytest.mark.asyncio
-    async def test_delete_endpoint_archives(self, test_client, task_service):
-        """DELETE /tasks/{id} now archives instead of hard-deleting."""
+    async def test_archive_endpoint(self, test_client, task_service):
+        """PUT /tasks/{id}/archive archives instead of hard-deleting."""
         task = await task_service.create_task(**make_task(title="API archive"))
 
-        resp = await test_client.delete(f"/tasks/{task.id}")
+        resp = await test_client.put(f"/tasks/{task.id}/archive")
 
         assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        assert data["archived_count"] == 1
         archived = await task_service.get_task(task.id)
         assert archived is not None
         assert archived.status == "archived"
@@ -224,21 +227,21 @@ class TestArchiveAPI:
 
     @pytest.mark.asyncio
     async def test_permanent_delete_endpoint(self, test_client, task_service):
-        """DELETE /tasks/{id}/permanent hard-deletes from DB."""
+        """DELETE /tasks/{id} hard-deletes from DB."""
         task = await task_service.create_task(**make_task(title="Perm delete"))
 
-        resp = await test_client.delete(f"/tasks/{task.id}/permanent")
+        resp = await test_client.delete(f"/tasks/{task.id}")
 
         assert resp.status_code == 200
         assert await task_service.get_task(task.id) is None
 
     @pytest.mark.asyncio
     async def test_permanent_delete_endpoint_cascades(self, test_client, task_service):
-        """DELETE /tasks/{id}/permanent hard-deletes parent and children."""
+        """DELETE /tasks/{id} hard-deletes parent and children."""
         parent = await task_service.create_task(**make_task(title="Perm parent"))
         child = await task_service.create_task(**make_task(title="Perm child", parent_id=parent.id))
 
-        resp = await test_client.delete(f"/tasks/{parent.id}/permanent")
+        resp = await test_client.delete(f"/tasks/{parent.id}")
 
         assert resp.status_code == 200
         assert resp.json()["deleted_count"] == 2

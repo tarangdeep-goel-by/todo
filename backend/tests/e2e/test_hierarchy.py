@@ -192,9 +192,9 @@ class TestHierarchy:
             },
         )
 
-        # Delete parent (archives)
-        result = await e2e.delete(
-            f"/tasks/{parent['id']}", "Archive parent + children"
+        # Archive parent (and children)
+        result = await e2e.put(
+            f"/tasks/{parent['id']}/archive", "Archive parent + children"
         )
         assert result["archived_count"] == 2
 
