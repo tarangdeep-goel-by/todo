@@ -60,9 +60,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     }
   }
 
-  Future<void> _restoreTask(Task task) async {
+  Future<bool> _restoreTask(Task task) async {
     final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
-    if (originalIndex == -1) return;
+    if (originalIndex == -1) return false;
 
     HapticService.light();
     setState(() {
@@ -83,6 +83,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           style: SnackbarStyle.success,
         );
       }
+      return true;
     } catch (e) {
       // Rollback
       if (mounted) {
@@ -98,10 +99,11 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           style: SnackbarStyle.error,
         );
       }
+      return false;
     }
   }
 
-  Future<void> _permanentDeleteTask(Task task) async {
+  Future<bool> _permanentDeleteTask(Task task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -133,10 +135,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) return false;
 
     final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
-    if (originalIndex == -1) return;
+    if (originalIndex == -1) return false;
 
     HapticService.medium();
     setState(() {
@@ -153,6 +155,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           style: SnackbarStyle.success,
         );
       }
+      return true;
     } catch (e) {
       // Rollback
       if (mounted) {
@@ -168,6 +171,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           style: SnackbarStyle.error,
         );
       }
+      return false;
     }
   }
 
@@ -305,8 +309,8 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                   ),
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.startToEnd) {
-                      _restoreTask(task);
-                      if (tutorialStep == 4) {
+                      final restored = await _restoreTask(task);
+                      if (restored && tutorialStep == 4) {
                         Future.delayed(const Duration(milliseconds: 1000), () {
                           if (!mounted) return;
                           ref.read(tutorialStepProvider.notifier).state = 5;
@@ -314,8 +318,8 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                         });
                       }
                     } else {
-                      _permanentDeleteTask(task);
-                      if (tutorialStep == 5) {
+                      final deleted = await _permanentDeleteTask(task);
+                      if (deleted && tutorialStep == 5) {
                         Future.delayed(const Duration(milliseconds: 1000), () {
                           if (!mounted) return;
                           ref.read(tutorialStepProvider.notifier).state = 6;
