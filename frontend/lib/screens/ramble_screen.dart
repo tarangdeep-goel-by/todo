@@ -537,7 +537,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
       visited.add(currentId);
       final task = tasks[currentId];
       if (task == null) break;
-      rootName = task.title;
+      rootName = task.sentenceTitle;
       currentId = task.parentId;
     }
     return rootName;
@@ -675,7 +675,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                       visited.add(cid);
                       final t = tasks[cid];
                       if (t == null) break;
-                      l1Name = t.title;
+                      l1Name = t.sentenceTitle;
                       cid = t.parentId;
                     }
                     final label = l1Name ??

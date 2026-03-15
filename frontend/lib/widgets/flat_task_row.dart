@@ -79,22 +79,19 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         context,
         message: message,
         domain: domain,
-        onUndo: () => _undoToggle(context, task),
+        onUndo: () {
+          // Capture mutation & task in closure BEFORE widget disposal
+          // (list re-sort after status change can dispose this row)
+          final reversePayload = <String, dynamic>{
+            'status': task.status,
+            'completed_at': task.isCompleted
+                ? (task.completedAt ?? DateTime.now()).toIso8601String()
+                : null,
+          };
+          mutation.updateTask(task, reversePayload);
+        },
       );
     }
-  }
-
-  Future<void> _undoToggle(BuildContext context, Task originalTask) async {
-    final payload = <String, dynamic>{
-      'status': originalTask.status,
-      // Explicitly include completed_at so compact merge doesn't leak
-      // the toggle's completed_at into the undo payload
-      'completed_at': originalTask.isCompleted
-          ? (originalTask.completedAt ?? DateTime.now()).toIso8601String()
-          : null,
-    };
-    final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.updateTask(originalTask, payload);
   }
 
   Future<bool> _deleteTask(BuildContext context) async {

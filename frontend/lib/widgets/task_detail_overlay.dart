@@ -1054,7 +1054,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 120),
                         child: Text(
-                          ancestor.title,
+                          ancestor.sentenceTitle,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                           style: GoogleFonts.dmSans(
