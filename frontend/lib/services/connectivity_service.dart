@@ -18,6 +18,7 @@ class ConnectivityService {
 
   bool _hasInterface = true;
   bool _isReachable = true;
+  bool _disposed = false;
 
   ConnectivityService({
     Connectivity? connectivity,
@@ -75,16 +76,16 @@ class ConnectivityService {
 
   /// Ping the backend health endpoint.
   Future<void> _pingHealth() async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 5);
     try {
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 5);
       final request = await client.getUrl(Uri.parse(_healthUrl));
       final response = await request.close().timeout(
         const Duration(seconds: 5),
       );
       await response.drain<void>();
-      client.close();
 
+      if (_disposed) return;
       if (response.statusCode >= 200 && response.statusCode < 500) {
         if (!_isReachable) {
           _isReachable = true;
@@ -95,7 +96,9 @@ class ConnectivityService {
         _onPingFailed();
       }
     } catch (_) {
-      _onPingFailed();
+      if (!_disposed) _onPingFailed();
+    } finally {
+      client.close(force: true);
     }
   }
 
@@ -138,6 +141,7 @@ class ConnectivityService {
   }
 
   void dispose() {
+    _disposed = true;
     _sub?.cancel();
     _recheckTimer?.cancel();
     _controller.close();
