@@ -52,7 +52,7 @@ class OnboardingService {
 
   static Future<int> getSwipeTutorialStep() async {
     final prefs = await SharedPreferences.getInstance();
-    final step = prefs.getInt(swipeTutorialStepKey) ?? 0;
+    final step = prefs.getInt(swipeTutorialStepKey) ?? -1;
     _log.debug('onboard.getSwipeTutorialStep', logger: 'OnboardingService', data: {'step': step});
     return step;
   }

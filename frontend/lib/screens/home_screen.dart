@@ -54,7 +54,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // User-switch guard: clear local DB if a different user logged in
         final lastUid = await localDb.getMeta('last_user_id');
         _log.debug('init.user_guard', logger: 'HomeScreen', data: {
-          'lastUid': lastUid, 'currentUid': currentUid,
+          'hasLastUid': lastUid != null,
+          'hasCurrentUid': currentUid.isNotEmpty,
           'switched': lastUid != null && lastUid != currentUid,
         });
         if (lastUid != null && lastUid != currentUid) {

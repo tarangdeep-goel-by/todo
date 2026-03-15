@@ -233,13 +233,19 @@ class TaskService:
 
     async def archive_task_with_children(self, task_id: str) -> int:
         """Archive task and all descendants (soft delete)."""
-        # Fetch task before archiving to get category info for cleanup
         task = await self.get_task(task_id)
-        category_id = task.category_id if task else None
         user_id = task.user_id if task else None
 
         descendants = await self._get_all_descendants(task_id)
         all_ids = [task_id] + [d.id for d in descendants]
+
+        # Collect distinct category IDs from entire subtree
+        category_ids = set()
+        if task and task.category_id:
+            category_ids.add(task.category_id)
+        for d in descendants:
+            if d.category_id:
+                category_ids.add(d.category_id)
 
         now = datetime.now(timezone.utc)
 
@@ -254,9 +260,10 @@ class TaskService:
 
         await _with_deadlock_retry(_do_archive)
 
-        # Clean up category if no non-archived tasks remain
-        if category_id and user_id:
-            await self._cleanup_empty_category(category_id, user_id)
+        # Clean up categories if no non-archived tasks remain
+        if user_id:
+            for cat_id in category_ids:
+                await self._cleanup_empty_category(cat_id, user_id, exclude_archived=True)
 
         return len(all_ids)
 
@@ -399,13 +406,19 @@ class TaskService:
         """Hard delete task and all descendants from DB."""
         from sqlalchemy import delete as sql_delete
 
-        # Fetch task before deletion to get category info for cleanup
         task = await self.get_task(task_id)
-        category_id = task.category_id if task else None
         user_id = task.user_id if task else None
 
         descendants = await self._get_all_descendants(task_id)
         all_ids = [d.id for d in descendants] + [task_id]
+
+        # Collect distinct category IDs from entire subtree
+        category_ids = set()
+        if task and task.category_id:
+            category_ids.add(task.category_id)
+        for d in descendants:
+            if d.category_id:
+                category_ids.add(d.category_id)
 
         async def _do_delete():
             # Null out parent_id references to avoid FK constraint issues
@@ -422,9 +435,10 @@ class TaskService:
 
         await _with_deadlock_retry(_do_delete)
 
-        # Clean up empty category after deletion
-        if category_id and user_id:
-            await self._cleanup_empty_category(category_id, user_id)
+        # Clean up empty categories after deletion
+        if user_id:
+            for cat_id in category_ids:
+                await self._cleanup_empty_category(cat_id, user_id)
 
         return len(all_ids)
 
@@ -449,17 +463,23 @@ class TaskService:
 
         return all_descendants
 
-    async def _cleanup_empty_category(self, category_id: str, user_id: str) -> bool:
-        """Delete category if it has no remaining tasks (including archived). Returns True if deleted."""
+    async def _cleanup_empty_category(self, category_id: str, user_id: str, exclude_archived: bool = False) -> bool:
+        """Delete category if it has no remaining tasks. Returns True if deleted.
+
+        When exclude_archived=True, only counts non-archived tasks (use after archive operations).
+        """
         from sqlalchemy import delete as sql_delete
 
-        remaining = await self.db.execute(
+        query = (
             select(func.count()).select_from(Task)
             .where(
                 Task.category_id == category_id,
                 Task.user_id == user_id,
             )
         )
+        if exclude_archived:
+            query = query.where(Task.archived_at.is_(None))
+        remaining = await self.db.execute(query)
         count = remaining.scalar_one()
         if count == 0:
             await self.db.execute(
