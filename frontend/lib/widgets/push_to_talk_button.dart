@@ -5,7 +5,7 @@ import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
 import '../providers/recording_provider.dart';
-import '../screens/home_screen.dart' show tutorialTriggerProvider;
+import '../providers/tutorial_provider.dart';
 import '../services/app_logger.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
@@ -162,11 +162,10 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     });
     if (!alreadyCreated) {
       await OnboardingService.markFirstTaskCreated();
-      final newVal = ref.read(tutorialTriggerProvider) + 1;
-      _log.debug('ptt.tutorial_triggered', logger: 'PushToTalkButton', data: {
-        'triggerValue': newVal,
-      });
-      ref.read(tutorialTriggerProvider.notifier).state = newVal;
+      // Advance from step -1 (add task) to step 0 (swipe to complete)
+      ref.read(tutorialStepProvider.notifier).state = 0;
+      OnboardingService.setSwipeTutorialStep(0);
+      _log.debug('ptt.tutorial_triggered', logger: 'PushToTalkButton');
     }
   }
 }

@@ -9,6 +9,7 @@ import '../providers/api_provider.dart';
 import '../providers/task_filter_provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../providers/tutorial_provider.dart';
 import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
@@ -38,8 +39,6 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   int _displayCount = 50;
-  int _swipeTutorialStep = 0;
-  bool _tutorialStepLoaded = false;
   String _statusFilter = 'all'; // 'all', 'active', 'overdue', 'done'
 
   Timer? _debounce;
@@ -51,39 +50,25 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    if (widget.tutorialActive) {
-      _loadTutorialStep();
-    }
   }
 
-  Future<void> _loadTutorialStep() async {
-    final step = await OnboardingService.getSwipeTutorialStep();
-    _log.debug('flat.loadTutorialStep', logger: 'FlatTaskView', data: {
-      'step': step, 'tutorialActive': widget.tutorialActive,
-    });
-    if (mounted) {
-      setState(() {
-        _swipeTutorialStep = step;
-        _tutorialStepLoaded = true;
-      });
-    }
-  }
-
-  void _onTutorialStepComplete(int nextStep) async {
+  void _onTutorialStepComplete(int nextStep) {
     _log.debug('flat.tutorialStepComplete', logger: 'FlatTaskView', data: {
-      'currentStep': _swipeTutorialStep, 'nextStep': nextStep,
-      'sequential': nextStep == _swipeTutorialStep + 1,
+      'nextStep': nextStep,
     });
-    // Only advance sequentially — prevents regression from wrong swipe direction
-    if (nextStep != _swipeTutorialStep + 1) return;
-    await OnboardingService.setSwipeTutorialStep(nextStep);
-    if (mounted) {
-      setState(() => _swipeTutorialStep = nextStep);
-    }
-    if (nextStep >= 3) {
-      _log.debug('flat.tutorialDone', logger: 'FlatTaskView');
-      widget.onTutorialComplete?.call();
-    }
+    final currentStep = ref.read(tutorialStepProvider);
+    // Only advance sequentially
+    if (nextStep != currentStep + 1) return;
+    // Brief delay so the user sees the result of their swipe
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (!mounted) return;
+      ref.read(tutorialStepProvider.notifier).state = nextStep;
+      OnboardingService.setSwipeTutorialStep(nextStep);
+      if (nextStep >= 3) {
+        // Steps 3+ happen on other screens
+        widget.onTutorialComplete?.call();
+      }
+    });
   }
 
   void _onScroll() {
@@ -278,11 +263,12 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         ? filteredTasks
         : filteredTasks.take(_displayCount).toList();
     final hasMore = !isSearching && _displayCount < filteredTasks.length;
-    final isTutorial = widget.tutorialActive && _tutorialStepLoaded && _swipeTutorialStep < 3;
+    final tutorialStep = ref.watch(tutorialStepProvider);
+    final isTutorial = widget.tutorialActive && tutorialStep >= 0 && tutorialStep < 3;
 
     _log.debug('flat.build', logger: 'FlatTaskView', data: {
       'taskCount': allFiltered.length, 'displayCount': displayTasks.length,
-      'tutorialActive': widget.tutorialActive, 'swipeStep': _swipeTutorialStep,
+      'tutorialActive': widget.tutorialActive, 'swipeStep': tutorialStep,
       'isTutorial': isTutorial,
     });
 
@@ -441,16 +427,18 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                   }
 
                   final task = displayTasks[index];
-                  // Step 1 needs a completed task (undo); otherwise use first task
+                  // Step 0: first active task (swipe right to complete)
+                  // Step 1: first completed task (swipe left to mark active)
+                  // Step 2: first active task (swipe left to archive)
                   final bool isTutorialTarget;
                   if (!isTutorial) {
                     isTutorialTarget = false;
-                  } else if (_swipeTutorialStep == 1) {
-                    // Find first completed task for "swipe to undo"
+                  } else if (tutorialStep == 1) {
                     isTutorialTarget = task.isCompleted &&
                         displayTasks.indexWhere((t) => t.isCompleted) == index;
                   } else {
-                    isTutorialTarget = index == 0;
+                    isTutorialTarget = !task.isCompleted &&
+                        displayTasks.indexWhere((t) => !t.isCompleted) == index;
                   }
 
                   final domain = DomainColors.getDomain(task.category, true, paletteMap);
@@ -463,18 +451,11 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                         isTutorialTarget ? (step) => _onTutorialStepComplete(step) : null,
                   );
 
-                  // Wrap first task with tutorial overlay
                   if (isTutorialTarget) {
-                    return Stack(
-                      children: [
-                        taskItem,
-                        Positioned.fill(
-                          child: SwipeTutorialOverlay(
-                            step: _swipeTutorialStep,
-                            domainColor: domain.primary,
-                          ),
-                        ),
-                      ],
+                    return SwipeTutorialOverlay(
+                      step: tutorialStep,
+                      domainColor: domain.primary,
+                      child: taskItem,
                     );
                   }
 

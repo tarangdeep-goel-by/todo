@@ -6,8 +6,9 @@ import '../config/typography.dart';
 /// Dismissed when user switches to flat view.
 class FlatViewNudge extends StatefulWidget {
   final Color domainColor;
+  final String label;
 
-  const FlatViewNudge({super.key, required this.domainColor});
+  const FlatViewNudge({super.key, required this.domainColor, this.label = 'See all tasks'});
 
   @override
   State<FlatViewNudge> createState() => _FlatViewNudgeState();
@@ -54,7 +55,7 @@ class _FlatViewNudgeState extends State<FlatViewNudge>
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'See all tasks',
+            widget.label,
             style: AppTypography.ctaLabelText(
               color: color,
             ).copyWith(

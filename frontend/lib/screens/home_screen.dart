@@ -23,12 +23,10 @@ import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
 import '../widgets/flat_view_nudge.dart';
+import '../providers/tutorial_provider.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
 import '../widgets/calendar_task_view.dart';
-
-/// Bumped by PushToTalkButton after first task creation to trigger tutorial.
-final tutorialTriggerProvider = StateProvider<int>((ref) => 0);
 
 /// Main home screen with view switching
 class HomeScreen extends ConsumerStatefulWidget {
@@ -41,7 +39,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _log = AppLogger.instance;
   bool _tutorialActive = false;
-  bool _flatViewNudgeSeen = false;
 
   @override
   void initState() {
@@ -84,7 +81,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Test mode: fetch directly from API, skip offline infra
         await store.fetchAll();
       }
-      _checkTutorial();
+      _initTutorial();
       // Process any deep link that arrived before UI was ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
         processPendingDeepLink();
@@ -110,63 +107,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  /// Check if swipe tutorial should be active.
-  /// Activates when user has created their first task and hasn't finished tutorial.
-  Future<void> _checkTutorial() async {
+  /// Load tutorial state from SharedPreferences into the provider.
+  Future<void> _initTutorial() async {
     final step = await OnboardingService.getSwipeTutorialStep();
     final firstTaskCreated = await OnboardingService.hasCreatedFirstTask();
-    final hasTasks = ref.read(allTasksProvider).isNotEmpty;
-    final nudgeSeen =
-        await OnboardingService.hasSeenHint(OnboardingService.flatViewNudgeKey);
-    _log.debug('onboard.tutorial_check', logger: 'HomeScreen', data: {
+    _log.debug('onboard.init_tutorial', logger: 'HomeScreen', data: {
       'step': step, 'firstTaskCreated': firstTaskCreated,
-      'hasTasks': hasTasks, 'nudgeSeen': nudgeSeen, 'mounted': mounted,
     });
-    // Activate if user has tasks (flag or store) and tutorial isn't done
-    if (step < 3 && (firstTaskCreated || hasTasks) && mounted) {
-      // Backfill flag if missing (e.g. app data cleared but tasks exist)
-      if (!firstTaskCreated && hasTasks) {
-        await OnboardingService.markFirstTaskCreated();
-      }
-      setState(() {
-        _tutorialActive = true;
-        _flatViewNudgeSeen = nudgeSeen;
-      });
+    if (!mounted) return;
+    if (firstTaskCreated && step < OnboardingService.tutorialDoneStep) {
+      // Resume tutorial from persisted step
+      ref.read(tutorialStepProvider.notifier).state = step;
+      setState(() => _tutorialActive = true);
+    } else if (!firstTaskCreated) {
+      // New user — step -1 (show "add task" nudge)
+      ref.read(tutorialStepProvider.notifier).state = -1;
     }
   }
 
-  void _onTutorialComplete() {
-    _log.debug('onboard.tutorial_complete', logger: 'HomeScreen');
-    if (mounted) {
-      setState(() => _tutorialActive = false);
-    }
+  /// Called when flat view swipe steps (0-1) are done → step 2+ on other screens.
+  void _onFlatTutorialComplete() {
+    _log.debug('onboard.flat_tutorial_done', logger: 'HomeScreen');
+    // Tutorial continues on profile/archive — _tutorialActive stays true
   }
 
   @override
   Widget build(BuildContext context) {
-    // Listen for first task creation to activate tutorial
-    ref.listen<int>(tutorialTriggerProvider, (prev, next) => _checkTutorial());
-
+    final tutorialStep = ref.watch(tutorialStepProvider);
     final viewMode = ref.watch(viewModeProvider);
     final taskCount = ref.watch(allTasksProvider).length;
 
-    // Mark flat view nudge seen when user switches to flat
-    if (_tutorialActive && !_flatViewNudgeSeen && viewMode == ViewMode.flat) {
-      _flatViewNudgeSeen = true;
-      OnboardingService.markHintSeen(OnboardingService.flatViewNudgeKey);
-    }
+    // Activate tutorial when first task is created (step advances from -1 to 0)
+    ref.listen<int>(tutorialStepProvider, (prev, next) {
+      if (prev == -1 && next == 0 && mounted) {
+        setState(() => _tutorialActive = true);
+      }
+      // Tutorial done
+      if (next >= OnboardingService.tutorialDoneStep && mounted) {
+        setState(() => _tutorialActive = false);
+      }
+    });
+
+    // Non-blocking: dismiss tutorial if user changes view during flat view steps (0-2)
+    ref.listen<ViewMode>(viewModeProvider, (prev, next) {
+      if (_tutorialActive && tutorialStep >= 0 && tutorialStep < 3 && next != ViewMode.flat) {
+        _log.debug('onboard.dismiss_view_change', logger: 'HomeScreen', data: {
+          'from': prev?.name, 'to': next.name, 'step': tutorialStep,
+        });
+        ref.read(tutorialStepProvider.notifier).state = OnboardingService.tutorialDoneStep;
+        OnboardingService.setSwipeTutorialStep(OnboardingService.tutorialDoneStep);
+        setState(() => _tutorialActive = false);
+      }
+    });
 
     const navTotalHeight =
         AppSpacing.bottomNavHeight + AppSpacing.bottomNavMarginBottom;
 
-    // Show nudge: tutorial active, on node view, nudge not yet seen
-    final showFlatNudge =
-        _tutorialActive && !_flatViewNudgeSeen && viewMode == ViewMode.node;
+    // Show profile nudge: tutorial step 3 = "go to archive"
+    final showProfileNudge = _tutorialActive && tutorialStep == 3;
 
     _log.debug('home.build', logger: 'HomeScreen', data: {
       'viewMode': viewMode.name, 'taskCount': taskCount,
-      'tutorialActive': _tutorialActive, 'flatViewNudgeSeen': _flatViewNudgeSeen,
-      'showFlatNudge': showFlatNudge, 'showCoaching': taskCount == 0 && !_tutorialActive,
+      'tutorialActive': _tutorialActive, 'tutorialStep': tutorialStep,
+      'showProfileNudge': showProfileNudge,
+      'showCoaching': taskCount == 0 && tutorialStep < 0,
     });
 
     return Scaffold(
@@ -184,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ViewMode.node => const ParentNodeView(),
                     ViewMode.flat => FlatTaskView(
                         tutorialActive: _tutorialActive,
-                        onTutorialComplete: _onTutorialComplete,
+                        onTutorialComplete: _onFlatTutorialComplete,
                       ),
                     ViewMode.calendar => const CalendarTaskView(),
                   },
@@ -200,23 +204,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: BottomNavBar(),
             ),
 
-            // Flat view nudge — bouncing arrow above "Flat" nav item
-            if (showFlatNudge)
+            // Profile nudge — bouncing arrow above "Profile" nav item (step 2)
+            if (showProfileNudge)
               Positioned(
-                // Approximate position above the "Flat" nav item (second item)
-                left: MediaQuery.of(context).size.width * 0.2,
+                // Profile is the 5th item (rightmost), approximate position
+                right: MediaQuery.of(context).size.width * 0.02,
                 width: MediaQuery.of(context).size.width * 0.2,
                 bottom: navTotalHeight + 4,
                 child: FlatViewNudge(
                   domainColor: DomainColors.palettes.first.primary,
+                  label: 'Go to Archive',
                 ),
               ),
 
             // Filter button (only in flat view)
             if (viewMode == ViewMode.flat) const FilterButton(),
 
-            // Coaching hint — rotating examples when no tasks exist
-            if (taskCount == 0 && !_tutorialActive)
+            // Coaching hint — rotating examples when no tasks exist (step -1)
+            if (taskCount == 0 && tutorialStep < 0)
               Positioned(
                 left: 0,
                 right: 0,

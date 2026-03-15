@@ -14,10 +14,14 @@ class OnboardingService {
 
   // Swipe tutorial keys
   static const swipeTutorialStepKey = 'onboarding_swipe_tutorial_step';
-  // 0 = show "swipe right to complete"
-  // 1 = show "swipe left to restore"
-  // 2 = show "swipe left to delete"
-  // 3 = tutorial done
+  // 0 = swipe right to complete
+  // 1 = swipe left to mark active (undo)
+  // 2 = swipe left to archive
+  // 3 = go to profile → archive
+  // 4 = swipe right to restore (archive)
+  // 5 = swipe left to delete (archive)
+  // 6 = tutorial done
+  static const tutorialDoneStep = 6;
   static const flatViewNudgeKey = 'onboarding_flat_view_nudge_seen';
 
   static Future<bool> hasSeenWelcome() async {
