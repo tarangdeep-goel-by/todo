@@ -12,7 +12,7 @@ import '../services/tracker/tracker.dart';
 import '../utils/string_extensions.dart';
 import 'task_detail_overlay.dart';
 import 'undo_snackbar.dart';
-import 'styled_snackbar.dart';
+
 
 /// Shared flat task row used by Flat View and Calendar View.
 ///
@@ -99,7 +99,6 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
 
   Future<bool> _deleteTask(BuildContext context) async {
     final task = widget.task;
-    final store = ref.read(taskStoreProvider.notifier);
     final domain = widget.domain;
 
     HapticService.medium();
