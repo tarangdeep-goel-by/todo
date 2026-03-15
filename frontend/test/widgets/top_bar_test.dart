@@ -10,6 +10,7 @@ import '../helpers/test_helpers.dart';
 
 /// Stub that avoids platform channel calls.
 class _StubConnectivityService extends ConnectivityService {
+  _StubConnectivityService() : super(healthUrl: 'http://localhost/health');
   @override
   bool get isOnline => true;
   @override
