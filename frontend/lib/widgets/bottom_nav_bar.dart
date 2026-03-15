@@ -6,10 +6,12 @@ import '../config/theme.dart';
 import '../providers/view_mode_provider.dart';
 import '../providers/recording_provider.dart';
 import '../providers/connectivity_provider.dart';
+import '../services/app_logger.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
 import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
+import '../providers/tutorial_provider.dart';
 import '../screens/ramble_screen.dart';
 import '../screens/profile_screen.dart';
 import 'add_task_sheet.dart';
@@ -25,6 +27,7 @@ class BottomNavBar extends ConsumerStatefulWidget {
 }
 
 class _BottomNavBarState extends ConsumerState<BottomNavBar> {
+  final _log = AppLogger.instance;
   bool _voiceHintSeen = true; // default true = no hint
 
   @override
@@ -53,11 +56,13 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
       builder: (_) => const AddTaskSheet(),
     );
 
+    _log.debug('nav.addSheet_result', logger: 'BottomNavBar', data: {'added': added});
     if (added == true && context.mounted) {
       showStyledSnackbar(context,
         message: 'Task added',
         style: SnackbarStyle.success,
       );
+      _maybeActivateTutorial();
     }
   }
 
@@ -85,12 +90,30 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
       if (mounted) setState(() => _voiceHintSeen = true);
     }
 
+    _log.debug('nav.ramble_result', logger: 'BottomNavBar', data: {
+      'success': result?.success, 'message': result?.message,
+    });
     if (result != null && context.mounted) {
       showStyledSnackbar(
         context,
         message: result.message,
         style: result.success ? SnackbarStyle.success : SnackbarStyle.error,
       );
+      if (result.success) _maybeActivateTutorial();
+    }
+  }
+
+  Future<void> _maybeActivateTutorial() async {
+    final alreadyCreated = await OnboardingService.hasCreatedFirstTask();
+    _log.debug('nav.maybeActivateTutorial', logger: 'BottomNavBar', data: {
+      'alreadyCreated': alreadyCreated,
+    });
+    if (!alreadyCreated) {
+      await OnboardingService.markFirstTaskCreated();
+      // Advance from step -1 (add task) to step 0 (swipe to complete)
+      ref.read(tutorialStepProvider.notifier).state = 0;
+      OnboardingService.setSwipeTutorialStep(0);
+      _log.debug('nav.tutorial_triggered', logger: 'BottomNavBar');
     }
   }
 

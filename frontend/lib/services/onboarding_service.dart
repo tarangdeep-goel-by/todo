@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/task.dart';
-import '../models/category.dart';
+import 'app_logger.dart';
+
+final _log = AppLogger.instance;
 
 /// Tracks first-use onboarding milestones via SharedPreferences.
 class OnboardingService {
@@ -13,62 +14,65 @@ class OnboardingService {
 
   // Swipe tutorial keys
   static const swipeTutorialStepKey = 'onboarding_swipe_tutorial_step';
-  // 0 = show "swipe right to complete"
-  // 1 = show "swipe left to restore"
-  // 2 = show "swipe left to delete"
-  // 3 = tutorial done
+  // 0 = swipe right to complete
+  // 1 = swipe left to mark active (undo)
+  // 2 = swipe left to archive
+  // 3 = go to profile → archive
+  // 4 = swipe right to restore (archive)
+  // 5 = swipe left to delete (archive)
+  // 6 = tutorial done
+  static const tutorialDoneStep = 6;
   static const flatViewNudgeKey = 'onboarding_flat_view_nudge_seen';
-
-  // Demo task/category IDs
-  static const demoTaskId = 'onboarding-demo-task';
-  static const demoCategoryName = 'user';
 
   static Future<bool> hasSeenWelcome() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_welcomeKey) ?? false;
+    final seen = prefs.getBool(_welcomeKey) ?? false;
+    _log.debug('onboard.hasSeenWelcome', logger: 'OnboardingService', data: {'seen': seen});
+    return seen;
   }
 
   static Future<void> markWelcomeSeen() async {
+    _log.debug('onboard.markWelcomeSeen', logger: 'OnboardingService');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_welcomeKey, true);
   }
 
   static Future<bool> hasSeenHint(String key) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(key) ?? false;
+    final seen = prefs.getBool(key) ?? false;
+    _log.debug('onboard.hasSeenHint', logger: 'OnboardingService', data: {'key': key, 'seen': seen});
+    return seen;
   }
 
   static Future<void> markHintSeen(String key) async {
+    _log.debug('onboard.markHintSeen', logger: 'OnboardingService', data: {'key': key});
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);
   }
 
   static Future<int> getSwipeTutorialStep() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(swipeTutorialStepKey) ?? 0;
+    final step = prefs.getInt(swipeTutorialStepKey) ?? 0;
+    _log.debug('onboard.getSwipeTutorialStep', logger: 'OnboardingService', data: {'step': step});
+    return step;
   }
 
   static Future<void> setSwipeTutorialStep(int step) async {
+    _log.debug('onboard.setSwipeTutorialStep', logger: 'OnboardingService', data: {'step': step});
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(swipeTutorialStepKey, step);
   }
 
-  static Task createDemoTask() => Task(
-        id: demoTaskId,
-        userId: 'default-user',
-        title: 'hello world',
-        category: demoCategoryName,
-        status: 'active',
-        priority: 'high',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        transcription: '',
-      );
+  static Future<bool> hasCreatedFirstTask() async {
+    final prefs = await SharedPreferences.getInstance();
+    final created = prefs.getBool(firstTaskCreatedKey) ?? false;
+    _log.debug('onboard.hasCreatedFirstTask', logger: 'OnboardingService', data: {'created': created});
+    return created;
+  }
 
-  static Category createDemoCategory() => Category(
-        id: 'onboarding-demo-category',
-        name: demoCategoryName,
-        position: 0,
-        createdAt: DateTime.now(),
-      );
+  static Future<void> markFirstTaskCreated() async {
+    _log.debug('onboard.markFirstTaskCreated', logger: 'OnboardingService');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(firstTaskCreatedKey, true);
+  }
 }

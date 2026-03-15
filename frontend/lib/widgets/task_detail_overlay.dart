@@ -566,6 +566,118 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
     if (mounted) setState(() => _savingMove = false);
   }
 
+  // --- More menu ---
+
+  void _showMoreMenu(BuildContext context, Task task, DomainPalette domain) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(button.size.width, 0), ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.navBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'move',
+          child: Row(
+            children: [
+              Icon(Icons.drive_file_move_outline, size: 18, color: AppColors.darkText),
+              const SizedBox(width: 8),
+              Text('Move', style: TextStyle(color: AppColors.darkText, fontSize: 14)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'archive',
+          child: Row(
+            children: [
+              Icon(Icons.archive_outlined, size: 18, color: AppColors.deleteAction),
+              const SizedBox(width: 8),
+              Text('Archive', style: TextStyle(color: AppColors.deleteAction, fontSize: 14)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_forever, size: 18, color: AppColors.deleteAction),
+              const SizedBox(width: 8),
+              Text('Delete', style: TextStyle(color: AppColors.deleteAction, fontSize: 14)),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'move') {
+        _openMoveSheet(task);
+      } else if (value == 'archive') {
+        _archiveFromMenu(task, domain);
+      } else if (value == 'delete') {
+        _deleteFromMenu(context, task);
+      }
+    });
+  }
+
+  Future<void> _deleteFromMenu(BuildContext context, Task task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.navBg,
+        title: Text('Delete permanently?', style: TextStyle(color: AppColors.darkText)),
+        content: Text(
+          'This cannot be undone.',
+          style: TextStyle(color: AppColors.secondaryText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.secondaryText)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Delete', style: TextStyle(color: AppColors.deleteAction)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    HapticService.medium();
+    final nav = Navigator.of(context);
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.deleteTask(task);
+    if (mounted) {
+      nav.pop();
+      showStyledSnackbar(context,
+        message: 'Deleted: ${task.sentenceTitle}',
+        style: SnackbarStyle.success,
+      );
+    }
+  }
+
+  Future<void> _archiveFromMenu(Task task, DomainPalette domain) async {
+    HapticService.medium();
+    final mutation = ref.read(taskMutationServiceProvider);
+    await mutation.deleteTask(task);
+    if (mounted) {
+      Navigator.of(context).pop(); // close overlay
+      showStyledSnackbar(context,
+        message: 'Archived: ${task.sentenceTitle}',
+        style: SnackbarStyle.success,
+      );
+    }
+  }
+
   // --- Subtask ---
 
   void _startAddingSubtask() {
@@ -722,10 +834,10 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
               // Header row: back arrow + "Task Detail" + more icon
               Padding(
                 padding: const EdgeInsets.only(
-                  top: AppSpacing.sm,
+                  top: AppSpacing.md,
                   left: AppSpacing.md,
                   right: AppSpacing.md,
-                  bottom: AppSpacing.sm,
+                  bottom: AppSpacing.md,
                 ),
                 child: Row(
                   children: [
@@ -738,10 +850,14 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                           _navigateBack();
                         }
                       },
-                      child: const Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 18,
-                        color: Color(0x80F0EBE5),
+                      behavior: HitTestBehavior.opaque,
+                      child: const Padding(
+                        padding: EdgeInsets.all(AppSpacing.xs),
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 18,
+                          color: Color(0x80F0EBE5),
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -755,44 +871,27 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                       ),
                     ),
                     const Spacer(),
-                    const Icon(
-                      Icons.more_horiz,
-                      size: 18,
-                      color: Color(0x80F0EBE5),
+                    GestureDetector(
+                      onTap: () {
+                        HapticService.light();
+                        _showMoreMenu(context, task, domain);
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: const Padding(
+                        padding: EdgeInsets.all(AppSpacing.xs),
+                        child: Icon(
+                          Icons.more_horiz,
+                          size: 18,
+                          color: Color(0x80F0EBE5),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Domain accent bar + name
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: GestureDetector(
-                  onTap: () => _navigateToDomainRoot(task.category),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: domain.primary,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        task.category.toUpperCase(),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.03 * 12,
-                          color: domain.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Breadcrumb trail: domain > ancestor > ... > parent
+              _buildBreadcrumbs(task, domain),
 
               const SizedBox(height: AppSpacing.md),
 
@@ -857,6 +956,96 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // --- Breadcrumbs ---
+
+  /// Walk parent chain to build breadcrumb trail: DOMAIN > ancestor > ... > parent
+  List<Task> _getAncestorChain(Task task) {
+    final ancestors = <Task>[];
+    final seen = <String>{task.id};
+    var currentId = task.parentId;
+    while (currentId != null) {
+      if (seen.contains(currentId)) break; // cycle guard
+      seen.add(currentId);
+      final parent = ref.read(taskByIdProvider(currentId));
+      if (parent == null) break;
+      ancestors.add(parent);
+      currentId = parent.parentId;
+    }
+    return ancestors.reversed.toList(); // root-first order
+  }
+
+  Widget _buildBreadcrumbs(Task task, DomainPalette domain) {
+    final ancestors = _getAncestorChain(task);
+    final chevronStyle = GoogleFonts.dmSans(
+      fontSize: 11,
+      color: domain.primary.withValues(alpha: 0.4),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Row(
+        children: [
+          // Accent bar
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: domain.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Scrollable breadcrumb trail
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // Domain root
+                  GestureDetector(
+                    onTap: () => _navigateToDomainRoot(task.category),
+                    child: Text(
+                      task.category.toUpperCase(),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.03 * 12,
+                        color: domain.primary,
+                      ),
+                    ),
+                  ),
+                  // Ancestor crumbs
+                  for (final ancestor in ancestors) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text('›', style: chevronStyle),
+                    ),
+                    GestureDetector(
+                      onTap: () => _navigateTo(ancestor.id),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Text(
+                          ancestor.title,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: domain.primary.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -938,12 +1127,14 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
   }
 
   Color _statusColor(Task task) {
+    if (task.isArchived) return AppColors.secondaryText;
     if (task.isOverdue) return AppColors.overdue;
     if (task.isCompleted) return AppColors.completed;
     return AppColors.priorityMedium; // active = orange
   }
 
   String _statusLabel(Task task) {
+    if (task.isArchived) return 'Archived';
     if (task.isOverdue) return 'Overdue';
     if (task.isCompleted) return 'Completed';
     return 'Active';

@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/constants.dart';
-import '../config/spacing.dart';
 import '../config/theme.dart';
-import '../config/typography.dart';
 
-/// Overlay on top of a task card during the swipe tutorial.
-/// Shows animated arrow + instruction text for each step.
+/// Wraps a task row to show a partial-swipe preview during the tutorial.
 ///
-/// Step 0: right arrow → "Swipe to complete"
-/// Step 1: left arrow → "Swipe to undo"
-/// Step 2: left arrow → "Swipe to delete" (red tint)
+/// Instead of an opaque overlay, this pre-translates the child row to reveal
+/// the colored action background (like the Dismissible would show), with a
+/// gentle bounce animation. A small label below tells the user what to do.
 ///
-/// Touches pass through to the Dismissible beneath.
+/// Step 0: right → "Swipe right to complete" (domain color, check icon)
+/// Step 1: left  → "Swipe left to undo"      (domain color, undo icon)
+/// Step 2: left  → "Swipe left to archive"    (delete color, archive icon)
+/// Step 3: (profile nudge — not used here)
+/// Step 4: right → "Swipe right to restore"   (green, undo icon)
+/// Step 5: left  → "Swipe left to delete"     (delete color, delete icon)
 class SwipeTutorialOverlay extends StatefulWidget {
   final int step;
   final Color domainColor;
+  final Widget child;
 
   const SwipeTutorialOverlay({
     super.key,
     required this.step,
     required this.domainColor,
+    required this.child,
   });
 
   @override
@@ -29,7 +34,9 @@ class SwipeTutorialOverlay extends StatefulWidget {
 class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _slideAnimation;
+  late final Animation<double> _bounceAnimation;
+
+  static const double _peekDistance = 48.0;
 
   @override
   void initState() {
@@ -38,7 +45,7 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
       vsync: this,
       duration: AppAnimations.tutorialBounce,
     )..repeat(reverse: true);
-    _slideAnimation = CurvedAnimation(
+    _bounceAnimation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeInOut,
     );
@@ -52,72 +59,103 @@ class _SwipeTutorialOverlayState extends State<SwipeTutorialOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final isRightSwipe = widget.step == 0;
-    final isDelete = widget.step == 2;
-    final color = isDelete ? AppColors.deleteAction : widget.domainColor;
+    final isRightSwipe = widget.step == 0 || widget.step == 4;
 
-    final String text;
+    final String label;
     final IconData icon;
+    final Color bgColor;
+    final Color iconColor;
     switch (widget.step) {
       case 0:
-        text = 'Swipe to complete';
-        icon = Icons.arrow_forward_rounded;
+        label = 'Swipe right to complete';
+        icon = Icons.check_circle;
+        bgColor = widget.domainColor;
+        iconColor = AppColors.darkBg;
         break;
       case 1:
-        text = 'Swipe to undo';
-        icon = Icons.arrow_back_rounded;
+        label = 'Swipe left to undo';
+        icon = Icons.undo_rounded;
+        bgColor = widget.domainColor;
+        iconColor = AppColors.darkBg;
         break;
       case 2:
-        text = 'Swipe to delete';
-        icon = Icons.arrow_back_rounded;
+        label = 'Swipe left to archive';
+        icon = Icons.archive_rounded;
+        bgColor = AppColors.deleteAction;
+        iconColor = AppColors.darkBg;
+        break;
+      case 4:
+        label = 'Swipe right to restore';
+        icon = Icons.undo_rounded;
+        bgColor = AppColors.completed;
+        iconColor = AppColors.darkBg;
+        break;
+      case 5:
+        label = 'Swipe left to delete';
+        icon = Icons.delete_forever;
+        bgColor = AppColors.deleteAction;
+        iconColor = AppColors.darkBg;
         break;
       default:
-        return const SizedBox.shrink();
+        return widget.child;
     }
 
-    return IgnorePointer(
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.7),
-        ),
-        child: AnimatedBuilder(
-          animation: _slideAnimation,
-          builder: (context, child) {
-            // 16px travel in swipe direction
-            final offset = _slideAnimation.value * 16;
-            final dx = isRightSwipe ? offset : -offset;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Task row with peek background
+        ClipRect(
+          child: AnimatedBuilder(
+            animation: _bounceAnimation,
+            builder: (context, child) {
+              // Bounce between 0 and _peekDistance
+              final offset = _bounceAnimation.value * _peekDistance;
+              final dx = isRightSwipe ? offset : -offset;
 
-            return Transform.translate(
-              offset: Offset(dx, 0),
-              child: child,
-            );
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!isRightSwipe)
-                Icon(icon, color: color, size: 24),
-              if (!isRightSwipe)
-                const SizedBox(width: AppSpacing.sm),
-              Text(
-                text,
-                style: AppTypography.ctaLabelText(
-                  color: color,
-                ).copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (isRightSwipe)
-                const SizedBox(width: AppSpacing.sm),
-              if (isRightSwipe)
-                Icon(icon, color: color, size: 24),
-            ],
+              return Stack(
+                children: [
+                  // Action background (revealed by translation)
+                  Positioned.fill(
+                    child: Container(
+                      color: bgColor,
+                      alignment: isRightSwipe
+                          ? Alignment.centerLeft
+                          : Alignment.centerRight,
+                      padding: EdgeInsets.only(
+                        left: isRightSwipe ? 16 : 0,
+                        right: isRightSwipe ? 0 : 16,
+                      ),
+                      child: Icon(icon, color: iconColor, size: 28),
+                    ),
+                  ),
+                  // Translated task row with opaque background so it
+                  // covers the action bg except where it slides away
+                  Transform.translate(
+                    offset: Offset(dx, 0),
+                    child: Container(
+                      color: AppColors.darkBg,
+                      child: child,
+                    ),
+                  ),
+                ],
+              );
+            },
+            child: widget.child,
           ),
         ),
-      ),
+        // Label below
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 4),
+          child: Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: bgColor.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -5,7 +5,10 @@ import '../config/typography.dart';
 import '../config/constants.dart';
 import '../config/theme.dart';
 import '../providers/recording_provider.dart';
+import '../providers/tutorial_provider.dart';
+import '../services/app_logger.dart';
 import '../services/haptic_service.dart';
+import '../services/onboarding_service.dart';
 import '../screens/ramble_screen.dart';
 import 'add_task_sheet.dart';
 import 'styled_snackbar.dart';
@@ -19,6 +22,7 @@ class PushToTalkButton extends ConsumerStatefulWidget {
 }
 
 class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
+  final _log = AppLogger.instance;
   @override
   Widget build(BuildContext context) {
     final recordingState = ref.watch(recordingStateProvider);
@@ -109,6 +113,7 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
   // === Actions ===
 
   Future<void> _openAddSheet() async {
+    _log.debug('ptt.openAddSheet', logger: 'PushToTalkButton');
     HapticService.light();
     final added = await showModalBottomSheet<bool>(
       context: context,
@@ -120,26 +125,47 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
       builder: (_) => const AddTaskSheet(),
     );
 
+    _log.debug('ptt.addSheet_result', logger: 'PushToTalkButton', data: {'added': added});
     if (added == true && mounted) {
       showStyledSnackbar(context,
         message: 'Task added',
         style: SnackbarStyle.success,
       );
+      _maybeActivateTutorial();
     }
   }
 
   Future<void> _launchRamble() async {
+    _log.debug('ptt.launchRamble', logger: 'PushToTalkButton');
     HapticService.medium();
     final result = await Navigator.push<({bool success, String message})>(
       context,
       MaterialPageRoute(builder: (_) => const RambleScreen()),
     );
 
+    _log.debug('ptt.ramble_result', logger: 'PushToTalkButton', data: {
+      'success': result?.success, 'message': result?.message,
+    });
     if (result != null && mounted) {
       showStyledSnackbar(context,
         message: result.message,
         style: result.success ? SnackbarStyle.success : SnackbarStyle.error,
       );
+      if (result.success) _maybeActivateTutorial();
+    }
+  }
+
+  Future<void> _maybeActivateTutorial() async {
+    final alreadyCreated = await OnboardingService.hasCreatedFirstTask();
+    _log.debug('ptt.maybeActivateTutorial', logger: 'PushToTalkButton', data: {
+      'alreadyCreated': alreadyCreated,
+    });
+    if (!alreadyCreated) {
+      await OnboardingService.markFirstTaskCreated();
+      // Advance from step -1 (add task) to step 0 (swipe to complete)
+      ref.read(tutorialStepProvider.notifier).state = 0;
+      OnboardingService.setSwipeTutorialStep(0);
+      _log.debug('ptt.tutorial_triggered', logger: 'PushToTalkButton');
     }
   }
 }
