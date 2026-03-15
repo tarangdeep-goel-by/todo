@@ -7,9 +7,6 @@ import '../config/spacing.dart';
 import '../config/typography.dart';
 import '../config/constants.dart';
 import '../models/task.dart';
-import '../providers/mutation_provider.dart';
-import '../services/haptic_service.dart';
-import '../widgets/undo_snackbar.dart';
 import '../widgets/glass_card_painter.dart';
 import 'task_detail_overlay.dart';
 import '../utils/string_extensions.dart';
@@ -93,47 +90,6 @@ class _DomainCardState extends ConsumerState<DomainCard>
             : _buildCompressedCard(context),
       ),
     );
-  }
-
-  Future<void> _toggleTask(Task task) async {
-    // Always send 'active' (never 'overdue') — overdue is computed
-    final newStatus = task.isCompleted ? 'active' : 'completed';
-
-    HapticService.light();
-
-    // Offline-first: optimistic update + enqueue for sync
-    final optimistic = task.copyWith(
-      status: newStatus,
-      completedAt: newStatus == 'completed' ? DateTime.now() : null,
-    );
-    final payload = <String, dynamic>{'status': newStatus};
-    if (newStatus == 'completed') {
-      payload['completed_at'] = DateTime.now().toIso8601String();
-    }
-
-    final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.updateTask(optimistic, payload);
-
-    if (mounted) {
-      final message = newStatus == 'completed'
-          ? 'Completed: ${task.sentenceTitle}'
-          : 'Restored: ${task.sentenceTitle}';
-      showUndoSnackbar(
-        context,
-        message: message,
-        domain: domain,
-        onUndo: () => _undoToggle(task),
-      );
-    }
-  }
-
-  Future<void> _undoToggle(Task original) async {
-    final payload = <String, dynamic>{'status': original.status};
-    if (original.isCompleted) {
-      payload['completed_at'] = (original.completedAt ?? DateTime.now()).toIso8601String();
-    }
-    final mutation = ref.read(taskMutationServiceProvider);
-    await mutation.updateTask(original, payload);
   }
 
   String _formatDueDate(DateTime date) {
