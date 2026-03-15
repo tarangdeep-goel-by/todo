@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
 import '../config/spacing.dart';
 import '../config/typography.dart';
@@ -87,7 +88,7 @@ class _DomainCardState extends ConsumerState<DomainCard>
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
       child: ClipRect(
-        child: widget.height > 120
+        child: widget.focusProgress > 0.5
             ? _buildFocusedCard(context)
             : _buildCompressedCard(context),
       ),
@@ -150,74 +151,39 @@ class _DomainCardState extends ConsumerState<DomainCard>
 
   Widget _buildTaskRow(Task task) {
     final isCompleted = task.isCompleted;
-    final hasMeta = task.priority != null || task.dueDate != null;
-
-    // Build metadata chips
-    final metaParts = <Widget>[];
-    if (task.priority != null) {
-      metaParts.add(Text(
-        task.priority!.capitalize,
-        style: AppTypography.metadataText(
-          color: domain.primary.withValues(alpha: 0.7),
-        ).copyWith(fontSize: 11, fontWeight: FontWeight.w500),
-      ));
-    }
-    if (task.priority != null && task.dueDate != null) {
-      metaParts.add(Text(
-        '  ·  ',
-        style: AppTypography.metadataText(
-          color: domain.primary.withValues(alpha: 0.4),
-        ).copyWith(fontSize: 11),
-      ));
-    }
-    if (task.dueDate != null) {
-      metaParts.add(Text(
-        _formatDueDate(task.dueDate!),
-        style: AppTypography.metadataText(
-          color: domain.primary.withValues(alpha: 0.7),
-        ).copyWith(fontSize: 11, fontWeight: FontWeight.w500),
-      ));
-    }
+    final isOverdue = task.isOverdue;
+    final isDueSoon = task.isDueSoon;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _toggleTask(task),
-      onLongPress: () => showTaskDetailOverlay(context, taskId: task.id),
+      onTap: () => showTaskDetailOverlay(context, taskId: task.id),
       child: Opacity(
-        opacity: isCompleted ? 0.5 : 1.0,
+        opacity: isCompleted ? 0.4 : 1.0,
         child: Container(
           width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                domain.surface.withValues(alpha: 0.85),
-                domain.surface.withValues(alpha: 0.55),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            border: Border.all(
-              color: domain.primary.withValues(alpha: 0.05),
-              width: 0.5,
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Color(0x0FF0EBE5),
+                width: 1,
+              ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: 6,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left accent bar
+              // Accent bar
               Container(
-                width: AppSpacing.leftAccentBar,
-                height: hasMeta ? 32 : 20,
+                width: 4,
+                height: 32,
                 decoration: BoxDecoration(
                   color: domain.primary,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: const BorderRadius.all(Radius.circular(2)),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 10),
+              // Title + subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,29 +191,65 @@ class _DomainCardState extends ConsumerState<DomainCard>
                   children: [
                     Text(
                       task.sentenceTitle,
-                      style: AppTypography.metadataText(
-                        color: domain.primary,
-                      ).copyWith(
+                      style: GoogleFonts.dmSans(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        decoration: isCompleted ? TextDecoration.lineThrough : null,
-                        decorationColor: domain.primary.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w500,
+                        height: 1.2,
+                        color: AppColors.darkText,
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
+                        decorationColor: isCompleted
+                            ? AppColors.darkText.withValues(alpha: 0.5)
+                            : null,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (hasMeta) ...[
+                    if (task.dueDate != null) ...[
                       const SizedBox(height: 2),
-                      Row(children: metaParts),
+                      Text(
+                        _formatDueDate(task.dueDate!),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          color: isOverdue
+                              ? AppColors.overdue
+                              : isDueSoon
+                                  ? AppColors.dueSoon
+                                  : const Color(0x66F0EBE5),
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
+              // Priority on right
+              if (task.priority != null)
+                Text(
+                  task.priority!.capitalize,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: _priorityColor(task.priority!),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Color _priorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return AppColors.priorityHigh;
+      case 'medium':
+        return AppColors.priorityMedium;
+      case 'low':
+        return AppColors.priorityLow;
+      default:
+        return const Color(0x66F0EBE5);
+    }
   }
 
   String _formatTaskCount(int count) =>
@@ -342,7 +344,9 @@ class _DomainCardState extends ConsumerState<DomainCard>
                   Positioned.fill(
                     child: ClipRect(
                       child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.sm,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -362,6 +366,8 @@ class _DomainCardState extends ConsumerState<DomainCard>
                                         ),
                                         child: Text(
                                           domain.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: AppTypography.domainTitle(
                                             context,
                                             color: domain.textOnPrimary,
@@ -382,11 +388,11 @@ class _DomainCardState extends ConsumerState<DomainCard>
                                 ),
                               ),
 
-                              const SizedBox(height: AppSpacing.sm),
+                              const SizedBox(height: AppSpacing.xs),
 
                               // Dark inset task preview or empty state
                               Flexible(
-                                flex: 4,
+                                flex: 6,
                                 child: Container(
                                   width: double.infinity,
                                   clipBehavior: Clip.hardEdge,

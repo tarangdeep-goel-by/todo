@@ -233,6 +233,11 @@ class TaskService:
 
     async def archive_task_with_children(self, task_id: str) -> int:
         """Archive task and all descendants (soft delete)."""
+        # Fetch task before archiving to get category info for cleanup
+        task = await self.get_task(task_id)
+        category_id = task.category_id if task else None
+        user_id = task.user_id if task else None
+
         descendants = await self._get_all_descendants(task_id)
         all_ids = [task_id] + [d.id for d in descendants]
 
@@ -248,6 +253,11 @@ class TaskService:
             await self._maybe_commit()
 
         await _with_deadlock_retry(_do_archive)
+
+        # Clean up category if no non-archived tasks remain
+        if category_id and user_id:
+            await self._cleanup_empty_category(category_id, user_id)
+
         return len(all_ids)
 
     async def _get_archived_ancestors(self, task: 'Task') -> List[str]:
@@ -294,7 +304,32 @@ class TaskService:
             await self._maybe_commit()
 
         await _with_deadlock_retry(_do_restore)
+
+        # Re-resolve category_id for restored tasks missing their category
+        await self._fix_orphaned_category_ids(all_ids, task.user_id)
+
         return len(all_ids)
+
+    async def _fix_orphaned_category_ids(self, task_ids: List[str], user_id: str):
+        """Re-resolve category_id for tasks whose category was deleted."""
+        result = await self.db.execute(
+            select(Task).where(
+                Task.id.in_(task_ids),
+                Task.category_id.is_(None),
+                Task.category.isnot(None),
+            )
+        )
+        orphans = list(result.scalars().all())
+        for task in orphans:
+            category_id = await self._resolve_category_id(user_id, task.category)
+            if category_id:
+                await self.db.execute(
+                    update(Task)
+                    .where(Task.id == task.id)
+                    .values(category_id=category_id)
+                )
+        if orphans:
+            await self._maybe_commit()
 
     async def get_archived_tasks(self, user_id: str) -> List[Task]:
         """Get all archived tasks for a user."""
@@ -364,6 +399,11 @@ class TaskService:
         """Hard delete task and all descendants from DB."""
         from sqlalchemy import delete as sql_delete
 
+        # Fetch task before deletion to get category info for cleanup
+        task = await self.get_task(task_id)
+        category_id = task.category_id if task else None
+        user_id = task.user_id if task else None
+
         descendants = await self._get_all_descendants(task_id)
         all_ids = [d.id for d in descendants] + [task_id]
 
@@ -381,6 +421,11 @@ class TaskService:
             await self._maybe_commit()
 
         await _with_deadlock_retry(_do_delete)
+
+        # Clean up empty category after deletion
+        if category_id and user_id:
+            await self._cleanup_empty_category(category_id, user_id)
+
         return len(all_ids)
 
     async def _get_all_descendants(self, task_id: str) -> List[Task]:
@@ -403,6 +448,26 @@ class TaskService:
                     to_process.append(child.id)
 
         return all_descendants
+
+    async def _cleanup_empty_category(self, category_id: str, user_id: str) -> bool:
+        """Delete category if it has no remaining tasks (including archived). Returns True if deleted."""
+        from sqlalchemy import delete as sql_delete
+
+        remaining = await self.db.execute(
+            select(func.count()).select_from(Task)
+            .where(
+                Task.category_id == category_id,
+                Task.user_id == user_id,
+            )
+        )
+        count = remaining.scalar_one()
+        if count == 0:
+            await self.db.execute(
+                sql_delete(Category).where(Category.id == category_id)
+            )
+            await self._maybe_commit()
+            return True
+        return False
 
     async def _activate_ancestor_chain(self, task_id: str) -> List[str]:
         """Walk up parent_id chain, set all completed ancestors to active.

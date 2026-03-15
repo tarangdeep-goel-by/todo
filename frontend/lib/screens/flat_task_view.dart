@@ -39,6 +39,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
   final TextEditingController _searchController = TextEditingController();
   int _displayCount = 50;
   int _swipeTutorialStep = 0;
+  bool _tutorialStepLoaded = false;
   String _statusFilter = 'all'; // 'all', 'active', 'overdue', 'done'
 
   Timer? _debounce;
@@ -61,7 +62,10 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       'step': step, 'tutorialActive': widget.tutorialActive,
     });
     if (mounted) {
-      setState(() => _swipeTutorialStep = step);
+      setState(() {
+        _swipeTutorialStep = step;
+        _tutorialStepLoaded = true;
+      });
     }
   }
 
@@ -274,7 +278,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         ? filteredTasks
         : filteredTasks.take(_displayCount).toList();
     final hasMore = !isSearching && _displayCount < filteredTasks.length;
-    final isTutorial = widget.tutorialActive && _swipeTutorialStep < 3;
+    final isTutorial = widget.tutorialActive && _tutorialStepLoaded && _swipeTutorialStep < 3;
 
     _log.debug('flat.build', logger: 'FlatTaskView', data: {
       'taskCount': allFiltered.length, 'displayCount': displayTasks.length,
@@ -437,7 +441,17 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                   }
 
                   final task = displayTasks[index];
-                  final isTutorialTarget = isTutorial && index == 0;
+                  // Step 1 needs a completed task (undo); otherwise use first task
+                  final bool isTutorialTarget;
+                  if (!isTutorial) {
+                    isTutorialTarget = false;
+                  } else if (_swipeTutorialStep == 1) {
+                    // Find first completed task for "swipe to undo"
+                    isTutorialTarget = task.isCompleted &&
+                        displayTasks.indexWhere((t) => t.isCompleted) == index;
+                  } else {
+                    isTutorialTarget = index == 0;
+                  }
 
                   final domain = DomainColors.getDomain(task.category, true, paletteMap);
                   final taskItem = FlatTaskRow(
