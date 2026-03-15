@@ -6,7 +6,7 @@ class AppTypography {
   // Fluid type scale based on viewport width
   static double domainFocus(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return (width * 0.08).clamp(36.0, 48.0);
+    return (width * 0.08).clamp(56.0, 72.0);
   }
 
   static double taskFocus(BuildContext context) {

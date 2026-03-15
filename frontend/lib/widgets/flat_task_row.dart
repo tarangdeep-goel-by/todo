@@ -352,21 +352,27 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         if (isCompleted) {
           // Left swipe on completed -> restore (mark active)
           await _toggleTask(context);
-          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 2});
-          widget.onTutorialStepComplete?.call(2);
+          if (widget.onTutorialStepComplete != null) {
+            _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 2});
+            widget.onTutorialStepComplete!(2);
+          }
           return false;
         }
         if (dir == DismissDirection.startToEnd) {
           // Right swipe on active -> complete
           await _toggleTask(context);
-          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 1});
-          widget.onTutorialStepComplete?.call(1);
+          if (widget.onTutorialStepComplete != null) {
+            _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 1});
+            widget.onTutorialStepComplete!(1);
+          }
           return false;
         } else if (dir == DismissDirection.endToStart) {
           // Left swipe on active -> archive
           await _deleteTask(context);
-          _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 3});
-          widget.onTutorialStepComplete?.call(3);
+          if (widget.onTutorialStepComplete != null) {
+            _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 3});
+            widget.onTutorialStepComplete!(3);
+          }
           return false;
         }
         return false;

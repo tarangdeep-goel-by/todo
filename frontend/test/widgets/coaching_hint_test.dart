@@ -19,7 +19,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Second hint should now be visible
-      expect(find.textContaining('schedule standup for tomorrow'), findsOneWidget);
+      expect(find.textContaining('Schedule standup for tomorrow'), findsOneWidget);
     });
 
     testWidgets('widget uses AnimatedSwitcher', (tester) async {
