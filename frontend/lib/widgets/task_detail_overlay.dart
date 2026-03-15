@@ -764,35 +764,8 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                 ),
               ),
 
-              // Domain accent bar + name
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: GestureDetector(
-                  onTap: () => _navigateToDomainRoot(task.category),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: domain.primary,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        task.category.toUpperCase(),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.03 * 12,
-                          color: domain.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Breadcrumb trail: domain > ancestor > ... > parent
+              _buildBreadcrumbs(task, domain),
 
               const SizedBox(height: AppSpacing.md),
 
@@ -857,6 +830,96 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // --- Breadcrumbs ---
+
+  /// Walk parent chain to build breadcrumb trail: DOMAIN > ancestor > ... > parent
+  List<Task> _getAncestorChain(Task task) {
+    final ancestors = <Task>[];
+    final seen = <String>{task.id};
+    var currentId = task.parentId;
+    while (currentId != null) {
+      if (seen.contains(currentId)) break; // cycle guard
+      seen.add(currentId);
+      final parent = ref.read(taskByIdProvider(currentId));
+      if (parent == null) break;
+      ancestors.add(parent);
+      currentId = parent.parentId;
+    }
+    return ancestors.reversed.toList(); // root-first order
+  }
+
+  Widget _buildBreadcrumbs(Task task, DomainPalette domain) {
+    final ancestors = _getAncestorChain(task);
+    final chevronStyle = GoogleFonts.dmSans(
+      fontSize: 11,
+      color: domain.primary.withValues(alpha: 0.4),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Row(
+        children: [
+          // Accent bar
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: domain.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Scrollable breadcrumb trail
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // Domain root
+                  GestureDetector(
+                    onTap: () => _navigateToDomainRoot(task.category),
+                    child: Text(
+                      task.category.toUpperCase(),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.03 * 12,
+                        color: domain.primary,
+                      ),
+                    ),
+                  ),
+                  // Ancestor crumbs
+                  for (final ancestor in ancestors) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text('›', style: chevronStyle),
+                    ),
+                    GestureDetector(
+                      onTap: () => _navigateTo(ancestor.id),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Text(
+                          ancestor.title,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: domain.primary.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
