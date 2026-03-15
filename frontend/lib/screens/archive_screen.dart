@@ -6,9 +6,12 @@ import '../config/theme.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
 import '../providers/task_store_provider.dart';
+import '../providers/tutorial_provider.dart';
 import '../services/haptic_service.dart';
+import '../services/onboarding_service.dart';
 import '../widgets/flat_task_row.dart';
 import '../widgets/styled_snackbar.dart';
+import '../widgets/swipe_tutorial_overlay.dart';
 
 class ArchiveScreen extends ConsumerStatefulWidget {
   const ArchiveScreen({super.key});
@@ -184,6 +187,11 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                   GestureDetector(
                     onTap: () {
                       HapticService.light();
+                      final tutorialStep = ref.read(tutorialStepProvider);
+                      if (tutorialStep >= 4 && tutorialStep < 6) {
+                        ref.read(tutorialStepProvider.notifier).state = 6;
+                        OnboardingService.setSwipeTutorialStep(6);
+                      }
                       Navigator.of(context).pop();
                     },
                     behavior: HitTestBehavior.opaque,
@@ -277,7 +285,11 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                 final paletteMap = ref.read(domainPalettesProvider);
                 final domain = DomainColors.getDomain(
                     task.category, true, paletteMap);
-                return Dismissible(
+                final tutorialStep = ref.watch(tutorialStepProvider);
+                final isTutorialTarget = index == 0 &&
+                    (tutorialStep == 4 || tutorialStep == 5);
+
+                Widget item = Dismissible(
                   key: Key('archive-${task.id}'),
                   background: Container(
                     color: AppColors.completed,
@@ -294,8 +306,22 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                   confirmDismiss: (direction) async {
                     if (direction == DismissDirection.startToEnd) {
                       _restoreTask(task);
+                      if (tutorialStep == 4) {
+                        Future.delayed(const Duration(milliseconds: 1000), () {
+                          if (!mounted) return;
+                          ref.read(tutorialStepProvider.notifier).state = 5;
+                          OnboardingService.setSwipeTutorialStep(5);
+                        });
+                      }
                     } else {
                       _permanentDeleteTask(task);
+                      if (tutorialStep == 5) {
+                        Future.delayed(const Duration(milliseconds: 1000), () {
+                          if (!mounted) return;
+                          ref.read(tutorialStepProvider.notifier).state = 6;
+                          OnboardingService.setSwipeTutorialStep(6);
+                        });
+                      }
                     }
                     return false;
                   },
@@ -306,6 +332,16 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                     detailOnTap: true,
                   ),
                 );
+
+                if (isTutorialTarget) {
+                  item = SwipeTutorialOverlay(
+                    step: tutorialStep,
+                    domainColor: domain.primary,
+                    child: item,
+                  );
+                }
+
+                return item;
               },
             ),
           ),

@@ -350,7 +350,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
           'isTutorial': widget.onTutorialStepComplete != null,
         });
         if (isCompleted) {
-          // Left swipe on completed -> restore
+          // Left swipe on completed -> restore (mark active)
           await _toggleTask(context);
           _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 2});
           widget.onTutorialStepComplete?.call(2);
@@ -363,7 +363,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
           widget.onTutorialStepComplete?.call(1);
           return false;
         } else if (dir == DismissDirection.endToStart) {
-          // Left swipe on active -> delete
+          // Left swipe on active -> archive
           await _deleteTask(context);
           _log.debug('row.tutorial_step', logger: 'FlatTaskRow', data: {'step': 3});
           widget.onTutorialStepComplete?.call(3);

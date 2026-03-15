@@ -11,7 +11,7 @@ import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
 import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
-import '../screens/home_screen.dart' show tutorialTriggerProvider;
+import '../providers/tutorial_provider.dart';
 import '../screens/ramble_screen.dart';
 import '../screens/profile_screen.dart';
 import 'add_task_sheet.dart';
@@ -110,11 +110,10 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     });
     if (!alreadyCreated) {
       await OnboardingService.markFirstTaskCreated();
-      final newVal = ref.read(tutorialTriggerProvider) + 1;
-      _log.debug('nav.tutorial_triggered', logger: 'BottomNavBar', data: {
-        'triggerValue': newVal,
-      });
-      ref.read(tutorialTriggerProvider.notifier).state = newVal;
+      // Advance from step -1 (add task) to step 0 (swipe to complete)
+      ref.read(tutorialStepProvider.notifier).state = 0;
+      OnboardingService.setSwipeTutorialStep(0);
+      _log.debug('nav.tutorial_triggered', logger: 'BottomNavBar');
     }
   }
 
