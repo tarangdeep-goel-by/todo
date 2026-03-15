@@ -38,6 +38,16 @@ class InMemoryMutationService implements TaskMutationService {
   Future<void> deleteTask(Task task) async {
     store.removeTask(task.id);
   }
+
+  @override
+  Future<void> archiveTask(Task task) async {
+    store.archiveWithDescendants(task.id);
+  }
+
+  @override
+  Future<void> restoreTask(Task task) async {
+    store.restoreWithDescendants(task.id);
+  }
 }
 
 void main() {

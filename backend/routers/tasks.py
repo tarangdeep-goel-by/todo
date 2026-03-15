@@ -368,9 +368,9 @@ async def complete_task(
     return task_to_response(task)
 
 
-@router.delete("/{task_id}")
+@router.put("/{task_id}/archive")
 @limiter.limit("30/minute")
-async def delete_task(
+async def archive_task(
     request: Request,
     task_id: UUID,
     user_id: str = Depends(get_current_user),
@@ -387,14 +387,55 @@ async def delete_task(
     if task.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    # Collect IDs before archive (descendants may change status)
+    descendants = await task_service._get_all_descendants(tid)
+    all_ids = [tid] + [d.id for d in descendants]
+
     count = await task_service.archive_task_with_children(tid)
     audit_log("task.archived", user_id, tid, archived_count=count)
+
+    # Re-fetch to get updated state
+    archived_tasks = []
+    for aid in all_ids:
+        t = await task_service.get_task(aid)
+        if t:
+            archived_tasks.append(task_to_response(t))
 
     logger.info("task.archive", task_id=tid, archived_count=count)
     return {
         "success": True,
-        "message": f"Archived task and {count - 1} sub-tasks",
-        "archived_count": count
+        "archived_count": count,
+        "tasks": [t.model_dump(mode='json') for t in archived_tasks]
+    }
+
+
+@router.delete("/{task_id}")
+@limiter.limit("10/minute")
+async def delete_task(
+    request: Request,
+    task_id: UUID,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Permanently hard-delete task and all descendants."""
+    tid = str(task_id)
+    task_service = TaskService(db)
+
+    task = await task_service.get_task(tid)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    count = await task_service.delete_task_with_children(tid)
+    audit_log("task.permanent_deleted", user_id, tid, deleted_count=count)
+
+    logger.info("task.permanent_delete", task_id=tid, deleted_count=count)
+    return {
+        "success": True,
+        "message": f"Permanently deleted task and {count - 1} sub-tasks",
+        "deleted_count": count
     }
 
 
@@ -426,30 +467,3 @@ async def restore_task(
     return task_to_response(task)
 
 
-@router.delete("/{task_id}/permanent")
-@limiter.limit("10/minute")
-async def permanent_delete_task(
-    request: Request,
-    task_id: UUID,
-    user_id: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Permanently hard-delete task and all descendants."""
-    tid = str(task_id)
-    task_service = TaskService(db)
-
-    task = await task_service.get_task(tid)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    if task.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    count = await task_service.delete_task_with_children(tid)
-    audit_log("task.permanent_deleted", user_id, tid, deleted_count=count)
-
-    logger.info("task.permanent_delete", task_id=tid, deleted_count=count)
-    return {
-        "success": True,
-        "message": f"Permanently deleted task and {count - 1} sub-tasks",
-        "deleted_count": count
-    }

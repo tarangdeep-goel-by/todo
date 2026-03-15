@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../models/task.dart';
-import '../providers/api_provider.dart';
 import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../services/app_logger.dart';
@@ -105,10 +104,9 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
 
     HapticService.medium();
 
-    // Offline-first: remove from store + enqueue delete for sync
+    // Offline-first: archive in store + enqueue for sync
     final mutation = ref.read(taskMutationServiceProvider);
-    final apiService = ref.read(apiServiceProvider);
-    await mutation.deleteTask(task);
+    await mutation.archiveTask(task);
 
     if (context.mounted) {
       showUndoSnackbar(
@@ -116,19 +114,7 @@ class _FlatTaskRowState extends ConsumerState<FlatTaskRow> {
         message: 'Archived: ${task.sentenceTitle}',
         domain: domain,
         onUndo: () async {
-          // apiService captured before widget disposal (delete removes row from list)
-          try {
-            final restoredTask = await apiService.restoreTask(task.id);
-            store.upsertTask(restoredTask);
-          } catch (_) {
-            if (context.mounted) {
-              showStyledSnackbar(
-                context,
-                message: 'Couldn\'t restore task. Check your connection.',
-                style: SnackbarStyle.error,
-              );
-            }
-          }
+          await mutation.restoreTask(task);
         },
       );
     }
