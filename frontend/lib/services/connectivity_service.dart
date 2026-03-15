@@ -116,6 +116,7 @@ class ConnectivityService {
     _recheckTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) {
+        if (_disposed) return;
         if (_hasInterface) {
           _pingHealth();
         }
@@ -124,6 +125,7 @@ class ConnectivityService {
   }
 
   void _updateOnline() {
+    if (_disposed) return;
     final online = isOnline;
     _logger.debug('connectivity.state', logger: 'Connectivity', data: {
       'hasInterface': _hasInterface,
