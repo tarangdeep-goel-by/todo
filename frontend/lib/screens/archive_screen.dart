@@ -5,6 +5,7 @@ import '../config/typography.dart';
 import '../config/theme.dart';
 import '../models/task.dart';
 import '../providers/api_provider.dart';
+import '../providers/mutation_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../providers/tutorial_provider.dart';
 import '../services/haptic_service.dart';
@@ -21,7 +22,6 @@ class ArchiveScreen extends ConsumerStatefulWidget {
 }
 
 class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
-  List<Task> _archivedTasks = [];
   bool _isLoading = true;
   String? _error;
 
@@ -40,13 +40,12 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       final apiService = ref.read(apiServiceProvider);
       final tasks = await apiService.getArchivedTasks();
       if (mounted) {
-        // Upsert archived tasks into the store so TaskDetailOverlay can read them
+        // Upsert archived tasks into the store so archivedTasksProvider picks them up
         final store = ref.read(taskStoreProvider.notifier);
         for (final task in tasks) {
           store.upsertTask(task);
         }
         setState(() {
-          _archivedTasks = tasks;
           _isLoading = false;
         });
       }
@@ -61,21 +60,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
   }
 
   Future<bool> _restoreTask(Task task) async {
-    final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
-    if (originalIndex == -1) return false;
-
     HapticService.light();
-    setState(() {
-      _archivedTasks.removeAt(originalIndex);
-    });
-
     try {
-      final apiService = ref.read(apiServiceProvider);
-      await apiService.restoreTask(task.id);
-      // Restore may also restore ancestors — refresh full store to pick them all up
-      await ref.read(taskStoreProvider.notifier).fetchAll();
-      // Reload archive list since ancestors may have been restored too
-      await _loadArchivedTasks();
+      final mutation = ref.read(taskMutationServiceProvider);
+      await mutation.restoreTask(task);
       if (mounted) {
         showStyledSnackbar(
           context,
@@ -85,14 +73,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       }
       return true;
     } catch (e) {
-      // Rollback
       if (mounted) {
-        setState(() {
-          final insertAt = originalIndex < _archivedTasks.length
-              ? originalIndex
-              : _archivedTasks.length;
-          _archivedTasks.insert(insertAt, task);
-        });
         showStyledSnackbar(
           context,
           message: 'Could not restore task. Check your connection.',
@@ -137,17 +118,14 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
 
     if (confirmed != true) return false;
 
-    final originalIndex = _archivedTasks.indexWhere((t) => t.id == task.id);
-    if (originalIndex == -1) return false;
-
     HapticService.medium();
-    setState(() {
-      _archivedTasks.removeAt(originalIndex);
-    });
+    // Remove from store immediately
+    final store = ref.read(taskStoreProvider.notifier);
+    store.removeTask(task.id);
 
     try {
       final apiService = ref.read(apiServiceProvider);
-      await apiService.permanentDeleteTask(task.id);
+      await apiService.deleteTask(task.id);
       if (mounted) {
         showStyledSnackbar(
           context,
@@ -157,14 +135,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       }
       return true;
     } catch (e) {
-      // Rollback
+      // Rollback — re-add task to store
       if (mounted) {
-        setState(() {
-          final insertAt = originalIndex < _archivedTasks.length
-              ? originalIndex
-              : _archivedTasks.length;
-          _archivedTasks.insert(insertAt, task);
-        });
+        store.upsertTask(task);
         showStyledSnackbar(
           context,
           message: 'Could not delete task. Check your connection.',
@@ -252,7 +225,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       );
     }
 
-    if (_archivedTasks.isEmpty) {
+    final archivedTasks = ref.watch(archivedTasksProvider);
+
+    if (archivedTasks.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -283,9 +258,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
             backgroundColor: AppColors.navBg,
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              itemCount: _archivedTasks.length,
+              itemCount: archivedTasks.length,
               itemBuilder: (context, index) {
-                final task = _archivedTasks[index];
+                final task = archivedTasks[index];
                 final paletteMap = ref.read(domainPalettesProvider);
                 final domain = DomainColors.getDomain(
                     task.category, true, paletteMap);

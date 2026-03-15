@@ -236,6 +236,8 @@ void main() {
         tasks: serverTasks, totalCount: 2, limit: 100, offset: 0, hasMore: false,
       ));
       when(() => mockApi.getCategories()).thenAnswer((_) async => []);
+      when(() => mockApi.getArchivedTasks(limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => []);
 
       await syncService.pull();
 
@@ -268,13 +270,13 @@ void main() {
       expect(local!.title, 'Local edit');
     });
 
-    test('delta sync removes archived tasks from local DB', () async {
+    test('delta sync upserts archived tasks in local DB', () async {
       await localDb.setMeta('last_pull_at', DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String());
       await localDb.setMeta('last_full_sync_at', DateTime.now().toIso8601String());
 
       await localDb.upsertTask(makeTask(id: 't1'), pendingSync: false);
 
-      final archivedTask = makeTask(id: 't1', archivedAt: DateTime.now());
+      final archivedTask = makeTask(id: 't1', status: 'archived', archivedAt: DateTime.now());
       when(() => mockApi.getTasksAdvancedWithRetry(
         limit: any(named: 'limit'), offset: any(named: 'offset'),
         updatedAtGte: any(named: 'updatedAtGte'),
@@ -286,7 +288,8 @@ void main() {
       await syncService.pull();
 
       final local = await localDb.getTaskById('t1');
-      expect(local, isNull);
+      expect(local, isNotNull);
+      expect(local!.status, 'archived');
     });
   });
 
@@ -300,6 +303,8 @@ void main() {
         tasks: [], totalCount: 0, limit: 100, offset: 0, hasMore: false,
       ));
       when(() => mockApi.getCategories()).thenAnswer((_) async => []);
+      when(() => mockApi.getArchivedTasks(limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => []);
 
       await syncService.sync();
 
@@ -317,6 +322,8 @@ void main() {
         );
       });
       when(() => mockApi.getCategories()).thenAnswer((_) async => []);
+      when(() => mockApi.getArchivedTasks(limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => []);
 
       // Fire two syncs concurrently
       final f1 = syncService.sync();

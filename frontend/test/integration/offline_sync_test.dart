@@ -167,6 +167,8 @@ void main() {
             tasks: serverTasks, totalCount: 2, limit: 100, offset: 0, hasMore: false,
           ));
       when(() => mockApi.getCategories()).thenAnswer((_) async => []);
+      when(() => mockApi.getArchivedTasks(limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => []);
 
       await syncService.sync();
 
@@ -188,6 +190,8 @@ void main() {
             totalCount: 1, limit: 100, offset: 0, hasMore: false,
           ));
       when(() => mockApi.getCategories()).thenAnswer((_) async => []);
+      when(() => mockApi.getArchivedTasks(limit: any(named: 'limit'), offset: any(named: 'offset')))
+          .thenAnswer((_) async => []);
 
       await syncService.pull();
 
