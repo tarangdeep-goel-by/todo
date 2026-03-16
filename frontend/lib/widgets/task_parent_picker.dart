@@ -145,8 +145,12 @@ class _TaskParentPickerState extends ConsumerState<TaskParentPicker> {
           t.title.toLowerCase().contains(_query.toLowerCase())).toList();
     }
 
-    // Group by category
-    final categories = paletteMap.keys.toList();
+    // All 8 domains — always show, even if no tasks exist yet
+    const allDomains = [
+      'career', 'finance', 'health', 'relationships',
+      'growth', 'recreation', 'home', 'community',
+    ];
+    final categories = allDomains;
     final grouped = <String, List<_TreeEntry>>{};
 
     if (_query.isEmpty) {
