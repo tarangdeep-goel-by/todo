@@ -116,7 +116,7 @@ void showTaskDetailOverlay(
     barrierDismissible: true,
     barrierLabel: 'Close task detail',
     barrierColor: Colors.black54,
-    transitionDuration: AppAnimations.cardExpand,
+    transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (context, animation, secondaryAnimation) {
       return TaskDetailOverlay(taskId: taskId, domainRoot: domainRoot);
     },
