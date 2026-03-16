@@ -101,7 +101,8 @@ void main() {
       expect(find.text('Design mockups'), findsOneWidget);
       expect(find.text('Refine wireframes'), findsOneWidget);
       expect(find.text('Fix bug'), findsOneWidget);
-      expect(find.text('Buy groceries'), findsOneWidget);
+      // 'home' domain renders further down — may be offstage in 600px viewport
+      expect(find.text('Buy groceries', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('excludes excludeTaskId and its descendants', (tester) async {
@@ -112,7 +113,7 @@ void main() {
       expect(find.text('Refine wireframes'), findsNothing);
       // work-3 and personal-1 should still show
       expect(find.text('Fix bug'), findsOneWidget);
-      expect(find.text('Buy groceries'), findsOneWidget);
+      expect(find.text('Buy groceries', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('search filters tasks by title', (tester) async {

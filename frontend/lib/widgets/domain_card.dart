@@ -577,11 +577,13 @@ class _DomainCardState extends ConsumerState<DomainCard>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Domain name (smaller)
+                  // Domain name (smaller) — lighter color for contrast on tinted bg
                   Flexible(
                     child: Text(
                       domain.name,
-                      style: AppTypography.ctaLabelText(color: domain.primary).copyWith(
+                      style: AppTypography.ctaLabelText(
+                        color: Color.lerp(domain.primary, Colors.white, 0.60),
+                      ).copyWith(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                       ),
@@ -595,7 +597,7 @@ class _DomainCardState extends ConsumerState<DomainCard>
                   Text(
                     _formatTaskCount(taskCount),
                     style: AppTypography.metadataText(
-                      color: domain.primary.withValues(alpha: 0.8),
+                      color: Color.lerp(domain.primary, Colors.white, 0.50),
                     ).copyWith(
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
