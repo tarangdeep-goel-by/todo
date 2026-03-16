@@ -24,8 +24,8 @@ void main() {
       );
       final context = tester.element(find.byType(SizedBox));
       final size = AppTypography.domainFocus(context);
-      expect(size, greaterThanOrEqualTo(56.0));
-      expect(size, lessThanOrEqualTo(72.0));
+      expect(size, greaterThanOrEqualTo(36.0));
+      expect(size, lessThanOrEqualTo(48.0));
     });
 
     testWidgets('taskFocus returns clamped value', (tester) async {

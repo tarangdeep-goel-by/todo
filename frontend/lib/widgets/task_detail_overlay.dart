@@ -116,7 +116,7 @@ void showTaskDetailOverlay(
     barrierDismissible: true,
     barrierLabel: 'Close task detail',
     barrierColor: Colors.black54,
-    transitionDuration: AppAnimations.cardExpand,
+    transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (context, animation, secondaryAnimation) {
       return TaskDetailOverlay(taskId: taskId, domainRoot: domainRoot);
     },
@@ -1054,7 +1054,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 120),
                         child: Text(
-                          ancestor.title,
+                          ancestor.sentenceTitle,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                           style: GoogleFonts.dmSans(
