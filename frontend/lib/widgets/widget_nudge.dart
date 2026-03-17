@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/theme.dart';
 import '../config/typography.dart';
 import '../config/spacing.dart';
-import '../models/task.dart';
 import '../providers/task_store_provider.dart';
 import '../services/onboarding_service.dart';
 import '../services/haptic_service.dart';
@@ -25,10 +24,10 @@ class WidgetNudge extends ConsumerStatefulWidget {
 }
 
 class _WidgetNudgeState extends ConsumerState<WidgetNudge> {
-  bool _visible = false;
-  bool _dismissed = false;
   int _lastDismissedMilestone = 0;
   bool _loaded = false;
+  bool _dismissed = false;
+  int? _trackedMilestone; // avoid duplicate impressions
 
   @override
   void initState() {
@@ -44,37 +43,23 @@ class _WidgetNudgeState extends ConsumerState<WidgetNudge> {
     if (mounted) setState(() => _loaded = true);
   }
 
-  void _checkEligibility(List<Task> tasks) {
-    if (!_loaded || _visible) return;
-    final totalCount = tasks.length;
-    // Current milestone: floor to nearest 10
-    final currentMilestone = (totalCount ~/ 10) * 10;
-    if (currentMilestone >= 10 && currentMilestone > _lastDismissedMilestone) {
-      setState(() => _visible = true);
-      Tracker.instance.impression(
-        component: 'widget_nudge',
-        screen: 'home',
-        content: 'milestone_$currentMilestone',
-      );
-    }
-  }
-
   Future<void> _addWidget() async {
     HapticService.light();
+    Tracker.instance.tap(element: 'widget_nudge_add', screen: 'home');
     try {
-      final result = await _channel.invokeMethod<bool>('requestPinWidget');
-      if (result == true) {
-        Tracker.instance.tap(element: 'widget_nudge_add', screen: 'home');
-        _dismiss();
-      }
+      // requestPinWidget returns true if the pin request was initiated
+      // (user may still decline in the launcher prompt)
+      await _channel.invokeMethod<bool>('requestPinWidget');
     } on PlatformException {
-      // Silently fail — user can still add manually
+      // Silently fail — user can still add manually via widget picker
     }
+    _dismiss();
   }
 
   Future<void> _dismiss() async {
     final tasks = ref.read(allTasksProvider);
     final currentMilestone = (tasks.length ~/ 10) * 10;
+    _lastDismissedMilestone = currentMilestone;
     setState(() => _dismissed = true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(
@@ -87,8 +72,23 @@ class _WidgetNudgeState extends ConsumerState<WidgetNudge> {
   @override
   Widget build(BuildContext context) {
     final tasks = ref.watch(allTasksProvider);
-    if (!_visible) _checkEligibility(tasks);
-    if (!_visible || _dismissed) return const SizedBox.shrink();
+
+    // Derive visibility without setState — pure computation
+    if (!_loaded || _dismissed) return const SizedBox.shrink();
+    final totalCount = tasks.length;
+    final currentMilestone = (totalCount ~/ 10) * 10;
+    final shouldShow = currentMilestone >= 10 && currentMilestone > _lastDismissedMilestone;
+    if (!shouldShow) return const SizedBox.shrink();
+
+    // Track impression once per milestone
+    if (_trackedMilestone != currentMilestone) {
+      _trackedMilestone = currentMilestone;
+      Tracker.instance.impression(
+        component: 'widget_nudge',
+        screen: 'home',
+        content: 'milestone_$currentMilestone',
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(

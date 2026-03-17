@@ -120,6 +120,10 @@ void main() async {
 Uri? _pendingDeepLink;
 bool _deepLinksReady = false;
 
+/// Whether a deep link is waiting to be processed (used by HomeScreen
+/// to show a blank frame instead of flashing home content).
+bool get hasPendingDeepLink => _pendingDeepLink != null;
+
 void _initDeepLinks() {
   final appLinks = AppLinks();
 

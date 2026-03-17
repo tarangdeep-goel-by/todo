@@ -19,8 +19,9 @@ class MainActivity : FlutterActivity() {
                         val appWidgetManager = AppWidgetManager.getInstance(this)
                         val provider = ComponentName(this, RambleWidgetProvider::class.java)
                         if (appWidgetManager.isRequestPinAppWidgetSupported) {
-                            appWidgetManager.requestPinAppWidget(provider, null, null)
-                            result.success(true)
+                            val requested = appWidgetManager.requestPinAppWidget(provider, null, null)
+                            // Returns true if request was initiated (user may still decline)
+                            result.success(requested)
                         } else {
                             result.success(false)
                         }

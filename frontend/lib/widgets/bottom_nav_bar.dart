@@ -80,7 +80,10 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     HapticService.medium();
     final result = await Navigator.push<({bool success, String message})>(
       context,
-      MaterialPageRoute(builder: (_) => const RambleScreen()),
+      MaterialPageRoute(
+        builder: (_) => const RambleScreen(),
+        settings: const RouteSettings(name: '/ramble'),
+      ),
     );
 
     // Mark voice hint seen after first voice session
