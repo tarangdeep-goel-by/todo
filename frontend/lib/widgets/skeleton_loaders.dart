@@ -91,56 +91,60 @@ class _Bone extends StatelessWidget {
 // ── Skeleton task row ───────────────────────────────────────────────────
 
 /// Mimics FlatTaskRow layout: accent bar + two text lines + right metadata.
+/// Does NOT include its own ShimmerEffect — use inside [SkeletonTaskList]
+/// or wrap externally with [ShimmerEffect].
 class SkeletonTaskRow extends StatelessWidget {
   const SkeletonTaskRow({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ShimmerEffect(
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Color(0x0FF0EBE5), width: 1),
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Color(0x0FF0EBE5), width: 1),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Accent bar
-            const _Bone(width: 4, height: 36, radius: 2),
-            const SizedBox(width: 10),
-            // Title + subtitle
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _Bone(width: MediaQuery.of(context).size.width * 0.55, height: 14),
-                  const SizedBox(height: 6),
-                  const _Bone(width: 80, height: 10),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Right side: date + priority placeholders
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Accent bar
+          _Bone(width: 4, height: 36, radius: 2),
+          SizedBox(width: 10),
+          // Title + subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _Bone(width: 48, height: 10),
+                FractionallySizedBox(
+                  widthFactor: 0.7,
+                  alignment: Alignment.centerLeft,
+                  child: _Bone(width: double.infinity, height: 14),
+                ),
                 SizedBox(height: 6),
-                _Bone(width: 36, height: 10),
+                _Bone(width: 80, height: 10),
               ],
             ),
-          ],
-        ),
+          ),
+          SizedBox(width: 8),
+          // Right side: date + priority placeholders
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Bone(width: 48, height: 10),
+              SizedBox(height: 6),
+              _Bone(width: 36, height: 10),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Shows a list of skeleton task rows.
+/// Shows a list of skeleton task rows with a single shared shimmer.
 class SkeletonTaskList extends StatelessWidget {
   final int count;
   final EdgeInsetsGeometry padding;
@@ -155,8 +159,10 @@ class SkeletonTaskList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: padding,
-      child: Column(
-        children: List.generate(count, (_) => const SkeletonTaskRow()),
+      child: ShimmerEffect(
+        child: Column(
+          children: List.generate(count, (_) => const SkeletonTaskRow()),
+        ),
       ),
     );
   }
@@ -257,11 +263,18 @@ class SkeletonDomainCardFocused extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Domain name + task count
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _Bone(width: MediaQuery.of(context).size.width * 0.35, height: 32, radius: 6),
-                const _Bone(width: 60, height: 14, radius: 4),
+                Expanded(
+                  flex: 4,
+                  child: FractionallySizedBox(
+                    widthFactor: 0.7,
+                    alignment: Alignment.centerLeft,
+                    child: _Bone(width: double.infinity, height: 32, radius: 6),
+                  ),
+                ),
+                _Bone(width: 60, height: 14, radius: 4),
               ],
             ),
             const SizedBox(height: 16),
