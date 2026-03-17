@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_ramble_short">Start Ramble</string>
+    <string name="shortcut_ramble_long">Start voice ramble</string>
+    <string name="widget_description">Tap to start voice ramble</string>
+    <string name="tile_ramble_label">Ramble</string>
+    <string name="widget_label">Ramble</string>
+</resources>

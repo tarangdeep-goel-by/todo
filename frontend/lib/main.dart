@@ -19,6 +19,7 @@ import 'services/tracker/test_adapter.dart';
 import 'widgets/reauth_dialog.dart';
 import 'widgets/task_detail_overlay.dart';
 import 'providers/local_data_provider.dart';
+import 'screens/ramble_screen.dart';
 
 /// Compile-time flag: `flutter test --dart-define=TEST_MODE=true`
 /// Canonical source is [Environment.isTestMode]; this alias exists for
@@ -117,19 +118,31 @@ void main() async {
 }
 
 Uri? _pendingDeepLink;
+bool _deepLinksReady = false;
+
+/// Whether a deep link is waiting to be processed (used by HomeScreen
+/// to show a blank frame instead of flashing home content).
+bool get hasPendingDeepLink => _pendingDeepLink != null;
 
 void _initDeepLinks() {
   final appLinks = AppLinks();
 
-  // Handle link when app is already running
+  // Handle link when app is already running (or arriving during cold start).
+  // During cold start, AuthGate hasn't resolved yet — pushing a route now
+  // would be covered when AuthGate rebuilds with HomeScreen. Defer until
+  // HomeScreen signals readiness via processPendingDeepLink().
   appLinks.uriLinkStream.listen((Uri uri) {
-    _handleDeepLink(uri);
+    if (_deepLinksReady) {
+      _handleDeepLink(uri);
+    } else {
+      _pendingDeepLink = uri;
+    }
   });
 
   // Handle link that launched the app — defer if UI isn't ready yet
   appLinks.getInitialLink().then((Uri? uri) {
     if (uri != null) {
-      if (navigatorKey.currentContext != null) {
+      if (_deepLinksReady) {
         _handleDeepLink(uri);
       } else {
         _pendingDeepLink = uri;
@@ -139,6 +152,7 @@ void _initDeepLinks() {
 }
 
 void processPendingDeepLink() {
+  _deepLinksReady = true;
   final uri = _pendingDeepLink;
   if (uri != null) {
     _pendingDeepLink = null;
@@ -164,6 +178,24 @@ void _handleDeepLink(Uri uri) {
     if (!uuidRegex.hasMatch(taskId)) return;
 
     showTaskDetailOverlay(context, taskId: taskId);
+  } else if (uri.host == 'ramble') {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) return;
+
+    // Double-push guard: don't push if already on RambleScreen
+    String? currentRouteName;
+    navigator.popUntil((route) {
+      currentRouteName = route.settings.name;
+      return true;
+    });
+    if (currentRouteName == '/ramble') return;
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => const RambleScreen(),
+        settings: const RouteSettings(name: '/ramble'),
+      ),
+    );
   }
 }
 

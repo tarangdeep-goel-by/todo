@@ -484,6 +484,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           prefilledParentTitle: task.sentenceTitle,
           prefilledCategory: task.category,
         ),
+        settings: const RouteSettings(name: '/ramble'),
       ),
     );
   }
@@ -636,12 +637,12 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
       } else if (value == 'restore') {
         _restoreFromMenu(task);
       } else if (value == 'delete') {
-        _deleteFromMenu(context, task);
+        _deleteFromMenu(task);
       }
     });
   }
 
-  Future<void> _deleteFromMenu(BuildContext context, Task task) async {
+  Future<void> _deleteFromMenu(Task task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

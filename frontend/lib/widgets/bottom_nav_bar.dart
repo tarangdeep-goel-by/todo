@@ -13,7 +13,6 @@ import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
 import '../providers/tutorial_provider.dart';
 import '../screens/ramble_screen.dart';
-import '../screens/profile_screen.dart';
 import 'add_task_sheet.dart';
 import 'styled_snackbar.dart';
 import 'voice_hint_pulse.dart';
@@ -81,7 +80,10 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     HapticService.medium();
     final result = await Navigator.push<({bool success, String message})>(
       context,
-      MaterialPageRoute(builder: (_) => const RambleScreen()),
+      MaterialPageRoute(
+        builder: (_) => const RambleScreen(),
+        settings: const RouteSettings(name: '/ramble'),
+      ),
     );
 
     // Mark voice hint seen after first voice session
@@ -124,24 +126,16 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
     final activeColor = AppColors.darkText;
     final inactiveColor = AppColors.darkText.withValues(alpha: 0.5);
 
-    return Padding(
-      padding: const EdgeInsets.only(
-        left: AppSpacing.bottomNavMarginH,
-        right: AppSpacing.bottomNavMarginH,
-        bottom: AppSpacing.bottomNavMarginBottom,
-      ),
-      child: Container(
+    return Container(
         height: AppSpacing.bottomNavHeight,
         decoration: BoxDecoration(
           color: AppColors.navBg,
-          borderRadius: BorderRadius.circular(AppSpacing.bottomNavRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+          border: Border(
+            top: BorderSide(
+              color: AppColors.darkText.withValues(alpha: 0.06),
+              width: 0.5,
             ),
-          ],
+          ),
         ),
         child: Row(
           children: [
@@ -207,20 +201,17 @@ class _BottomNavBarState extends ConsumerState<BottomNavBar> {
               key: TK.profileTab,
               icon: Icons.person_outline_rounded,
               label: 'Profile',
-              isActive: false,
+              isActive: viewMode == ViewMode.profile,
               activeColor: activeColor,
               inactiveColor: inactiveColor,
               onTap: () {
                 HapticService.light();
                 Tracker.instance.tap(element: 'profile_tab', screen: 'home');
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
+                ref.read(viewModeProvider.notifier).state = ViewMode.profile;
               },
             ),
           ],
         ),
-      ),
     );
   }
 }
