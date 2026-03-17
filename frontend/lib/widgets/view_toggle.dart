@@ -26,7 +26,7 @@ class ViewToggle extends ConsumerWidget {
     const buttonWidth = totalWidth / buttonCount;
 
     final indicatorLeft = switch (viewMode) {
-      ViewMode.node => 0.0,
+      ViewMode.node || ViewMode.profile => 0.0,
       ViewMode.flat => buttonWidth,
       ViewMode.calendar => buttonWidth * 2,
     };

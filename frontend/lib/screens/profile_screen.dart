@@ -31,132 +31,86 @@ class ProfileScreen extends ConsumerWidget {
     final photoUrl = user?.photoURL;
     final creationTime = user?.metadata.creationTime;
 
-    return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar
-            Container(
-              height: AppSpacing.topBarHeight,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      HapticService.light();
-                      Navigator.of(context).pop();
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xs),
-                      child: Icon(
-                        Icons.arrow_back_rounded,
-                        color: AppColors.darkText,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Profile',
-                    style: AppTypography.ctaLabelText(
-                      color: AppColors.darkText,
-                    ).copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Column(
+        children: [
+          const SizedBox(height: AppSpacing.xxl),
+
+          // Avatar
+          _Avatar(photoUrl: photoUrl, displayName: displayName),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Name
+          Text(
+            displayName,
+            style: GoogleFonts.bricolageGrotesque(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+              color: AppColors.darkText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+
+          // Email
+          Text(
+            email,
+            style: AppTypography.ctaLabelText(
+              color: AppColors.secondaryText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Member since
+          if (creationTime != null)
+            Text(
+              'Member since ${DateFormat.yMMMM().format(creationTime)}',
+              style: AppTypography.metadataText(
+                color: AppColors.tertiaryText,
+              ).copyWith(
+                fontSize: 13,
+                letterSpacing: 0.3,
               ),
             ),
 
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: Column(
-                  children: [
-                    const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.xl),
 
-                    // Avatar
-                    _Avatar(photoUrl: photoUrl, displayName: displayName),
-                    const SizedBox(height: AppSpacing.lg),
+          // Archive row
+          _ArchiveRow(key: TK.archiveLink),
 
-                    // Name
-                    Text(
-                      displayName,
-                      style: GoogleFonts.bricolageGrotesque(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        height: 1.1,
-                        color: AppColors.darkText,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
+          const Spacer(),
 
-                    // Email
-                    Text(
-                      email,
-                      style: AppTypography.ctaLabelText(
-                        color: AppColors.secondaryText,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Member since
-                    if (creationTime != null)
-                      Text(
-                        'Member since ${DateFormat.yMMMM().format(creationTime)}',
-                        style: AppTypography.metadataText(
-                          color: AppColors.tertiaryText,
-                        ).copyWith(
-                          fontSize: 13,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-
-                    const SizedBox(height: AppSpacing.xl),
-
-                    // Archive row
-                    _ArchiveRow(key: TK.archiveLink),
-
-                    const Spacer(),
-
-                    // Sign out button
-                    GestureDetector(
-                      key: TK.signOutButton,
-                      onTap: () => _confirmSignOut(context, ref),
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: AppColors.snackbarError.primary
-                                .withValues(alpha: 0.3),
-                          ),
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusSm),
-                        ),
-                        child: Text(
-                          'Sign out',
-                          textAlign: TextAlign.center,
-                          style: AppTypography.ctaLabelText(
-                            color: AppColors.snackbarError.primary,
-                          ).copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
+          // Sign out button
+          GestureDetector(
+            key: TK.signOutButton,
+            onTap: () => _confirmSignOut(context, ref),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppColors.snackbarError.primary
+                      .withValues(alpha: 0.3),
                 ),
+                borderRadius:
+                    BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              child: Text(
+                'Sign out',
+                textAlign: TextAlign.center,
+                style: AppTypography.ctaLabelText(
+                  color: AppColors.snackbarError.primary,
+                ).copyWith(fontWeight: FontWeight.w600),
               ),
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: AppSpacing.xxl),
+        ],
       ),
     );
   }
@@ -190,17 +144,15 @@ class ProfileScreen extends ConsumerWidget {
               final localDb = ref.read(localDataServiceProvider);
               final auth = ref.read(authServiceProvider);
 
-              // Capture navigators before async gap
+              // Capture navigator before async gap
               final dialogNav = Navigator.of(ctx);
-              final screenNav = Navigator.of(context);
 
               try {
                 await auth.signOut();
                 sync.stopPeriodicSync();
                 store.clear();
                 await localDb.clearAll();
-                dialogNav.pop();
-                screenNav.pop(); // Close profile screen
+                dialogNav.pop(); // Close dialog; AuthGate handles redirect
               } catch (_) {
                 dialogNav.pop();
                 if (context.mounted) {
