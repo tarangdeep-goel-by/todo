@@ -164,25 +164,45 @@ class SkeletonTaskList extends StatelessWidget {
 
 // ── Skeleton domain card (ParentNodeView) ───────────────────────────────
 
-/// Mimics the compressed domain card strip.
+/// Mimics the compressed domain card strip with domain color tint.
 class SkeletonDomainCardCompressed extends StatelessWidget {
   final double height;
+  final Color color;
 
-  const SkeletonDomainCardCompressed({super.key, this.height = 56});
+  const SkeletonDomainCardCompressed({
+    super.key,
+    this.height = 56,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final tinted = Color.lerp(const Color(0xFF1A1816), color, 0.25)!;
+    final midBlend = Color.lerp(tinted, Color.lerp(color, Colors.black, 0.6)!, 0.25)!;
+
     return ShimmerEffect(
       child: Container(
         height: height,
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A1816),
-          border: Border(
-            left: BorderSide(color: Color(0xFF2A2622), width: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: const Alignment(-1.0, -0.1),
+            end: const Alignment(1.0, 0.1),
+            colors: [tinted, midBlend, tinted.withValues(alpha: 0.85)],
+            stops: const [0.0, 0.5, 1.0],
           ),
+          border: Border(
+            left: BorderSide(color: color, width: 4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.12),
+              blurRadius: 6,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _Bone(width: 100, height: 18, radius: 4),
@@ -194,11 +214,16 @@ class SkeletonDomainCardCompressed extends StatelessWidget {
   }
 }
 
-/// Mimics the focused domain card with task previews inside.
+/// Mimics the focused domain card with domain color and task previews.
 class SkeletonDomainCardFocused extends StatelessWidget {
   final double height;
+  final Color color;
 
-  const SkeletonDomainCardFocused({super.key, this.height = 300});
+  const SkeletonDomainCardFocused({
+    super.key,
+    this.height = 300,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -206,17 +231,32 @@ class SkeletonDomainCardFocused extends StatelessWidget {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1816),
-          border: const Border(
-            left: BorderSide(color: Color(0xFF2A2622), width: 4),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(color, Colors.black, 0.7)!,
+              Color.lerp(color, Colors.black, 0.85)!,
+            ],
           ),
-          borderRadius: BorderRadius.circular(0),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.20),
+              blurRadius: 28,
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.30),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Domain name placeholder
+            // Domain name + task count
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -232,18 +272,29 @@ class SkeletonDomainCardFocused extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.cardInset,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.08),
+                    width: 0.5,
+                  ),
                 ),
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   children: List.generate(
                     3,
-                    (_) => const Padding(
-                      padding: EdgeInsets.only(bottom: 10),
+                    (i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
                         children: [
-                          _Bone(width: 4, height: 28, radius: 2),
-                          SizedBox(width: 10),
-                          Expanded(
+                          Container(
+                            width: 4,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -267,28 +318,34 @@ class SkeletonDomainCardFocused extends StatelessWidget {
   }
 }
 
-/// Full skeleton for ParentNodeView: 1 focused + compressed cards filling space.
+/// Full skeleton for ParentNodeView: 1 focused + compressed cards,
+/// each with a distinct domain color from the palette.
 class SkeletonParentNodeView extends StatelessWidget {
   const SkeletonParentNodeView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = DomainColors.palettes.map((p) => p.primary).toList();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalHeight = constraints.maxHeight;
-        // Approximate: focused takes ~65%, rest split among compressed
         final focusedHeight = totalHeight * 0.65;
-        final compressedCount = 4;
+        final compressedCount = colors.length - 1;
         final compressedHeight =
             (totalHeight - focusedHeight) / compressedCount;
 
         return Column(
           children: [
-            SkeletonDomainCardFocused(height: focusedHeight),
+            SkeletonDomainCardFocused(
+              height: focusedHeight,
+              color: colors[0],
+            ),
             ...List.generate(
               compressedCount,
-              (_) => SkeletonDomainCardCompressed(
+              (i) => SkeletonDomainCardCompressed(
                 height: compressedHeight,
+                color: colors[i + 1],
               ),
             ),
           ],

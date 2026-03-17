@@ -12,6 +12,7 @@ import 'package:frontend/services/local_data_service.dart';
 import 'package:frontend/services/speech_service.dart';
 import 'package:frontend/services/ramble_websocket_service.dart';
 import 'package:frontend/providers/local_data_provider.dart';
+import 'package:frontend/providers/task_store_provider.dart';
 import 'package:frontend/config/theme.dart';
 import 'package:frontend/models/task.dart';
 
@@ -109,10 +110,21 @@ Task createTestTask({
   );
 }
 
-/// Wrap a widget in ProviderScope + MaterialApp for testing
+/// Override that sets TaskStoreState to a "ready" initial state (not loading).
+/// Use in widget tests so skeletons don't block content rendering.
+final readyStoreOverride = taskStoreProvider.overrideWith((ref) {
+  final notifier = TaskStoreNotifier(ref);
+  // Mark store as loaded so widgets render content, not skeletons
+  notifier.state = const TaskStoreState(isLoading: false, hasLoadedOnce: true);
+  return notifier;
+});
+
+/// Wrap a widget in ProviderScope + MaterialApp for testing.
+/// Automatically includes [readyStoreOverride] so screens show content
+/// instead of skeleton loaders. Pass additional overrides as needed.
 Widget buildTestApp(Widget child, {List<Override> overrides = const []}) {
   return ProviderScope(
-    overrides: overrides,
+    overrides: [readyStoreOverride, ...overrides],
     child: MaterialApp(home: Scaffold(body: child)),
   );
 }
@@ -121,7 +133,7 @@ Widget buildTestApp(Widget child, {List<Override> overrides = const []}) {
 /// snackbars and other overlay-based widgets.
 Widget buildOverlayTestApp(Widget child, {List<Override> overrides = const []}) {
   return ProviderScope(
-    overrides: overrides,
+    overrides: [readyStoreOverride, ...overrides],
     child: MaterialApp(
       home: Scaffold(
         body: Overlay(

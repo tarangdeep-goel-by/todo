@@ -230,7 +230,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       }
     });
 
-    // Full spinner only on initial load
+    // Skeleton on initial load
     if (storeState.isLoading && allFiltered.isEmpty) {
       return const SkeletonTaskList(count: 8);
     }

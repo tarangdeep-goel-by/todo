@@ -9,6 +9,7 @@ import 'package:frontend/config/theme.dart';
 import 'package:frontend/models/category.dart';
 import 'package:frontend/widgets/empty_state.dart';
 import 'package:frontend/widgets/domain_card.dart';
+import 'package:frontend/widgets/skeleton_loaders.dart';
 
 import '../helpers/test_helpers.dart';
 
@@ -33,6 +34,7 @@ void main() {
         categoriesProvider.overrideWith((ref) => cats),
         taskStoreProvider.overrideWith((ref) {
           final notifier = TaskStoreNotifier(ref);
+          notifier.state = const TaskStoreState(isLoading: false, hasLoadedOnce: true);
           return notifier;
         }),
       ],
@@ -92,7 +94,7 @@ void main() {
       expect(find.byType(DomainCard), findsWidgets);
     });
 
-    testWidgets('shows loading indicator when loading and no domains',
+    testWidgets('shows skeleton when loading and no domains',
         (tester) async {
       // Override taskStoreProvider with a loading state and empty domains
       final widget = ProviderScope(
@@ -102,6 +104,7 @@ void main() {
           categoriesProvider.overrideWith((ref) => <Category>[]),
           taskStoreProvider.overrideWith((ref) {
             final notifier = TaskStoreNotifier(ref);
+            // Initial state is isLoading: true — skeleton should show
             return notifier;
           }),
         ],
@@ -112,15 +115,11 @@ void main() {
         ),
       );
 
-      // To trigger loading state, we need the store to be in loading state
-      // Since we can't easily set isLoading=true via the notifier without
-      // calling fetchAll (which needs API stubs), we test that the empty state
-      // renders when store is idle and domains are empty.
       await tester.pumpWidget(widget);
       await tester.pump();
 
-      // With empty domains and no loading, empty state should show
-      expect(find.byType(EmptyState), findsOneWidget);
+      // With empty domains and loading, skeleton should show instead of empty state
+      expect(find.byType(SkeletonParentNodeView), findsOneWidget);
     });
   });
 }
