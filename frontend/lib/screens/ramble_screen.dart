@@ -1084,8 +1084,10 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
         ),
         if (_isSubmitting)
           Positioned.fill(
-            child: ColoredBox(
-              color: AppColors.darkBg.withValues(alpha: 0.6),
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: AppColors.darkBg.withValues(alpha: 0.6),
+              ),
             ),
           ),
       ],

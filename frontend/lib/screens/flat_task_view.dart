@@ -343,12 +343,6 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
               ],
             ),
           ),
-        // Search loading indicator
-        if (_searchLoading)
-          const SkeletonTaskList(
-            count: 4,
-            padding: EdgeInsets.only(top: 8),
-          ),
         // Search error indicator
         if (_searchError != null)
           Padding(
@@ -372,8 +366,16 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         // Quick filter chips (hide during search)
         if (!isSearching)
           _buildQuickFilterChips(),
+        // Search loading skeleton
+        if (_searchLoading)
+          const Expanded(
+            child: SkeletonTaskList(
+              count: 6,
+              padding: EdgeInsets.only(top: 8),
+            ),
+          )
         // Search empty state
-        if (isSearching && _searchResults!.isEmpty && !_searchLoading)
+        else if (isSearching && _searchResults!.isEmpty)
           const Expanded(
             child: Center(
               child: Text(
@@ -411,11 +413,13 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                 itemCount: displayTasks.length + (hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == displayTasks.length) {
-                    return const Column(
-                      children: [
-                        SkeletonTaskRow(),
-                        SkeletonTaskRow(),
-                      ],
+                    return const ShimmerEffect(
+                      child: Column(
+                        children: [
+                          SkeletonTaskRow(),
+                          SkeletonTaskRow(),
+                        ],
+                      ),
                     );
                   }
 
