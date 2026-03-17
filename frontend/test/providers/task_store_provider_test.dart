@@ -11,7 +11,7 @@ import '../helpers/test_helpers.dart';
 void main() {
   late MockApiService mockApi;
   late ProviderContainer container;
-  late Future<void> Function() _closeLocalData;
+  late Future<void> Function() closeLocalData;
 
   setUp(() {
     mockApi = MockApiService();
@@ -20,12 +20,12 @@ void main() {
       apiServiceProvider.overrideWithValue(mockApi),
       localData.override,
     ]);
-    _closeLocalData = localData.close;
+    closeLocalData = localData.close;
   });
 
   tearDown(() async {
     container.dispose();
-    await _closeLocalData();
+    await closeLocalData();
   });
 
   // ─── Helpers ───────────────────────────────────────────────

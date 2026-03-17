@@ -23,6 +23,7 @@ class OnboardingService {
   // 6 = tutorial done
   static const tutorialDoneStep = 6;
   static const flatViewNudgeKey = 'onboarding_flat_view_nudge_seen';
+  static const widgetNudgeMilestoneKey = 'onboarding_widget_nudge_milestone';
 
   static Future<bool> hasSeenWelcome() async {
     final prefs = await SharedPreferences.getInstance();

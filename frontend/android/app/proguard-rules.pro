@@ -27,3 +27,9 @@
 -keepclassmembers class * {
     native <methods>;
 }
+
+# Home screen widget
+-keep class com.amble.app.RambleWidgetProvider { *; }
+
+# Quick Settings tile
+-keep class com.amble.app.RambleTileService { *; }

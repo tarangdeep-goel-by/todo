@@ -23,6 +23,7 @@ import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
 import '../widgets/flat_view_nudge.dart';
+import '../widgets/widget_nudge.dart';
 import '../providers/tutorial_provider.dart';
 import 'parent_node_view.dart';
 import 'flat_task_view.dart';
@@ -43,6 +44,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Process pending deep links ASAP — before the first frame paints.
+    // This avoids a visible flash of the home screen when launched via
+    // widget/shortcut deep link.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      processPendingDeepLink();
+    });
     Future.microtask(() async {
       Tracker.instance.screenView(screen: 'home', source: 'app_launch');
       final store = ref.read(taskStoreProvider.notifier);
@@ -83,10 +90,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await store.fetchAll();
       }
       _initTutorial();
-      // Process any deep link that arrived before UI was ready
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        processPendingDeepLink();
-      });
     });
   }
 
@@ -182,6 +185,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Column(
               children: [
                 const TopBar(),
+                const WidgetNudge(),
                 // Active filter chips (only in flat view)
                 if (viewMode == ViewMode.flat) const ActiveFilterChips(),
                 Expanded(
