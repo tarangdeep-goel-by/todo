@@ -19,6 +19,7 @@ void main() {
   Widget buildView({List<Override> extra = const []}) {
     return ProviderScope(
       overrides: [
+        readyStoreOverride,
         apiServiceProvider.overrideWithValue(mockApi),
         domainPalettesProvider.overrideWithValue(createTestPaletteMap()),
         ...extra,

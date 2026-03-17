@@ -49,7 +49,7 @@ class TaskStoreNotifier extends StateNotifier<TaskStoreState> {
   final Ref _ref;
   final _logger = AppLogger.instance;
 
-  TaskStoreNotifier(this._ref) : super(const TaskStoreState());
+  TaskStoreNotifier(this._ref) : super(const TaskStoreState(isLoading: true));
 
   /// Load tasks and categories from local SQLite cache.
   /// Returns instantly if cache is populated; sets hasLoadedOnce.
