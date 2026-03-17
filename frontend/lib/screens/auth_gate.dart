@@ -5,6 +5,7 @@ import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_lifecycle_observer.dart';
 import 'home_screen.dart';
+import '../widgets/skeleton_loaders.dart';
 import 'login_screen.dart';
 
 class AuthGate extends ConsumerWidget {
@@ -31,11 +32,8 @@ class AuthGate extends ConsumerWidget {
       },
       loading: () => const Scaffold(
         backgroundColor: AppColors.darkBg,
-        body: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: AppColors.darkText,
-          ),
+        body: SafeArea(
+          child: SkeletonAppShell(),
         ),
       ),
       error: (e, _) => const LoginScreen(),

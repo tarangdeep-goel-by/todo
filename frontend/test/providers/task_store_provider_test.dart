@@ -49,10 +49,10 @@ void main() {
   // ─── TaskStoreNotifier ─────────────────────────────────────
 
   group('TaskStoreNotifier', () {
-    test('initial state is empty, not loading, no error', () {
+    test('initial state is empty, loading, no error', () {
       final state = container.read(taskStoreProvider);
       expect(state.tasks, isEmpty);
-      expect(state.isLoading, false);
+      expect(state.isLoading, true);
       expect(state.error, isNull);
     });
 

@@ -14,7 +14,8 @@ import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/flat_task_row.dart';
-import '../widgets/loading_state.dart';
+
+import '../widgets/skeleton_loaders.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 import '../models/api_error.dart';
 import '../services/haptic_service.dart';
@@ -231,9 +232,9 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
       }
     });
 
-    // Full spinner only on initial load
+    // Skeleton on initial load
     if (storeState.isLoading && allFiltered.isEmpty) {
-      return const LoadingState();
+      return const SkeletonTaskList(count: 8);
     }
 
     if (storeState.error != null && !storeState.hasLoadedOnce && allFiltered.isEmpty) {
@@ -352,18 +353,6 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
               ],
             ),
           ),
-        // Search loading indicator
-        if (_searchLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: SizedBox(
-              height: 2,
-              child: LinearProgressIndicator(
-                color: AppColors.darkText,
-                backgroundColor: AppColors.navBg,
-              ),
-            ),
-          ),
         // Search error indicator
         if (_searchError != null)
           Padding(
@@ -387,8 +376,16 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
         // Quick filter chips (hide during search)
         if (!isSearching)
           _buildQuickFilterChips(),
+        // Search loading skeleton
+        if (_searchLoading)
+          const Expanded(
+            child: SkeletonTaskList(
+              count: 6,
+              padding: EdgeInsets.only(top: 8),
+            ),
+          )
         // Search empty state
-        if (isSearching && _searchResults!.isEmpty && !_searchLoading)
+        else if (isSearching && _searchResults!.isEmpty)
           const Expanded(
             child: Center(
               child: Text(
@@ -426,12 +423,12 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                 itemCount: displayTasks.length + (hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == displayTasks.length) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(
-                          color: AppColors.darkText,
-                        ),
+                    return const ShimmerEffect(
+                      child: Column(
+                        children: [
+                          SkeletonTaskRow(),
+                          SkeletonTaskRow(),
+                        ],
                       ),
                     );
                   }

@@ -11,6 +11,7 @@ import '../providers/tutorial_provider.dart';
 import '../services/haptic_service.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/flat_task_row.dart';
+import '../widgets/skeleton_loaders.dart';
 import '../widgets/styled_snackbar.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 
@@ -205,10 +206,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.secondaryText,
-        ),
+      return const SkeletonTaskList(
+        count: 6,
+        padding: EdgeInsets.symmetric(horizontal: 8),
       );
     }
 

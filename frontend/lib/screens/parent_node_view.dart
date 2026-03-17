@@ -12,7 +12,8 @@ import '../providers/sync_provider.dart';
 import '../providers/task_store_provider.dart';
 import '../widgets/domain_card.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/loading_state.dart';
+
+import '../widgets/skeleton_loaders.dart';
 import '../widgets/styled_snackbar.dart';
 import '../utils/liquid_focus_scroll.dart';
 import '../services/haptic_service.dart';
@@ -247,7 +248,7 @@ class _ParentNodeViewState extends ConsumerState<ParentNodeView>
     final domains = ref.watch(domainPalettesProvider).values.toList();
 
     if (storeState.isLoading && domains.isEmpty) {
-      return const LoadingState();
+      return const SkeletonParentNodeView();
     }
 
     if (storeState.error != null && !storeState.hasLoadedOnce && domains.isEmpty) {
