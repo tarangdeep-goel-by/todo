@@ -16,7 +16,7 @@ class AppColors {
 
   // Structural colors
   static const navBg = Color(0xFF1A1816);
-  static const cardInset = Color(0xFF080604);
+  static const cardInset = Color(0xFF141210);
 
   // Text hierarchy (WCAG-aware alphas on darkText)
   static const secondaryText = Color(0x99F0EBE5); // 0.6 alpha — WCAG AA floor
