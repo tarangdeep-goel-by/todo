@@ -17,7 +17,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Ramble"
+        android:text="@string/widget_label"
         android:textColor="#FFFFFF"
         android:textSize="11sp"
         android:layout_marginTop="4dp" />

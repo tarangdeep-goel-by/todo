@@ -140,7 +140,10 @@ class _PushToTalkButtonState extends ConsumerState<PushToTalkButton> {
     HapticService.medium();
     final result = await Navigator.push<({bool success, String message})>(
       context,
-      MaterialPageRoute(builder: (_) => const RambleScreen()),
+      MaterialPageRoute(
+        builder: (_) => const RambleScreen(),
+        settings: const RouteSettings(name: '/ramble'),
+      ),
     );
 
     _log.debug('ptt.ramble_result', logger: 'PushToTalkButton', data: {

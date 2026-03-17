@@ -14,7 +14,7 @@ import '../services/notification_service.dart';
 import '../services/version_service.dart';
 import '../services/tracker/tracker.dart';
 import '../config/environment.dart';
-import '../main.dart' show processPendingDeepLink;
+import '../main.dart' show hasPendingDeepLink, processPendingDeepLink;
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/ptt_input_overlay.dart';
@@ -173,6 +173,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'showCoaching': taskCount == 0 && tutorialStep < 0,
     });
 
+    // Gate: show blank dark screen while a deep link is pending,
+    // so the user doesn't see a flash of home content on cold start.
+    if (hasPendingDeepLink) {
+      return const Scaffold(backgroundColor: AppColors.darkBg);
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -202,7 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       bottom: 4,
                       child: FlatViewNudge(
                         domainColor: DomainColors.palettes.first.primary,
-                        label: 'Go to Archive',
+                        label: 'Go to Profile',
                       ),
                     ),
 

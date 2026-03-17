@@ -484,6 +484,7 @@ class _TaskDetailOverlayState extends ConsumerState<TaskDetailOverlay> {
           prefilledParentTitle: task.sentenceTitle,
           prefilledCategory: task.category,
         ),
+        settings: const RouteSettings(name: '/ramble'),
       ),
     );
   }
