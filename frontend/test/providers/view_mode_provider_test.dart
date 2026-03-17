@@ -4,14 +4,15 @@ import 'package:frontend/providers/view_mode_provider.dart';
 
 void main() {
   group('ViewMode enum', () {
-    test('has 3 values', () {
-      expect(ViewMode.values.length, 3);
+    test('has 4 values', () {
+      expect(ViewMode.values.length, 4);
     });
 
     test('values contains all modes', () {
       expect(ViewMode.values, contains(ViewMode.node));
       expect(ViewMode.values, contains(ViewMode.flat));
       expect(ViewMode.values, contains(ViewMode.calendar));
+      expect(ViewMode.values, contains(ViewMode.profile));
     });
   });
 
