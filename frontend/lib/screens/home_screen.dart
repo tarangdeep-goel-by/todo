@@ -18,7 +18,6 @@ import '../main.dart' show processPendingDeepLink;
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/ptt_input_overlay.dart';
-import '../widgets/filter_button.dart';
 import '../widgets/active_filter_chips.dart';
 import '../widgets/coaching_hint.dart';
 import '../widgets/flat_view_nudge.dart';
@@ -206,9 +205,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         label: 'Go to Archive',
                       ),
                     ),
-
-                  // Filter button (only in flat view)
-                  if (viewMode == ViewMode.flat) const FilterButton(),
 
                   // Coaching hint — rotating examples when no tasks exist
                   if (taskCount == 0 && tutorialStep < 0)

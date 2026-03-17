@@ -17,7 +17,9 @@ import '../widgets/flat_task_row.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 import '../models/api_error.dart';
+import '../services/haptic_service.dart';
 import '../services/tracker/tracker.dart';
+import '../widgets/filter_sheet.dart';
 
 /// Flat all-tasks view with virtual pagination and client-side filtering
 class FlatTaskView extends ConsumerStatefulWidget {
@@ -274,45 +276,53 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
     return Column(
       children: [
-        // Search bar
+        // Search bar + filter button
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            style: const TextStyle(color: AppColors.darkText, fontSize: 15),
-            decoration: InputDecoration(
-              hintText: 'Search tasks...',
-              hintStyle: const TextStyle(
-                color: AppColors.secondaryText,
-                fontSize: 15,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  style: const TextStyle(color: AppColors.darkText, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Search tasks...',
+                    hintStyle: const TextStyle(
+                      color: AppColors.secondaryText,
+                      fontSize: 15,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.secondaryText,
+                      size: 20,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: AppColors.secondaryText,
+                              size: 20,
+                            ),
+                            onPressed: _clearSearch,
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.navBg,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
               ),
-              prefixIcon: const Icon(
-                Icons.search,
-                color: AppColors.secondaryText,
-                size: 20,
-              ),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.secondaryText,
-                        size: 20,
-                      ),
-                      onPressed: _clearSearch,
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.navBg,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
+              const SizedBox(width: 8),
+              _InlineFilterButton(),
+            ],
           ),
         ),
         // Stale-data error banner (loaded before, but refresh failed)
@@ -465,6 +475,70 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _InlineFilterButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(taskFilterProvider);
+    final activeCount = filter.activeFilterCount;
+
+    return GestureDetector(
+      onTap: () {
+        HapticService.medium();
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => const FilterSheet(),
+        );
+      },
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.navBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Stack(
+          children: [
+            Center(
+              child: Icon(
+                Icons.tune_rounded,
+                color: activeCount > 0
+                    ? AppColors.darkText
+                    : AppColors.secondaryText,
+                size: 20,
+              ),
+            ),
+            if (activeCount > 0)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(
+                    color: AppColors.darkText,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$activeCount',
+                      style: const TextStyle(
+                        color: AppColors.darkBg,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
