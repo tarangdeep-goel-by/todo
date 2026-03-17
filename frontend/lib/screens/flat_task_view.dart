@@ -14,7 +14,8 @@ import '../services/app_logger.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/flat_task_row.dart';
-import '../widgets/loading_state.dart';
+
+import '../widgets/skeleton_loaders.dart';
 import '../widgets/swipe_tutorial_overlay.dart';
 import '../models/api_error.dart';
 import '../services/tracker/tracker.dart';
@@ -231,7 +232,7 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
 
     // Full spinner only on initial load
     if (storeState.isLoading && allFiltered.isEmpty) {
-      return const LoadingState();
+      return const SkeletonTaskList(count: 8);
     }
 
     if (storeState.error != null && !storeState.hasLoadedOnce && allFiltered.isEmpty) {
@@ -344,15 +345,9 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
           ),
         // Search loading indicator
         if (_searchLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: SizedBox(
-              height: 2,
-              child: LinearProgressIndicator(
-                color: AppColors.darkText,
-                backgroundColor: AppColors.navBg,
-              ),
-            ),
+          const SkeletonTaskList(
+            count: 4,
+            padding: EdgeInsets.only(top: 8),
           ),
         // Search error indicator
         if (_searchError != null)
@@ -416,13 +411,11 @@ class _FlatTaskViewState extends ConsumerState<FlatTaskView> {
                 itemCount: displayTasks.length + (hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == displayTasks.length) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(
-                          color: AppColors.darkText,
-                        ),
-                      ),
+                    return const Column(
+                      children: [
+                        SkeletonTaskRow(),
+                        SkeletonTaskRow(),
+                      ],
                     );
                   }
 

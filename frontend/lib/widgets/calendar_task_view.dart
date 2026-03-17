@@ -8,7 +8,8 @@ import '../providers/task_store_provider.dart';
 import '../providers/sync_provider.dart';
 import 'flat_task_row.dart';
 import 'empty_state.dart';
-import 'loading_state.dart';
+
+import 'skeleton_loaders.dart';
 
 /// Calendar month-grid view — dot indicators per day, task list for selected day.
 class CalendarTaskView extends ConsumerStatefulWidget {
@@ -66,7 +67,7 @@ class _CalendarTaskViewState extends ConsumerState<CalendarTaskView> {
     final paletteMap = ref.watch(domainPalettesProvider);
 
     if (storeState.isLoading && allTasks.isEmpty) {
-      return const LoadingState();
+      return const SkeletonCalendarGrid();
     }
 
     if (storeState.error != null &&
