@@ -22,6 +22,7 @@ import '../utils/string_extensions.dart';
 import '../services/app_logger.dart';
 import '../services/tracker/tracker.dart';
 import '../services/tracker/tracker_keys.dart';
+import '../widgets/skeleton_loaders.dart';
 
 /// Ramble mode phases
 enum _RamblePhase { recording, editing, processing, reviewing }
@@ -1029,15 +1030,8 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   }
 
   Widget _buildLoadingBody(DomainPalette domain) {
-    return Center(
-      child: SizedBox(
-        width: 32,
-        height: 32,
-        child: CircularProgressIndicator(
-          strokeWidth: 3,
-          color: domain.primary,
-        ),
-      ),
+    return const SingleChildScrollView(
+      child: SkeletonProposalList(count: 3),
     );
   }
 
@@ -1073,18 +1067,28 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
 
     final paletteMap = ref.watch(domainPalettesProvider);
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      itemCount: _proposals.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, index) {
-        final proposal = _proposals[index];
-        final isSelected = !_deselectedIds.contains(proposal.id);
-        final cardDomain = DomainColors.getDomain(
-          proposal.category, true, paletteMap,
-        );
-        return _buildProposalCard(proposal, isSelected, cardDomain);
-      },
+    return Stack(
+      children: [
+        ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          itemCount: _proposals.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (_, index) {
+            final proposal = _proposals[index];
+            final isSelected = !_deselectedIds.contains(proposal.id);
+            final cardDomain = DomainColors.getDomain(
+              proposal.category, true, paletteMap,
+            );
+            return _buildProposalCard(proposal, isSelected, cardDomain);
+          },
+        ),
+        if (_isSubmitting)
+          Positioned.fill(
+            child: ColoredBox(
+              color: AppColors.darkBg.withValues(alpha: 0.6),
+            ),
+          ),
+      ],
     );
   }
 
