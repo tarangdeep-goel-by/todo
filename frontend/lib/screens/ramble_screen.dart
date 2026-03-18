@@ -71,7 +71,7 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
   StreamSubscription<int>? _timerSub;
   StreamSubscription<RambleConnectionState>? _connectionSub;
   int? _timeRemaining; // null = no timer received yet
-  RambleConnectionState _connectionState = RambleConnectionState.disconnected;
+  RambleConnectionState _connectionState = RambleConnectionState.connecting;
 
   // Reviewing state
   List<BrainDumpTaskProposal> _proposals = [];
@@ -814,11 +814,22 @@ class _RambleScreenState extends ConsumerState<RambleScreen> {
                 shape: BoxShape.circle,
                 color: switch (_connectionState) {
                   RambleConnectionState.connected => Colors.green,
+                  RambleConnectionState.connecting => Colors.orange,
                   RambleConnectionState.reconnecting => Colors.orange,
-                  _ => AppColors.darkText.withValues(alpha: 0.3),
+                  RambleConnectionState.disconnected => AppColors.darkText.withValues(alpha: 0.3),
                 },
               ),
             ),
+            if (_connectionState == RambleConnectionState.connecting)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  'Connecting...',
+                  style: AppTypography.metadataText(
+                    color: Colors.orange.withValues(alpha: 0.8),
+                  ).copyWith(fontSize: 11),
+                ),
+              ),
             if (_connectionState == RambleConnectionState.reconnecting)
               Padding(
                 padding: const EdgeInsets.only(left: 6),
