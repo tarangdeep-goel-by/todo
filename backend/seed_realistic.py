@@ -15,7 +15,7 @@ import sys
 import uuid
 
 sys.path.insert(0, os.path.dirname(__file__))
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://todo:todo123@postgres:5432/todo_db")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://todo:changeme@postgres:5432/todo_db")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("SEARCH_ENGINE", "pg_native")
 

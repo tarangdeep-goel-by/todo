@@ -9,7 +9,7 @@ from sqlalchemy.engine import URL
 # Set env vars before any app imports
 # Build URL via SQLAlchemy URL.create() — handles special chars (e.g. '/') that
 # break asyncpg when naively URL-encoded with quote_plus().
-_db_password = os.environ.get("POSTGRES_PASSWORD", "todo123")
+_db_password = os.environ.get("POSTGRES_PASSWORD", "changeme")
 _db_host = os.environ.get("POSTGRES_HOST", "postgres")
 _db_port = int(os.environ.get("POSTGRES_PORT", "5432"))
 _test_db_url = URL.create(

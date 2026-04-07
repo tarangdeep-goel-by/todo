@@ -13,7 +13,7 @@ from models.task import Task
 from models.category import Category as CategoryModel
 from services.task_service import TaskService
 
-DB_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://todo:todo123@localhost:5433/todo_db")
+DB_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://todo:changeme@localhost:5433/todo_db")
 USER = "default-user"
 
 

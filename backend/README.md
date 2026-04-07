@@ -167,7 +167,7 @@ backend/
    ```bash
    docker run -d --name todo-postgres \
      -e POSTGRES_USER=todo \
-     -e POSTGRES_PASSWORD=todo123 \
+     -e POSTGRES_PASSWORD=changeme \
      -e POSTGRES_DB=todo_db \
      -p 5432:5432 \
      postgres:15-alpine
@@ -175,7 +175,7 @@ backend/
 
 4. **Set environment variables**:
    ```bash
-   export DATABASE_URL="postgresql+asyncpg://todo:todo123@localhost:5432/todo_db"
+   export DATABASE_URL="postgresql+asyncpg://todo:changeme@localhost:5432/todo_db"
    export GEMINI_API_KEY="your_api_key_here"
    export APP_ENV="development"
    export DEBUG="True"
