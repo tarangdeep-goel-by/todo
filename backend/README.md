@@ -1,14 +1,16 @@
 # Todo Backend API
 
-FastAPI backend for AI-powered voice-first todo list app.
+FastAPI backend for Amble, the AI-powered voice-first todo list app. Project overview: [`../README.md`](../README.md); detailed notes: [`../docs/NOTES.md`](../docs/NOTES.md).
 
 ## Features
 
-- **Voice Command Processing**: Detects user intent and executes actions
-- **AI-Powered Categorization**: Automatically categorizes tasks using Google Gemini
-- **Hierarchical Task Management**: Tree-based task organization
-- **PostgreSQL Database**: Production-ready with async support
-- **Dockerized**: Everything runs in containers
+- **Brain dump processing**: Gemini (`gemini-2.5-flash-lite`) turns a transcript into proposed actions (add, complete, edit, delete, breakdown); the client reviews them and submits the batch, which is applied in one transaction
+- **Streaming speech-to-text**: `/ws/ramble` WebSocket relays audio to Sarvam AI `saaras:v3` (translate mode, so Hindi/Hinglish comes out as English)
+- **Task matching**: PostgreSQL `pg_trgm` (or RapidFuzz) resolves spoken references to existing tasks
+- **Hierarchical Task Management**: Unlimited-depth tree under 8 fixed domains (career, finance, health, relationships, growth, recreation, home, community)
+- **Firebase Auth**: `/api` task, agent, category and account routes and the WebSocket require a Firebase ID token
+- **PostgreSQL Database**: Async SQLAlchemy, Alembic migrations
+- **Dockerized**: Postgres, Redis and the API run in containers
 
 ## Quick Start
 
@@ -16,16 +18,17 @@ FastAPI backend for AI-powered voice-first todo list app.
 
 - Docker and Docker Compose
 - Gemini API key from https://ai.google.dev/
+- Sarvam AI API key
+- A Firebase project and a service account JSON
 
 ### Setup
 
-1. **Add your Gemini API key**:
+1. **Configure environment**:
 
-   Edit `docker-compose.yml` and replace `YOUR_GEMINI_API_KEY_HERE` with your actual API key:
-
-   ```yaml
-   environment:
-     GEMINI_API_KEY: AIzaSy...your_actual_key_here
+   ```bash
+   cp .env.example .env
+   # edit .env: POSTGRES_PASSWORD, GEMINI_API_KEY, SARVAM_API_KEY, FIREBASE_PROJECT_ID
+   cp /path/to/service-account.json firebase-service-account.json   # a real file, not a symlink
    ```
 
 2. **Start the backend**:
@@ -33,10 +36,14 @@ FastAPI backend for AI-powered voice-first todo list app.
    docker-compose up --build
    ```
 
+   The container runs `alembic upgrade head` before starting uvicorn.
+
 The backend will be available at:
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- Health: http://localhost:8000/health
+- API: http://localhost:8001
+- Docs: http://localhost:8001/docs (only when `DEBUG=True`)
+- Health: http://localhost:8001/health
+
+Postgres is on 127.0.0.1:5433 and Redis on 127.0.0.1:6379.
 
 ### Stopping
 
@@ -51,50 +58,51 @@ docker-compose down -v
 
 ## API Endpoints
 
+Task, agent, category, notification, account and log routes need `Authorization: Bearer <Firebase ID token>`. The user is taken from the token; there is no `user_id` parameter.
+
 ### Agent API
 
-#### POST /api/agent/process
+#### POST /api/agent/braindump
 
-Process voice command and execute intent.
+Extract proposed actions from a transcript. Nothing is written to the database.
 
 **Request**:
 ```json
 {
-  "transcription": "Add buy groceries",
-  "user_id": "default-user"
+  "transcription": "finished the tax forms, add buy milk",
+  "category": null,
+  "parent_id": null
 }
 ```
 
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Created task 'buy groceries' in Personal",
-  "type": "confirmation",
-  "data": {
-    "task_id": "uuid...",
-    "title": "buy groceries",
-    "category": "personal",
-    "reasoning": "Groceries are personal errands"
-  }
-}
-```
+**Response**: `{"success": true, "tasks": [<BrainDumpTaskProposal>...], "transcription": "...", "message": null}`. Each proposal has `action`, `content`, `category`, `parent_id`, `matched_task_id`, `changes`, confidences, `match_explanation` and `alternate_matches` (see `models/schemas.py`). Gibberish input returns `success: false` with no LLM call.
+
+#### POST /api/agent/braindump/submit
+
+Apply the reviewed proposals (`{"tasks": [...]}`, max 50) in one transaction. Both agent endpoints are rate limited to 10/minute.
+
+### WebSocket
+
+#### /ws/ramble
+
+First message must be `{"type": "auth", "token": "<idToken>"}` within 5 s. Then `start`, base64 PCM16 16 kHz `audio` chunks, `stop`. The server sends `transcription` (accumulated text), `final_transcript` and `status` messages. Sessions are capped at 5 minutes.
 
 ### Tasks API
 
 #### GET /api/tasks
 
-List tasks with filters.
+List tasks with filters, sorting and pagination.
 
-**Query Parameters**:
-- `user_id` (required)
-- `category` (optional): work/personal
-- `status` (optional): active/completed
-- `parent_id` (optional): Filter by parent
+**Query Parameters** (all optional):
+- `category`, `priority`, `status`, `tags` (comma-separated); `status` also accepts the computed `overdue` and `due_soon`
+- `parent_id` (UUID or `null`)
+- `created_at_gte/lte`, `updated_at_gte/lte`, `due_date_gte/lte`, `completed_at_gte/lte`
+- `sort` (default `status:asc,due_date:asc,priority:desc,created_at:desc`)
+- `limit` (default 50, max 100) and offset
 
 **Example**:
 ```bash
-curl "http://localhost:8000/api/tasks?user_id=default-user&category=work"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8001/api/tasks?category=career&status=active"
 ```
 
 #### GET /api/tasks/{task_id}
@@ -103,14 +111,13 @@ Get specific task.
 
 #### POST /api/tasks
 
-Create task manually (bypasses agent).
+Create task manually (bypasses the agent). `task_id` is an optional client-generated UUID used for offline creates.
 
 **Request**:
 ```json
 {
-  "user_id": "default-user",
   "title": "Buy groceries",
-  "category": "personal",
+  "category": "home",
   "transcription": "buy groceries"
 }
 ```
@@ -121,11 +128,19 @@ Update task.
 
 #### PUT /api/tasks/{task_id}/complete
 
-Mark task as completed.
+Mark task as completed (cascades to active descendants).
+
+#### PUT /api/tasks/{task_id}/archive, PUT /api/tasks/{task_id}/restore, GET /api/tasks/archived
+
+Archive (soft delete, with descendants), restore, and list archived tasks. Archived tasks are purged after 30 days.
 
 #### DELETE /api/tasks/{task_id}
 
-Archive task and descendants.
+Hard delete task and descendants.
+
+#### Other
+
+`GET /api/tasks/search`, `GET /api/tasks/stats`, `POST /api/tasks/bulk`, `/api/categories`, `/api/notifications/token` (FCM), `DELETE /api/account`, `POST /api/logs`, `GET /api/version`, `/metrics`.
 
 ## Development
 
@@ -133,137 +148,111 @@ Archive task and descendants.
 
 ```
 backend/
-├── main.py                 # FastAPI app entry point
-├── config.py              # Environment configuration
+├── main.py                 # FastAPI app, middleware, background loops (archive purge, due reminders)
+├── config.py              # Pydantic settings
+├── auth.py                # Firebase ID token verification
+├── rate_limit.py          # slowapi limiter
 ├── database.py            # SQLAlchemy setup
-├── models/
-│   ├── task.py           # SQLAlchemy model
-│   └── schemas.py        # Pydantic schemas
+├── models/                # task, category, fcm_token, schemas
 ├── services/
-│   ├── gemini_service.py # Gemini AI integration
-│   ├── agent_service.py  # Intent detection + execution
-│   └── task_service.py   # Task CRUD operations
-├── routers/
-│   ├── agent.py          # Agent endpoints
-│   └── tasks.py          # Task endpoints
-├── migrations/           # Alembic migrations
-└── docker-compose.yml    # Docker orchestration
+│   ├── gemini_service.py      # Stage 1 / Stage 2 / subtask prompts
+│   ├── agent_service.py       # Brain dump orchestration + batch submit
+│   ├── ramble_service.py      # Sarvam streaming STT session
+│   ├── task_service.py        # Tree operations, cascades, categories
+│   ├── task_search_service.py # pg_trgm search
+│   └── intent_prefilter.py    # Gibberish filter
+├── routers/               # agent, ramble, tasks, categories, notifications, account, logs, test_utils
+├── migrations/            # Alembic migrations
+├── evaluation/            # Brain dump prompt eval harness and datasets
+├── tests/                 # unit + e2e (+ performance)
+└── docker-compose.yml     # Docker orchestration
 ```
 
-### Running Locally (without Docker)
+### Running Locally
 
-1. **Create virtual environment**:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
+Use Docker. Tests and the app expect PostgreSQL (UUID/JSONB, `pg_trgm`), and the project's CLAUDE.md asks that no local venv be created. Code is volume-mounted (`.:/app`), so Python changes do not need a rebuild.
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Tests
 
-3. **Setup PostgreSQL** (manually or with Docker):
-   ```bash
-   docker run -d --name todo-postgres \
-     -e POSTGRES_USER=todo \
-     -e POSTGRES_PASSWORD=changeme \
-     -e POSTGRES_DB=todo_db \
-     -p 5432:5432 \
-     postgres:15-alpine
-   ```
-
-4. **Set environment variables**:
-   ```bash
-   export DATABASE_URL="postgresql+asyncpg://todo:changeme@localhost:5432/todo_db"
-   export GEMINI_API_KEY="your_api_key_here"
-   export APP_ENV="development"
-   export DEBUG="True"
-   ```
-
-5. **Run migrations**:
-   ```bash
-   alembic upgrade head
-   ```
-
-6. **Start server**:
-   ```bash
-   uvicorn main:app --reload
-   ```
+```bash
+docker exec todo-backend python -m pytest tests/ -v --ignore=tests/performance
+```
 
 ### Database Migrations
 
 Create new migration:
 ```bash
-alembic revision --autogenerate -m "description"
+docker exec todo-backend alembic revision --autogenerate -m "description"
 ```
 
 Apply migrations:
 ```bash
-alembic upgrade head
+docker exec todo-backend alembic upgrade head
 ```
 
 Rollback:
 ```bash
-alembic downgrade -1
+docker exec todo-backend alembic downgrade -1
 ```
 
 ## Testing with curl
 
-### Test agent endpoint:
+### Test brain dump endpoint:
 ```bash
-curl -X POST http://localhost:8000/api/agent/process \
+curl -X POST http://localhost:8001/api/agent/braindump \
   -H "Content-Type: application/json" \
-  -d '{
-    "transcription": "Add buy groceries to shopping list",
-    "user_id": "default-user"
-  }'
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"transcription": "Add buy groceries"}'
 ```
 
 ### Test tasks endpoint:
 ```bash
-curl "http://localhost:8000/api/tasks?user_id=default-user"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8001/api/tasks"
 ```
+
+The HTTP seed scripts (`seed_tasks.*`, `seed_deep_tasks.*`) send no token and get 401s; `seed_realistic.py` and `seed_showcase.py` write straight to the database.
 
 ## Environment Variables
 
-All environment variables are configured in `docker-compose.yml`:
+Set in `.env` (copied from `.env.example`), read by `docker-compose.yml` and `config.py`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GEMINI_API_KEY` | Google Gemini API key | **REQUIRED** - Set in docker-compose.yml |
-| `DATABASE_URL` | PostgreSQL connection URL | Auto-configured in docker-compose.yml |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Database credentials (compose builds `DATABASE_URL` from these) | `todo` / **REQUIRED** / `todo_db` |
+| `GEMINI_API_KEY` | Google Gemini API key | **REQUIRED** |
+| `SARVAM_API_KEY` | Sarvam AI API key | **REQUIRED** |
+| `FIREBASE_PROJECT_ID` | Firebase project for auth | **REQUIRED** |
 | `APP_ENV` | Environment (development/production) | development |
-| `DEBUG` | Enable debug mode | True |
+| `DEBUG` | Enable debug mode (also enables `/docs`) | False |
+| `SEARCH_ENGINE` | `pg_native` (pg_trgm) or `fuzzy` (RapidFuzz) | `pg_native` in compose, `fuzzy` in code |
+| `CORS_ORIGINS`, `LOG_LEVEL`, `SENTRY_DSN`, `FIREBASE_CREDENTIALS_JSON`, `ALLOW_TEST_TOKEN` | Optional | see `config.py` |
 
-**Note**: No `.env` file is used. All configuration is in `docker-compose.yml`.
+`GOOGLE_APPLICATION_CREDENTIALS` and `REDIS_URL` are set by `docker-compose.yml`.
 
 ## Architecture
 
-### Intent Types
+### Action Types
 
-The agent supports 6 intent types:
+The brain dump pipeline supports 5 actions:
 
-1. **ADD**: Create new task
-2. **COMPLETE**: Mark task done
-3. **DELETE**: Archive task
-4. **EDIT**: Modify task
-5. **QUERY**: List tasks
-6. **UNKNOWN**: Unclear intent
+1. **ADD**: Create new task (Stage 2 picks a parent within the domain)
+2. **COMPLETE**: Mark task done (cascades to descendants)
+3. **EDIT**: Modify task, including reparenting (old MOVE proposals are converted to EDIT)
+4. **DELETE**: Hard delete task and its subtree
+5. **BREAKDOWN**: Expanded server-side into ADD proposals for 4 to 6 subtasks
 
 ### Task Tree Structure
 
-Tasks are organized hierarchically:
+Tasks are organized hierarchically under 8 domains:
 
 ```
-Work (root-work)
+career
 ├── Project Alpha
 │   ├── Backend API
 │   └── Frontend UI
 └── Meetings
 
-Personal (root-personal)
-├── Home
+home
 └── Errands
     └── Shopping
 ```
@@ -272,11 +261,7 @@ Personal (root-personal)
 
 ### Port already in use
 
-If port 8000 or 5432 is in use, edit `docker-compose.yml`:
-```yaml
-ports:
-  - "8001:8000"  # Change to different port
-```
+The API maps to 8001, Postgres to 5433 and Redis to 6379. To change them, edit `ports` in `docker-compose.yml`, or use `docker-compose.worktree.yml` with `WT_API_PORT` / `WT_PG_PORT`.
 
 ### Database connection error
 
@@ -291,17 +276,15 @@ docker-compose logs postgres
 docker-compose logs backend
 ```
 
-### Gemini API errors
+### Gemini / Sarvam API errors
 
-Verify API key is set in docker-compose.yml:
+Verify the keys are set in `.env`:
 ```bash
-grep GEMINI_API_KEY docker-compose.yml
+grep -E "GEMINI_API_KEY|SARVAM_API_KEY" .env
 ```
-
-Make sure it's not `YOUR_GEMINI_API_KEY_HERE` - replace with your actual key.
 
 Check quota at: https://ai.google.dev/
 
 ## License
 
-MIT
+No `LICENSE` file is included in the repo yet.

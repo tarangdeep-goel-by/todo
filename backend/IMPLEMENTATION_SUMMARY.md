@@ -1,5 +1,7 @@
 # Implementation Summary: Testing Fixes & Performance Monitoring
 
+> Historical, as of 2026-02-01. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md).
+
 **Date**: 2026-02-01
 **Status**: ✅ Complete
 **Task**: Fix 4 critical issues discovered in testing + add performance testing framework

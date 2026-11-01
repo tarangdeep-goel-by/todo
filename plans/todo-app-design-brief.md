@@ -1,5 +1,7 @@
 # VOKL — Maximalist Voice-First Todo App
 
+> Historical plan, as of 2026-02-02. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md).
+
 ## Design Brief v2 (Bolder)
 
 ---

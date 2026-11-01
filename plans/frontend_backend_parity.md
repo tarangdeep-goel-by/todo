@@ -1,5 +1,7 @@
 # Frontend ← Backend Parity Plan
 
+> Historical plan, as of 2026-03-02. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md).
+
 Backend features that are implemented, tested, and returning data — but the frontend doesn't expose yet.
 
 ## 1. AI Placement Transparency

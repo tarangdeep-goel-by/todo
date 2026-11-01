@@ -1,5 +1,7 @@
 # Voice Input V2 — "Ramble Mode"
 
+> Historical plan, as of 2026-02-25. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md).
+
 ## Current State vs Target
 
 | Aspect | Current | Target (V2) |

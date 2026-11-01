@@ -1,5 +1,7 @@
 # TODO App - Project Status
 
+> Historical, as of 2026-02-25. Current state: see [README.md](README.md) and [docs/NOTES.md](docs/NOTES.md). Since then: transcription moved to Gemini Live and then to Sarvam AI `saaras:v3`, MOVE was folded into EDIT, `archived` status returned, Firebase Auth and offline-first sync were added, and the app was renamed Amble.
+
 **Last Updated**: 2026-02-25
 **Status**: ✅ Completion Cascade & Ancestor Activation
 

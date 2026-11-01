@@ -1,5 +1,7 @@
 # VOKL Frontend - Maximalist Voice-First Todo App
 
+> Historical, as of 2026-02-02 (Phase 1; the app has since been renamed Amble). Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md). The Status and Next Steps sections below describe that early state.
+
 Flutter mobile app implementing the VOKL design brief for voice-first task management.
 
 ## Status
@@ -37,15 +39,15 @@ flutter pub get
 ```
 
 ### 2. Backend Setup
-Ensure the FastAPI backend is running on `http://localhost:8001` or update the base URL in `lib/config/constants.dart`.
+Ensure the FastAPI backend is running (`cd ../backend && docker compose up --build`, API on port 8001). The app reads its base URL from `--dart-define=API_BASE_URL=...` (`lib/config/environment.dart`), defaulting to `http://10.0.2.2:8001/api` (the Android emulator's address for the host).
 
 ### 3. Run the App
 ```bash
 # Connect Android device or start emulator
 flutter devices
 
-# Run on Android
-flutter run
+# Run on Android (use your machine's LAN IP on a physical device)
+flutter run --dart-define=API_BASE_URL=http://<lan-ip>:8001/api
 ```
 
 ## Next Steps

@@ -3,11 +3,11 @@
 ## Prerequisites
 
 1. **Android device/emulator connected** via USB or WiFi (`flutter devices` to verify)
-2. **E2E backend running** with `APP_ENV=test` on a dedicated port (default: 8002)
+2. **E2E backend running** with `ALLOW_TEST_TOKEN=true` (and a non-production `APP_ENV`) on a dedicated port (default: 8002)
 
 ## Backend Setup
 
-The E2E tests need a backend that accepts the test auth token `test-token-e2e`. This is only enabled when `APP_ENV=test` — production and development backends reject it.
+The E2E tests need a backend that accepts the test auth token `test-token-e2e`. It is only accepted when `ALLOW_TEST_TOKEN=true` and `APP_ENV` is not `production` (`backend/auth.py`); otherwise it is rejected. Put `ALLOW_TEST_TOKEN=true` in the worktree's `backend/.env` (read via `env_file`).
 
 ```bash
 # Start E2E backend (port 8002, separate DB)
@@ -70,14 +70,14 @@ BACKEND_PORT=8002 ./run_e2e.sh
 ## Security
 
 Test auth is safe for three reasons:
-1. Backend only accepts `test-token-e2e` when `APP_ENV=test` (`auth.py:46`)
+1. Backend only accepts `test-token-e2e` when `ALLOW_TEST_TOKEN=true` and `APP_ENV` is not `production` (`auth.py`)
 2. The `/test/reset` endpoint returns 404 in production (`routers/test_utils.py:29`)
 3. The E2E stack runs on a separate port with its own database — no shared state with dev/prod
 
 ## Troubleshooting
 
 - **`WebSocketChannelException`**: WiFi debug connection is flaky. Run tests individually, not batched. USB is more stable.
-- **`401 Invalid token`**: Backend isn't running with `APP_ENV=test`. Check with `docker exec todo-fe-e2e-backend env | grep APP_ENV`.
+- **`401 Invalid token`**: Backend isn't running with `ALLOW_TEST_TOKEN=true` (or `APP_ENV=production`). Check with `docker exec todo-fe-e2e-backend env | grep -E 'ALLOW_TEST_TOKEN|APP_ENV'`.
 - **`connectionTimeout`**: Wrong `API_BASE_URL`. Physical devices can't reach `10.0.2.2` — use your Mac's network IP.
 - **`ptt_button` not found**: Missing `--dart-define=TEST_MODE=true`. Without it, the app shows the login screen instead of HomeScreen.
 - **Stale APK / duplicate entry**: Run `flutter clean && flutter pub get` then retry.
