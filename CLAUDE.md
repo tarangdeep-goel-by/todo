@@ -4,22 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Voice-first AI-powered hierarchical todo app. Flutter mobile frontend communicates with a FastAPI backend via REST API. Users input tasks via keyboard or voice, backend AI (Gemini) extracts task proposals (ADD/COMPLETE/EDIT/DELETE/MOVE/BREAKDOWN), user reviews and confirms, then tasks are executed against a PostgreSQL database. Tasks are organized into 8 domains (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) with unlimited tree depth.
+Voice-first AI-powered hierarchical todo app (product name **Amble**, formerly VOKL). Flutter mobile frontend communicates with a FastAPI backend via REST and a WebSocket. Voice is streamed to Sarvam AI (`saaras:v3`, translate mode) for speech-to-text; backend AI (Gemini `gemini-2.5-flash-lite`) extracts task proposals (ADD/COMPLETE/EDIT/DELETE/BREAKDOWN; MOVE is folded into EDIT), user reviews and confirms, then tasks are executed against a PostgreSQL database. Manual edits are offline-first (Drift + SQLCipher local DB, sync queue). Fuller notes: [`docs/NOTES.md`](docs/NOTES.md). Tasks are organized into 8 domains (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) with unlimited tree depth.
 
 ## Quick Start
 
 ```bash
 # Backend (Docker-first, always use Docker)
-cd backend && docker-compose up --build    # API: http://localhost:8001, Postgres: :5433
+cd backend && docker-compose up --build    # API: http://localhost:8001, Postgres: 127.0.0.1:5433, Redis: 127.0.0.1:6379
 # Volume-mounted (.:/app) — Python code changes reflect without rebuild
 # Only re-run --build if Dockerfile or requirements.txt changes
 
 # Frontend
-cd frontend && flutter pub get && flutter run
+cd frontend && flutter pub get && flutter run --dart-define=API_BASE_URL=http://<lan-ip>:8001/api
 
-# Seed test data
-cd backend && ./seed_tasks.sh              # 12 basic tasks
-cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
+# Seed test data: the HTTP seed scripts (seed_tasks.sh/.py, seed_deep_tasks.sh/.py) predate
+# Firebase Auth, send no bearer token and get 401 from the current API.
+# seed_realistic.py and seed_showcase.py write straight to the database instead.
 ```
 
 ## Commands
@@ -28,13 +28,13 @@ cd backend && ./seed_deep_tasks.sh         # 62-task deep hierarchy
 # Backend tests (inside Docker)
 docker exec todo-backend python -m pytest tests/ -v --tb=short --ignore=tests/performance
 docker exec todo-backend python -m pytest tests/test_brain_dump.py -v                        # Single file
-docker exec todo-backend python -m pytest tests/test_brain_dump.py::TestBrainDump::test_gibberish_returns_empty_proposals -v  # Single test
+docker exec todo-backend python -m pytest tests/test_brain_dump.py::TestProcessBrainDump::test_gibberish_returns_empty_proposals -v  # Single test
 docker exec todo-backend python tests/performance/test_agent_performance.py                  # Performance benchmarks
 
 # Frontend tests
 cd frontend && flutter test                                              # All
 cd frontend && flutter test test/providers/task_store_provider_test.dart  # Single file
-cd frontend && flutter test --name "filters tasks by category"           # By name
+cd frontend && flutter test --name "fetchAll populates store"           # By name
 cd frontend && flutter analyze                                           # Lint (must be 0 issues)
 
 # Database migrations
@@ -42,8 +42,9 @@ docker exec todo-backend alembic upgrade head                            # Apply
 docker exec todo-backend alembic revision --autogenerate -m "description"  # Create new
 docker exec todo-backend alembic downgrade -1                              # Rollback one
 
-# Brain dump action detection eval (65 cases, ~90s with LLM)
+# Brain dump action detection eval (default evaluation/eval_config.json, 137 cases; needs a real Gemini key)
 docker exec todo-backend python evaluation/run_eval.py                    # Full run
+docker exec todo-backend python evaluation/run_eval.py --eval-config evaluation/eval_smoke.json  # Smoke set (56); eval_realworld.json has 553
 docker exec todo-backend python evaluation/run_eval.py --filter-id add_01 # Single case
 docker exec todo-backend python evaluation/run_eval.py --no-llm          # Dry-run (harness only)
 docker exec todo-backend python evaluation/run_eval.py --no-prefilter    # Skip pre-filter, LLM-only
@@ -63,8 +64,8 @@ docker exec todo-backend python evaluation/run_eval.py --no-prefilter    # Skip 
 │  ├── children        │         │  /api/categories/*    ← domains  │
 │  └── flatFiltered    │         │                                  │
 │                      │         │  AgentService → GeminiService    │
-│  RambleSheet ──────► │         │  RambleService (Gemini Live)     │
-│  PushToTalkButton    │         │  TaskService  → QueryBuilder     │
+│  RambleScreen ─────► │         │  RambleService (Sarvam saaras:v3)│
+│  SyncService         │         │  TaskService  → QueryBuilder     │
 └─────────────────────┘         └──────────┬───────────────────────┘
                                            │
                                     ┌──────┴──────┐
@@ -75,8 +76,8 @@ docker exec todo-backend python evaluation/run_eval.py --no-prefilter    # Skip 
 
 ### Two Input Modes (unified brain dump pipeline)
 
-1. **Keyboard** (tap pill): Type text → `POST /api/agent/braindump` → task proposals → RambleScreen review → submit
-2. **Voice / Ramble** (long-press pill): Stream PCM audio via `/ws/ramble` → Gemini Live transcribes in real-time → user reviews transcript → `/api/agent/braindump` extracts task proposals → user reviews/edits → `/api/agent/braindump/submit` creates tasks in batch
+1. **Manual** (tap pill): `AddTaskSheet` structured form → `TaskMutationService` (local DB + sync queue, works offline). No LLM involved.
+2. **Voice / Ramble** (long-press pill, Android widget / QS tile / `amble://ramble`): Stream PCM audio via `/ws/ramble` → Sarvam AI `saaras:v3` (translate mode) transcribes to English in real time → user edits transcript in `RambleScreen` (typing here also works) → `/api/agent/braindump` extracts task proposals (Stage 1 actions, Stage 2 parent placement, pg_trgm reference matching) → user reviews/edits cards → `/api/agent/braindump/submit` applies the batch in one transaction. Online only.
 
 ### Detailed Guides
 
@@ -86,19 +87,19 @@ docker exec todo-backend python evaluation/run_eval.py --no-prefilter    # Skip 
 ## Cross-Cutting Concerns
 
 ### Computed "overdue" Status
-"Overdue" is never stored in the database. Both backend (`schemas.py` validator) and frontend (`_computeDisplayStatus()`) compute it identically: `status == 'active' && due_date < now`. Client-side filter/sort logic must mirror backend `QueryBuilder` semantics exactly.
+"Overdue" is never stored in the database. Both backend (`QueryBuilder` filter/sort and the stats query) and frontend (`_computeDisplayStatus()` in `task_store_provider.dart`) compute it identically: `status == 'active' && due_date < now`. Both also derive `due_soon` (active, due within 48 h). Client-side filter/sort logic must mirror backend `QueryBuilder` semantics exactly.
 
 ### Default Sort Order
 Both frontend and backend use: `status:asc → due_date:asc → priority:desc → created_at:desc`
-- Status rank: overdue(0) < active(1) < completed(2)
+- Status rank: overdue(0) < due_soon(1) < active(2) < completed(3) (backend also ranks archived(4))
 - Priority rank: high(3) > medium(2) > low(1) > none(0)
 - Null dates sort last
 
 ### Optimistic Updates
-Frontend mutations update `TaskStoreNotifier` immediately, then sync to backend async. If backend fails, the store should be reverted.
+Manual mutations go through `TaskMutationService`: write the local Drift DB (`pendingSync`), enqueue in `SyncQueue`, update `TaskStoreNotifier` immediately, then `SyncService` pushes when online. Voice (`RambleScreen`) calls the API directly and then `fetchAll()`.
 
 ### 8-Domain Limit
-Categories (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) are enforced in `agent_service.py` (max 8). The frontend dynamically creates domain palettes from backend categories.
+Categories (Career, Finance, Health, Relationships, Growth, Recreation, Home, Community) are capped at 8 (`settings.max_categories` in `task_service.py`; the brain dump ADD path in `agent_service.py` hardcodes 8 and falls back to `home`). The frontend dynamically creates domain palettes from backend categories.
 
 ## Authentication
 
@@ -125,14 +126,18 @@ Firebase Auth end-to-end. Backend verifies ID tokens, frontend manages auth stat
 | `SARVAM_API_KEY` | Yes | — | Sarvam AI streaming STT |
 | `FIREBASE_PROJECT_ID` | Yes | — | Firebase project for auth |
 | `GOOGLE_APPLICATION_CREDENTIALS` | No | — | Path to Firebase service account JSON (mapped to `/app/firebase-service-account.json` in Docker) |
+| `FIREBASE_CREDENTIALS_JSON` | No | — | Base64 service account JSON (Render) |
+| `REDIS_URL` | No | — | Optional; lock for the due-date notification loop |
+| `SENTRY_DSN` | No | — | Optional error reporting |
+| `ALLOW_TEST_TOKEN` | No | `False` | Enables the `test-token-e2e` bypass outside production |
 | `SEARCH_ENGINE` | No | `fuzzy` (code) / `pg_native` (Docker) | `pg_native` (pg_trgm) or `fuzzy` (RapidFuzz) |
 | `LOG_LEVEL` | No | `INFO` | Structured logging level |
 | `CORS_ORIGINS` | No | `http://localhost:8000,http://localhost:8001` | Comma-separated allowed origins |
 | `APP_ENV` | No | `development` | Environment name |
 | `DEBUG` | No | `False` | Debug mode |
 
-**Frontend** (`frontend/lib/config/constants.dart`):
-- `apiBaseUrl`: Must match your machine's network IP for physical device testing (Android emulator uses `10.0.2.2`)
+**Frontend** (`frontend/lib/config/environment.dart`):
+- `API_BASE_URL` via `--dart-define`; defaults to `http://10.0.2.2:8001/api` (Android emulator → host). Use your machine's LAN IP for a physical device. Plain HTTP is only accepted for localhost and private IP ranges. (`AppConstants.apiBaseUrl` in `constants.dart` is not used for requests.)
 
 ## Worktree Development (MANDATORY for Small+ tasks)
 
@@ -182,4 +187,4 @@ git worktree remove ../todo-<feature>
 - Backend uses real `todo_test` database, not mocks for DB layer
 - Test UUIDs must be valid format (`"00000000-0000-0000-0000-000000000001"`), not arbitrary strings
 - Frontend tests use `mocktail` + `ProviderContainer` with `MockApiService`
-- Current counts: ~175 backend tests, ~342 frontend tests
+- Current counts (2026-11-01, counted from source): ~415 backend `def test_` functions excluding `tests/performance` (418 including it); 60 frontend test files with ~469 `test`/`testWidgets` cases

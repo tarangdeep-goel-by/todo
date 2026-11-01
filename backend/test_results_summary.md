@@ -1,5 +1,7 @@
 # Complex Prompt Testing Results
 
+> Historical, as of 2026-02-01. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md). Current backend suite: ~415 `def test_` functions excluding `tests/performance`, run with `docker exec todo-backend python -m pytest tests/ --ignore=tests/performance`.
+
 ## Tree Structure Created
 - **Total tasks**: 62 tasks
 - **Depth**: 4 levels

@@ -55,21 +55,20 @@ Backend must be running: `docker compose up -d`
 
 ## 6. Voice Input (Ramble)
 
-- [ ] Long-press PTT button → ramble screen opens, recording starts
+- [ ] Long-press pill → ramble screen opens, recording starts
 - [ ] Waveform animates during recording
 - [ ] Release → recording stops, transcript appears
 - [ ] Edit transcript → changes reflected
 - [ ] Send transcript → processing spinner → proposal cards appear
 - [ ] Stop recording early (< 2s) → "Recording too short" message
-- [ ] Record for 30s+ → timer warning shown
+- [ ] Timer shows time remaining (5-minute cap); warning colour at ≤60 s
 - [ ] Microphone permission denied → graceful error message
 
 ## 7. Keyboard Input
 
-- [ ] Tap PTT button (short tap) → keyboard input opens
-- [ ] Type text → send → processing → proposal cards appear
-- [ ] Empty text → send button disabled
-- [ ] Long text (500+ chars) → accepted and processed
+- [ ] Tap pill (short tap) → `AddTaskSheet` opens
+- [ ] Enter title (+ domain, priority, date, parent) → submit → task appears (works offline too)
+- [ ] Typed brain dump: in the Ramble transcript editor, type or edit text → send → proposal cards appear
 
 ## 8. Proposal Review (Brain Dump)
 
@@ -78,7 +77,7 @@ Backend must be running: `docker compose up -d`
 - [ ] EDIT proposal → before/after cards with arrow between
 - [ ] EDIT with parent change → BEFORE shows old parent, AFTER shows new parent (highlighted)
 - [ ] EDIT with category change → domain color changes between cards
-- [ ] MOVE proposal → parent context prominent in before/after
+- [ ] Reparent (EDIT with `parent_id`; MOVE is folded into EDIT) → parent context prominent in before/after
 - [ ] DELETE proposal → shows matched task
 - [ ] Deselect proposal (long-press) → dims card, excluded from submit
 - [ ] Tap proposal → edit dialog opens

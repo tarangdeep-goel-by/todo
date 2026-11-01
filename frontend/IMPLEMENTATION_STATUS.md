@@ -1,5 +1,7 @@
 # VOKL Frontend - Implementation Status
 
+> Historical, as of 2026-02-02. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md). Setup notes below are out of date: the API URL now comes from `--dart-define=API_BASE_URL` (`lib/config/environment.dart`), auth is Firebase, and the HTTP seed scripts 401 without a token.
+
 **Date**: 2026-02-02
 **Phase**: VOKL Maximalist UI Complete
 **Status**: ✅ Tested on Android Device (Samsung SM S938B)
@@ -482,6 +484,9 @@ Live audio amplitude display during recording:
 ## 🔧 Configuration
 
 ### API Base URL
+
+(Historical. Today: `--dart-define=API_BASE_URL=...`, read by `lib/config/environment.dart`, default `http://10.0.2.2:8001/api`.)
+
 ```dart
 // lib/config/constants.dart
 // For Android device testing, use local network IP (not localhost)

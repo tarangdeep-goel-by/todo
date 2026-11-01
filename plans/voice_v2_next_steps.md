@@ -1,5 +1,7 @@
 # Voice V2 — Next Steps
 
+> Historical plan, as of 2026-02-28. Current state: see [README.md](../README.md) and [docs/NOTES.md](../docs/NOTES.md).
+
 **Date**: 2026-02-28
 **Branch**: `feature/voice-v2-braindump`
 **Current state**: Phases 1-3 complete, brain dump eval 33/40 (82.5%)
